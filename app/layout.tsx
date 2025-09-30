@@ -1,24 +1,19 @@
-import type { Metadata } from "next";
 import "./globals.css";
-import AuthProvider from "@/components/auth/AuthProvider";
+import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Asset Tracking System",
-  description: "IT Asset Tracking System with QR codes and barcodes",
+  title: "FYP Asset Tracking",
+  description: "QR Scan UI demo",
 };
 
 export default function RootLayout({
   children,
-}: Readonly<{
+}: {
   children: React.ReactNode;
-}>) {
+}) {
   return (
     <html lang="en">
-      <body className="antialiased">
-        <AuthProvider>
-          {children}
-        </AuthProvider>
-      </body>
+      <body className="min-h-screen">{children}</body>
     </html>
   );
 }
