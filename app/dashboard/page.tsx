@@ -54,8 +54,8 @@ const profileItems = [
 
 // Define animation variants
 const sidebarVariants: Variants = {
-  open: { x: 0, opacity: 1, transition: { duration: 0.3, ease: "easeInOut" } },
-  closed: { x: -250, opacity: 0, transition: { duration: 0.3, ease: "easeInOut" } },
+  open: { x: 0, opacity: 1, width: "16rem", transition: { duration: 0.3, ease: "easeInOut" } },
+  closed: { x: -250, opacity: 0, width: 0, transition: { duration: 0.3, ease: "easeInOut" } },
   mobileOpen: { y: 0, opacity: 1, transition: { duration: 0.3, ease: "easeInOut" } },
   mobileClosed: { y: "-100%", opacity: 0, transition: { duration: 0.3, ease: "easeInOut" } },
 };
@@ -136,12 +136,12 @@ export default function Dashboard() {
 
       {/* Sidebar / Mobile Menu */}
       <AnimatePresence>
-        {(isSidebarOpen || !isMobile) && (
+        {isSidebarOpen && (
           <motion.div
-            className={`sidebar bg-white shadow-lg flex flex-col z-40 ${
+            className={`sidebar bg-white shadow-lg flex flex-col z-40 overflow-hidden ${
               isMobile
                 ? "fixed top-0 left-0 w-full h-[calc(100%-64px)] p-4 pt-6"
-                : "relative w-64 h-screen p-4"
+                : "min-h-screen w-64 p-4"
             }`}
             variants={sidebarVariants}
             initial={isMobile ? "mobileClosed" : "closed"}
@@ -244,7 +244,7 @@ export default function Dashboard() {
             </nav>
 
             {/* Separator and Bottom Items */}
-            <div className="border-t border-gray-200 pt-4 space-y-2">
+            <div className="border-t border-gray-200 pt-4 space-y-2 shrink-0">
               <a
                 href="/settings"
                 onMouseEnter={() => setHoveredItem("Settings")}
@@ -279,7 +279,7 @@ export default function Dashboard() {
 
             {/* Profile for Mobile */}
             {isMobile && (
-              <div className="border-t border-gray-200 mt-4 pt-4">
+              <div className="border-t border-gray-200 mt-4 pt-4 shrink-0">
                 <button
                   onClick={() => setIsProfileOpen(!isProfileOpen)}
                   className="flex items-center w-full p-3 text-gray-700 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all duration-200 ease-in-out"
@@ -322,7 +322,7 @@ export default function Dashboard() {
       {/* Main Content */}
       <div
         className={`flex-1 flex flex-col transition-all duration-300 ease-in-out ${
-          isSidebarOpen && !isMobile ? "ml-64" : "ml-0"
+          !isMobile && isSidebarOpen ? "ml-64" : "ml-0"
         }`}
       >
         {/* Top Bar (Desktop only) */}
@@ -408,18 +408,28 @@ export default function Dashboard() {
         {/* Dashboard Content */}
         <main className="p-6 flex-grow">
           <h1 className="text-3xl font-bold text-gray-900 mb-6">Admin Dashboard</h1>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <div className="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow duration-200">
-              <h2 className="text-xl font-semibold text-red-600 mb-4">Asset Overview</h2>
-              <p className="text-gray-600">Monitor and manage your IT assets efficiently.</p>
+          {/* Top row of small placeholder boxes */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+            <div className="bg-gray-200 rounded-lg h-32 flex items-center justify-center text-gray-500">
+              Asset Count Placeholder
             </div>
-            <div className="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow duration-200">
-              <h2 className="text-xl font-semibold text-red-600 mb-4">Location Tracking</h2>
-              <p className="text-gray-600">Track asset locations across sites and rooms.</p>
+            <div className="bg-gray-200 rounded-lg h-32 flex items-center justify-center text-gray-500">
+              Department Placeholder
             </div>
-            <div className="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow duration-200">
-              <h2 className="text-xl font-semibold text-red-600 mb-4">Staff Management</h2>
-              <p className="text-gray-600">Manage staff roles and assignments.</p>
+            <div className="bg-gray-200 rounded-lg h-32 flex items-center justify-center text-gray-500">
+              Staff Placeholder
+            </div>
+            <div className="bg-gray-200 rounded-lg h-32 flex items-center justify-center text-gray-500">
+              Location Placeholder
+            </div>
+          </div>
+          {/* Bottom row for graph placeholders */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="bg-gray-200 rounded-lg h-64 flex items-center justify-center text-gray-500">
+              Graph Placeholder 1
+            </div>
+            <div className="bg-gray-200 rounded-lg h-64 flex items-center justify-center text-gray-500">
+              Graph Placeholder 2
             </div>
           </div>
         </main>
