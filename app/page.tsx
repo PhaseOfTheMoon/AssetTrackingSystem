@@ -1,17 +1,75 @@
 "use client";
 
-import { useIsAuthenticated } from "@azure/msal-react";
+import { useIsAuthenticated, useMsal } from "@azure/msal-react";
 import MicrosoftLoginButton from "@/components/auth/MicrosoftLoginButton";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
+import { useSession } from "@/components/SessionProvider";
+import { useEffect, useState } from "react";
 
 export default function LoginPage() {
   const isAuthenticated = useIsAuthenticated();
+  const { accounts } = useMsal();
   const router = useRouter();
+  const { session, startSession } = useSession();
+  const [isInitializing, setIsInitializing] = useState(false);
 
-  // Redirect to /admin/dashboard if authenticated
-  if (isAuthenticated) {
-    router.push("/admin/dashboard");
+  // Initialize session when user logs in with Microsoft
+  useEffect(() => {
+    const initializeSession = async () => {
+      if (isAuthenticated && accounts.length > 0 && !session && !isInitializing) {
+        setIsInitializing(true);
+
+        const account = accounts[0];
+        const microsoftUserId = account.localAccountId;
+
+        try {
+          // Fetch staff data from database
+          const response = await fetch('/api/staff/get-by-microsoft-id', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ microsoftUserId })
+          });
+
+          const data = await response.json();
+
+          if (data.success && data.staff) {
+            // Create session with staff data
+            await startSession(data.staff, microsoftUserId);
+            router.push("/admin/dashboard");
+          } else {
+            // Staff not found - show error with Microsoft user ID
+            console.warn('Staff not registered in database');
+            console.log('Your Microsoft User ID:', microsoftUserId);
+            alert(`Your account is not registered. Please contact administrator.\n\nYour Microsoft User ID: ${microsoftUserId}\n\n(Check browser console for details)`);
+            setIsInitializing(false);
+          }
+        } catch (error) {
+          console.error('Error initializing session:', error);
+          setIsInitializing(false);
+        }
+      } else if (isAuthenticated && session) {
+        // Session already exists, just redirect
+        router.push("/admin/dashboard");
+      }
+    };
+
+    initializeSession();
+  }, [isAuthenticated, accounts, session, startSession, router, isInitializing]);
+
+  // Show loading if authenticated but initializing session
+  if (isAuthenticated && isInitializing) {
+    return (
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Don't show login page if already authenticated
+  if (isAuthenticated && session) {
     return null;
   }
 

@@ -4,6 +4,7 @@ import { useMsal } from '@azure/msal-react'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { ArrowRightOnRectangleIcon } from '@heroicons/react/24/outline'
+import { useSession } from './SessionProvider'
 
 interface LogoutButtonProps {
   className?: string
@@ -18,6 +19,7 @@ export default function LogoutButton({
 }: LogoutButtonProps) {
   const { instance } = useMsal()
   const router = useRouter()
+  const { endSession } = useSession()
   const [showConfirmation, setShowConfirmation] = useState(false)
 
   const handleLogout = () => {
@@ -26,6 +28,9 @@ export default function LogoutButton({
 
   const confirmLogout = async () => {
     try {
+      // End session in database first
+      await endSession()
+
       // Clear local session and redirect to login page
       await instance.logoutRedirect({
         postLogoutRedirectUri: '/',
