@@ -54,10 +54,10 @@ const profileItems = [
 ]
 
 const sidebarVariants = {
-  open: { x: 0, opacity: 1, width: '16rem', transition: { duration: 0.3, ease: 'easeInOut' } },
-  closed: { x: -250, opacity: 0, width: 0, transition: { duration: 0.3, ease: 'easeInOut' } },
-  mobileOpen: { y: 0, opacity: 1, transition: { duration: 0.3, ease: 'easeInOut' } },
-  mobileClosed: { y: '-100%', opacity: 0, transition: { duration: 0.3, ease: 'easeInOut' } },
+  open: { x: 0, opacity: 1, width: '16rem', transition: { duration: 0.3 } },
+  closed: { x: -250, opacity: 0, width: 0, transition: { duration: 0.3 } },
+  mobileOpen: { y: 0, opacity: 1, transition: { duration: 0.3 } },
+  mobileClosed: { y: '-100%', opacity: 0, transition: { duration: 0.3 } },
 }
 
 export default function ProfilePage() {
@@ -241,7 +241,7 @@ export default function ProfilePage() {
                         initial={{ height: 0, opacity: 0 }}
                         animate={{ height: 'auto', opacity: 1 }}
                         exit={{ height: 0, opacity: 0 }}
-                        transition={{ duration: 0.3, ease: 'easeInOut' }}
+                        transition={{ duration: 0.3 }}
                         className="ml-8 space-y-1 mt-1 overflow-hidden"
                       >
                         {item.dropdown.map((subItem) => (
@@ -289,7 +289,7 @@ export default function ProfilePage() {
         <motion.div
           className="bg-white shadow-md p-4 flex justify-between items-center sticky top-0 z-10"
           animate={{ y: isTopBarVisible ? 0 : '-100%' }}
-          transition={{ duration: 0.3, ease: 'easeInOut' }}
+          transition={{ duration: 0.3 }}
         >
           <div className="flex items-center space-x-4">
             <button
