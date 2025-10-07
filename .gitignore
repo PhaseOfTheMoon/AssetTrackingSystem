@@ -27,4 +27,4 @@ yarn-error.log*
 
 # Claude
 .claude
-CLAUDE.md
+CLAUDE.md.next/
