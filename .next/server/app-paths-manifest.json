@@ -1,6 +1,6 @@
 {
   "/page": "app/page.js",
   "/admin/assetManage/asset/page": "app/admin/assetManage/asset/page.js",
-  "/admin/dashboard/page": "app/admin/dashboard/page.js",
-  "/user/assetTable/page": "app/user/assetTable/page.js"
+  "/user/assetTable/page": "app/user/assetTable/page.js",
+  "/profile/page": "app/profile/page.js"
 }

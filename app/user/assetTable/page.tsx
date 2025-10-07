@@ -16,9 +16,10 @@ const fetchData = async (page: number, limit: number) => {
   await new Promise(resolve => setTimeout(resolve, 500));
   
   const allAssets: Asset[] = [
-    { id: 1, name: 'USB Headset', category: 'Electronics', location: 'Building A' },
-    { id: 2, name: 'Dell Laptop', category: 'Electronics', location: 'Building B' },
-    { id: 3, name: 'Samsung Monitor', category: 'Electronics', location: 'Warehouse' }
+    { id: 1, name: 'Laptop Dell XPS 15', category: 'Electronics', location: 'Building A' },
+    { id: 2, name: 'Monitor Samsung 27"', category: 'Electronics', location: 'Building B' },
+    { id: 3, name: 'Keyboard Logitech', category: 'Electronics', location: 'Warehouse' },
+    { id: 4, name: 'Mouse Wireless', category: 'Electronics', location: 'Warehouse' }
   ];
   
   const totalItems = allAssets.length;
