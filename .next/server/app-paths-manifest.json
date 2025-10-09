@@ -1,0 +1,4 @@
+{
+  "/admin/dashboard/page": "app/admin/dashboard/page.js",
+  "/admin/assetManage/asset/page": "app/admin/assetManage/asset/page.js"
+}
