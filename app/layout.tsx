@@ -1,7 +1,9 @@
+// app/layout.tsx
 import type { Metadata } from "next";
 import "./styles/globals.css";
 import AuthProvider from "@/components/auth/AuthProvider";
-import { SessionProvider } from "@/components/SessionProvider";
+import { SessionProvider } from "@/components/auth/SessionProvider";
+import LayoutWrapper from "@/components/layoutWrapper";
 
 export const metadata: Metadata = {
   title: "Asset Tracking System",
@@ -15,33 +17,15 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className="antialiased">
+      <body className="antialiased bg-white text-black">
         <AuthProvider>
           <SessionProvider>
-            {children}
+            <LayoutWrapper>
+              {children}
+            </LayoutWrapper>
           </SessionProvider>
         </AuthProvider>
       </body>
     </html>
   );
 }
-
-// import "./globals.css";
-// import type { Metadata } from "next";
-
-// export const metadata: Metadata = {
-//   title: "FYP Asset Tracking",
-//   description: "QR Scan UI demo",
-// };
-
-// export default function RootLayout({
-//   children,
-// }: {
-//   children: React.ReactNode;
-// }) {
-//   return (
-//     <html lang="en">
-//       <body className="min-h-screen">{children}</body>
-//     </html>
-//   );
-// }

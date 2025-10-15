@@ -4,12 +4,12 @@ import { useIsAuthenticated, useMsal } from "@azure/msal-react";
 import MicrosoftLoginButton from "@/components/auth/MicrosoftLoginButton";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { useSession } from "@/components/SessionProvider";
+import { useSession } from "@/components/auth/SessionProvider";
 import { useEffect, useState } from "react";
 
 export default function LoginPage() {
   const isAuthenticated = useIsAuthenticated();
-  const { accounts } = useMsal();
+  const { accounts, instance } = useMsal();
   const router = useRouter();
   const { session, startSession } = useSession();
   const [isInitializing, setIsInitializing] = useState(false);
@@ -41,7 +41,12 @@ export default function LoginPage() {
             // Staff not found - show error with Microsoft user ID
             console.warn('Staff not registered in database');
             console.log('Your Microsoft User ID:', microsoftUserId);
-            alert(`Your account is not registered. Please contact administrator.\n\nYour Microsoft User ID: ${microsoftUserId}\n\n(Check browser console for details)`);
+            alert(`Your account is not registered. Please contact administrator.\n\nYour Microsoft User ID:
+          ${microsoftUserId}\n\n(Check browser console for details)`);
+
+            // Log out from Microsoft to prevent infinite loop
+            await instance.logoutPopup();
+
             setIsInitializing(false);
           }
         } catch (error) {

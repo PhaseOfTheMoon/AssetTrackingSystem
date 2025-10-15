@@ -32,6 +32,45 @@ export type Database = {
           last_login?: string | null
         }
       }
+      // Asset table
+      assets: {
+        Row: {
+          asset_id: string
+          name: string
+          model: string
+          description: string
+          condition: number
+          location_id: string
+          department_id: string
+          category: string
+          created_dt: string
+          updated_dt: string
+        }
+        Insert: {
+          asset_id?: number
+          name: string
+          model: string
+          description: string
+          condition: number
+          location_id: string
+          department_id: string
+          category: string
+          created_dt?: string
+          updated_dt?: string
+        }
+        Update: {
+          asset_id?: string
+          name?: string
+          model?: string
+          description?: string
+          condition?: number
+          location_id?: string
+          department_id?: string
+          category?: string
+          created_dt?: string
+          updated_dt?: string
+        }
+      }
       // Add more tables here as your teammate creates them
     }
   }
