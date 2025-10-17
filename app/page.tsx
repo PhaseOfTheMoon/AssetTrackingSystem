@@ -84,7 +84,7 @@ export default function LoginPage() {
         <div className="text-center mb-8">
           <div className="flex items-center justify-center mb-6">
             <Image
-              src="/logo-long-full.png"
+              src="/logo-long-full.svg"
               alt="Swinburne University of Technology"
               width={180}
               height={60}
