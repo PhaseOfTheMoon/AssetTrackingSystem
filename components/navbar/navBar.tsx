@@ -1,12 +1,28 @@
 'use client';
-
-import { useState } from 'react';
-import Sidebar from '../navbar/sideBar';
+import { useState, useEffect } from 'react';
+import dynamic from 'next/dynamic';
+import { motion, AnimatePresence } from 'framer-motion';
+import {
+  UserCircleIcon,
+  CogIcon,
+  ArrowRightOnRectangleIcon,
+} from '@heroicons/react/24/outline';
 import LogoutButton from '../auth/LogoutButton';
 
+// Dynamically import Sidebar with SSR disabled
+const Sidebar = dynamic(() => import('./sideBar'), {
+  ssr: false,
+});
+
 export default function navBar() {
- const [isOpen, setIsOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(false); // Default to false on server, update on client
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+
+  useEffect(() => {
+    // Set initial isOpen based on window width on client mount
+    const initialIsOpen = typeof window !== 'undefined' && window.innerWidth >= 768;
+    setIsOpen(initialIsOpen);
+  }, []);
 
   return (
     <>
@@ -33,40 +49,68 @@ export default function navBar() {
                 <button
                   onClick={() => setIsProfileOpen(!isProfileOpen)}
                   type="button"
-                  className="flex text-sm bg-gray-800 rounded-full focus:ring-4 focus:ring-gray-400"
+                  className="flex text-sm bg-gray-800 rounded-full focus:ring-4 focus:ring-red-400"
                   aria-expanded={isProfileOpen}
                 >
-                  {/* <span className="sr-only">Open user menu</span> */}
                   <img className="w-8 h-8 rounded-full" src="https://flowbite.com/docs/images/people/profile-picture-5.jpg" alt="user photo" />
                 </button>
 
-                {isProfileOpen && (
-                  <div className="absolute right-0 top-12 z-50 my-4 text-base list-none bg-white divide-y divide-gray-100 rounded-sm shadow-sm dark:bg-gray-700 dark:divide-gray-600 w-48">
-                    <div className="px-4 py-3">
-                      <p className="text-sm text-gray-900 dark:text-white">John Doe</p>
-                      <p className="text-sm font-medium text-gray-900 truncate dark:text-gray-300">John Doe@gmail.com</p>
-                    </div>
-                    <ul className="py-1">
-                      <li>
-                        <a href="/profile" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-600 dark:hover:text-white" onClick={() => setIsProfileOpen(false)}>
+                <AnimatePresence>
+                  {isProfileOpen && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -10, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: -10, scale: 0.95 }}
+                      transition={{ duration: 0.2, ease: 'easeInOut' }}
+                      className="absolute right-0 top-12 z-40 bg-gradient-to-br from-white to-gray-50 border border-gray-200 rounded-xl shadow-xl w-64 p-6"
+                    >
+                      <div className="flex items-center mb-4 space-x-3">
+                        <img
+                          className="w-12 h-12 rounded-full"
+                          src="https://flowbite.com/docs/images/people/profile-picture-5.jpg"
+                          alt="user avatar"
+                        />
+                        <div>
+                          <p className="text-sm font-medium text-gray-800">John Doe</p>
+                          <p className="text-xs text-gray-600 truncate">John Doe@gmail.com</p>
+                        </div>
+                      </div>
+                      <div className="border-t border-gray-200 pt-4 space-y-2">
+                        <button
+                          onClick={() => { window.location.href = '/profile'; setIsProfileOpen(false); }}
+                          className={`flex items-center w-full p-3 rounded-lg transition-all duration-200 ease-in-out ${
+                            window.location.pathname === '/profile'
+                              ? 'bg-red-600 text-white shadow-md'
+                              : 'text-gray-800 hover:bg-red-50 hover:text-red-600'
+                          }`}
+                        >
+                          <UserCircleIcon className="h-6 w-6 mr-3 flex-shrink-0" />
                           Profile
-                        </a>
-                      </li>
-                      <li>
-                        <a href="#" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-600 dark:hover:text-white" onClick={() => setIsProfileOpen(false)}>
+                        </button>
+                        <button
+                          onClick={() => { window.location.href = '/settings'; setIsProfileOpen(false); }}
+                          className={`flex items-center w-full p-3 rounded-lg transition-all duration-200 ease-in-out ${
+                            window.location.pathname === '/settings'
+                              ? 'bg-red-600 text-white shadow-md'
+                              : 'text-gray-800 hover:bg-red-50 hover:text-red-600'
+                          }`}
+                        >
+                          <CogIcon className="h-6 w-6 mr-3 flex-shrink-0" />
                           Settings
-                        </a>
-                      </li>
-                      <li>
-                          <LogoutButton
-                              className="w-full flex p-3 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-600 dark:hover:text-white"
-                              showIcon={true}
-                              text="Sign Out"
-                          />
-                      </li>
-                    </ul>
-                  </div>
-                )}
+                        </button>
+                        <LogoutButton
+                          className={`flex items-center w-full p-3 rounded-lg transition-all duration-200 ease-in-out ${
+                            window.location.pathname === '/logout'
+                              ? 'bg-red-600 text-white shadow-md'
+                              : 'text-gray-800 hover:bg-red-50 hover:text-red-600'
+                          }`}
+                          showIcon={true}
+                          text="Sign Out"
+                        />
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
             </div>
           </div>
@@ -76,7 +120,7 @@ export default function navBar() {
       <Sidebar isOpen={isOpen} setIsOpen={setIsOpen} />
 
       {isOpen && (
-        <div className="fixed inset-0 z-30 bg-black bg-opacity-50 sm:hidden" onClick={() => setIsOpen(false)} />
+        <div suppressHydrationWarning className="fixed inset-0 z-30 bg-black bg-opacity-50 sm:hidden" onClick={() => setIsOpen(false)} />
       )}
     </>
   );

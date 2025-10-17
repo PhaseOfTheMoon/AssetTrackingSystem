@@ -3,7 +3,7 @@ import React from 'react'
 import { useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, Loader2, FileDown, Plus, Edit, Trash2, X } from 'lucide-react';
  
-interface Asset {
+interface Assets {
   asset_id: string;
   name: string;
   model: string;
@@ -17,14 +17,14 @@ interface Asset {
 }
 
 export default function DataTable() {
-  const [data, setData] = useState<Asset[]>([]);
+  const [data, setData] = useState<Assets[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1); 
   const [totalPages, setTotalPages] = useState(0);
   const [totalItems, setTotalItems] = useState(0);
   const [showModal, setShowModal] = useState(false);
   const [modalMode, setModalMode] = useState<'add' | 'edit'>('add');
-  const [currentItem, setCurrentItem] = useState<Asset | null>(null);
+  const [currentItem, setCurrentItem] = useState<Assets | null>(null);
   const [locations, setLocations] = useState<any[]>([]);
   const [departments, setDepartments] = useState<any[]>([]);
   const [loadingOptions, setLoadingOptions] = useState(false);
@@ -131,7 +131,7 @@ export default function DataTable() {
   
 
   // ============= EDIT EXISTING ASSET =============
-  const handleEdit = (item: Asset) => {
+  const handleEdit = (item: Assets) => {
     setModalMode('edit');
     setCurrentItem(item);
     setFormData({
