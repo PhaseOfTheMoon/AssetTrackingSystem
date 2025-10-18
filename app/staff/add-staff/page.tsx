@@ -77,7 +77,7 @@ export default function AddStaffPage() {
 
     // Validation
     if (!formData.staff_id || !formData.name || !formData.email ||
-        !formData.mobile_no || !formData.department_id || !formData.microsoft_user_id) {
+      !formData.mobile_no || !formData.department_id || !formData.microsoft_user_id) {
       alert('All fields are required!')
       return
     }
