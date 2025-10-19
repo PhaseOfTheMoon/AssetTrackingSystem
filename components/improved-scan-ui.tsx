@@ -197,267 +197,230 @@ function WelcomePage({ onNavigate }: { onNavigate: (page: string) => void }) {
 
 // Scanner Page Component
 function ScannerPage({ title, description, icon: Icon, onBack, onSubmit }: { 
-  title: string; 
-  description: string; 
-  icon: React.ElementType;
-  onBack: () => void;
-  onSubmit: (items: any[]) => void;
+  title: string; 
+  description: string; 
+  icon: React.ElementType;
+  onBack: () => void;
+  onSubmit: (items: any[]) => void;
 }) {
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-  const [isMobile, setIsMobile] = useState(false);
-  const [cartItems, setCartItems] = useState<any[]>([]);
-  const [showCart, setShowCart] = useState(false);
-  const [isScanning, setIsScanning] = useState(false);
-  const [scannerError, setScannerError] = useState<string | null>(null);
-  const scannerRef = React.useRef<any>(null);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isMobile, setIsMobile] = useState(false);
+  const [cartItems, setCartItems] = useState<any[]>([]);
+  const [showCart, setShowCart] = useState(false);
+  const [isScanning, setIsScanning] = useState(false);
+  const [scannerError, setScannerError] = useState<string | null>(null);
+  const scannerRef = React.useRef<any>(null);
 
-  useEffect(() => {
-    const checkMobile = () => {
-      const width = window.innerWidth;
-      setIsMobile(width < 768);
-      setIsSidebarOpen(width >= 768);
-    };
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
-  }, []);
+  useEffect(() => {
+    const checkMobile = () => {
+      const width = window.innerWidth;
+      setIsMobile(width < 768);
+      setIsSidebarOpen(width >= 768);
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
-  // Cleanup scanner on unmount
-  useEffect(() => {
-    return () => {
-      if (scannerRef.current) {
-        scannerRef.current.stop().catch((err: any) => console.error('Error stopping scanner:', err));
-      }
-    };
-  }, []);
+  // Cleanup scanner on unmount
+  useEffect(() => {
+    return () => {
+      if (scannerRef.current) {
+        scannerRef.current.stop().catch((err: any) => console.error('Error stopping scanner:', err));
+      }
+    };
+  }, []);
 
-  // Start QR/Barcode scanning with camera
-  const startScanning = async () => {
-    try {
-      setScannerError(null);
-      setIsScanning(true);
+  // Start QR/Barcode scanning
+  const startScanning = async () => {
+    try {
+      setScannerError(null);
+      setIsScanning(true);
 
-      // Check if getUserMedia is supported
-      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        throw new Error('Camera access is not supported in this browser');
-      }
+      // Dynamically import html5-qrcode
+      const { Html5QrcodeScanner } = await import('html5-qrcode');
 
-      // Request camera permission
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
-      
-      // Import BarcodeDetector if available (modern browsers)
-      if ('BarcodeDetector' in window) {
-        const barcodeDetector = new (window as any).BarcodeDetector({
-          formats: ['qr_code', 'code_128', 'code_39', 'code_93', 'ean_8', 'ean_13', 'upc_a', 'upc_e']
-        });
+      const scanner = new Html5QrcodeScanner(
+        "qr-reader",
+        { 
+          fps: 10,
+          qrbox: { width: 250, height: 250 },
+          aspectRatio: 1.0,
+          formatsToSupport: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13] // All formats
+        },
+        false
+      );
 
-        const video = document.createElement('video');
-        video.srcObject = stream;
-        video.play();
+      scannerRef.current = scanner;
 
-        const scanFrame = async () => {
-          if (!isScanning) {
-            stream.getTracks().forEach(track => track.stop());
-            return;
-          }
+      scanner.render(
+        (decodedText: string, decodedResult: any) => {
+          // Success callback
+          const newItem = {
+            id: Date.now(),
+            code: decodedText,
+            time: new Date().toLocaleTimeString(),
+            name: `${title.split(' ')[0]} - ${decodedText}`,
+            format: decodedResult.result.format?.formatName || 'Unknown'
+          };
+          
+          setCartItems(prev => [...prev, newItem]);
+          setShowCart(true);
+          
+          // Play success sound (optional)
+          const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBTGH0fPTgjMGHm7A7+OZUQ0PVKzn77BdGgU+mtn0xG8qBSuBzvLZiTYIGWe77OWfTRAMUKnj7K5iHAY5j9n0xXksBS');
+          audio.play().catch(() => {}); // Ignore if audio fails
+          
+          // Pause briefly before next scan
+          setTimeout(() => {
+            scanner.resume();
+          }, 500);
+        },
+        (errorMessage: string) => {
+          // Error callback - silently continue
+        }
+      );
 
-          try {
-            const barcodes = await barcodeDetector.detect(video);
-            if (barcodes.length > 0) {
-              const barcode = barcodes[0];
-              handleScanSuccess(barcode.rawValue, barcode.format);
-              
-              // Brief pause before next scan
-              setTimeout(() => scanFrame(), 1000);
-            } else {
-              requestAnimationFrame(scanFrame);
-            }
-          } catch (err) {
-            requestAnimationFrame(scanFrame);
-          }
-        };
+    } catch (error: any) {
+      setScannerError(error.message || 'Failed to start camera. Please grant camera permissions.');
+      setIsScanning(false);
+    }
+  };
 
-        video.addEventListener('loadeddata', () => {
-          scanFrame();
-        });
+  // Stop scanning
+  const stopScanning = async () => {
+    if (scannerRef.current) {
+      try {
+        await scannerRef.current.stop();
+        await scannerRef.current.clear();
+      } catch (err) {
+        console.error('Error stopping scanner:', err);
+      }
+    }
+    setIsScanning(false);
+    setScannerError(null);
+  };
 
-        scannerRef.current = { video, stream };
-
-      } else {
-        // Fallback: Use html5-qrcode library
-        stream.getTracks().forEach(track => track.stop());
-        
-        const { Html5Qrcode } = await import('html5-qrcode');
-        const html5QrCode = new Html5Qrcode("qr-reader");
-        
-        await html5QrCode.start(
-          { facingMode: "environment" },
-          {
-            fps: 10,
-            qrbox: { width: 250, height: 250 }
-          },
-          (decodedText, decodedResult) => {
-            handleScanSuccess(decodedText, decodedResult.result.format?.formatName || 'Unknown');
-          },
-          (errorMessage) => {
-            // Silently handle scan errors
-          }
-        );
-
-        scannerRef.current = html5QrCode;
-      }
-
-    } catch (error: any) {
-      setScannerError(error.message || 'Failed to start camera. Please check permissions.');
-      setIsScanning(false);
-    }
-  };
-
-  // Handle successful scan
-  const handleScanSuccess = (code: string, format: string) => {
-    // Check for duplicates
-    const isDuplicate = cartItems.some(item => item.code === code);
-    
-    if (isDuplicate) {
-      alert('This item has already been scanned!');
-      return;
-    }
-
-    const newItem = {
-      id: Date.now(),
-      code: code,
-      time: new Date().toLocaleTimeString(),
-      name: `${title.split(' ')[0]} - ${code.substring(0, 15)}${code.length > 15 ? '...' : ''}`,
-      format: format
-    };
-    
-    setCartItems(prev => [...prev, newItem]);
-    setShowCart(true);
-    
-    // Play success sound
-    const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBTGH0fPTgjMGHm7A7+OZUQ0PVKzn77BdGgU+mtn0xG8qBSuBzvLZiTYIGWe77OWfTRAMUKnj7K5iHAY5j9n0xXksBS');
-    audio.play().catch(() => {});
-  };
-
-  // Stop scanning
-  const stopScanning = async () => {
-    if (scannerRef.current) {
-      try {
-        if (scannerRef.current.stop) {
-          await scannerRef.current.stop();
-          if (scannerRef.current.clear) {
-            await scannerRef.current.clear();
-          }
-        } else if (scannerRef.current.stream) {
-          scannerRef.current.stream.getTracks().forEach((track: any) => track.stop());
-        }
-      } catch (err) {
-        console.error('Error stopping scanner:', err);
-      }
-    }
-    setIsScanning(false);
-    setScannerError(null);
-  };
-
-  // Simulate scanning (fallback for testing)
-  const handleSimulateScan = () => {
-    const newItem = {
-      id: Date.now(),
-      code: `${title.split(' ')[0].toUpperCase()}-${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`,
-      time: new Date().toLocaleTimeString(),
-      name: `${title.split(' ')[0]} Item ${cartItems.length + 1}`,
-      format: 'Simulated'
-    };
-    setCartItems([...cartItems, newItem]);
-    setShowCart(true);
-  };
 
   const removeItem = (id: number) => {
-    setCartItems(cartItems.filter(item => item.id !== id));
-  };
+    setCartItems(cartItems.filter(item => item.id !== id));
+  };
 
-  const handleConfirm = () => {
-    if (cartItems.length === 0) {
-      alert('Please scan at least one item before submitting.');
-      return;
+  const handleConfirm = () => {
+    if (cartItems.length === 0) {
+      alert('Please scan at least one item before submitting.');
+      return;
+    }
+    // Stop scanner on submit to release camera
+    if (isScanning) {
+      stopScanning();
     }
-    onSubmit(cartItems);
-  };
+    onSubmit(cartItems);
+  };
+  
+  // Also stop scanner on "Back"
+  const handleBack = () => {
+    if (isScanning) {
+      stopScanning();
+    }
+    onBack();
+  }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {isMobile && isSidebarOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-30" onClick={() => setIsSidebarOpen(false)} />
-      )}
-
-      <div className="fixed top-0 left-0 right-0 bg-white shadow-md z-20 h-16">
-        <div className="flex items-center justify-between h-full px-4">
-          <div className="flex items-center gap-4">
-            <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="p-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-lg">
-              <Menu className="w-6 h-6" />
-            </button>
-            {!isMobile && (
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                <input type="text" placeholder="Search..." className="pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-red-600 w-64" />
-              </div>
-            )}
-            {isMobile && <span className="text-lg font-bold text-red-600">Asset Tracking</span>}
-          </div>
-          <div className="flex items-center gap-4">
-            {/* Cart Badge */}
-            <button
-              onClick={() => setShowCart(!showCart)}
-              className="relative p-2 text-gray-700 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-            >
-              <ShoppingCart className="w-6 h-6" />
-              {cartItems.length > 0 && (
-                <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-600 text-white text-xs rounded-full flex items-center justify-center">
-                  {cartItems.length}
-                </span>
-              )}
-            </button>
-            <button className="flex items-center gap-2 p-2 hover:bg-gray-100 rounded-lg">
-              <div className="w-10 h-10 rounded-full bg-red-600 flex items-center justify-center text-white font-bold">JD</div>
-              {!isMobile && <span className="font-medium text-gray-700">John Doe</span>}
-            </button>
-          </div>
-        </div>
-      </div>
+    <div className="min-h-screen bg-gray-50">
+      {/* ... (Sidebar and Header JSX - no changes) ... */}
+      {isMobile && isSidebarOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-30" onClick={() => setIsSidebarOpen(false)} />
+      )}
+      <div className="fixed top-0 left-0 right-0 bg-white shadow-md z-20 h-16">
+        {/* ... (Header content - no changes) ... */}
+        <div className="flex items-center justify-between h-full px-4">
+          <div className="flex items-center gap-4">
+            <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="p-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-lg">
+              <Menu className="w-6 h-6" />
+            </button>
+            {!isMobile && (
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <input type="text" placeholder="Search..." className="pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-red-600 w-64" />
+              </div>
+            )}
+            {isMobile && <span className="text-lg font-bold text-red-600">Asset Tracking</span>}
+          </div>
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => setShowCart(!showCart)}
+              className="relative p-2 text-gray-700 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+            >
+              <ShoppingCart className="w-6 h-6" />
+              {cartItems.length > 0 && (
+                <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-600 text-white text-xs rounded-full flex items-center justify-center">
+                  {cartItems.length}
+                </span>
+              )}
+            </button>
+         
+          </div>
+        </div>
+      </div>
 
       <Sidebar isSidebarOpen={isSidebarOpen} setIsSidebarOpen={setIsSidebarOpen} isMobile={isMobile} />
 
-      <div className={`pt-16 transition-all duration-300 ${isSidebarOpen && !isMobile ? 'ml-64' : 'ml-0'}`}>
-        <div className="p-4 lg:p-8">
-          <div className="max-w-4xl mx-auto">
-            <div className="bg-white rounded-lg shadow-md mb-6 overflow-hidden">
-              <div className="px-6 py-4 bg-gradient-to-r from-red-700 to-red-500 text-white">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <Icon className="w-8 h-8" />
-                    <div>
-                      <h1 className="text-2xl font-bold">{title}</h1>
-                      <p className="text-sm text-red-100">{description}</p>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-sm text-red-100">Scanned Items</p>
-                    <p className="text-3xl font-bold">{cartItems.length}</p>
-                  </div>
-                </div>
-              </div>
-            </div>
+      <div className={`pt-16 transition-all duration-300 ${isSidebarOpen && !isMobile ? 'ml-64' : 'ml-0'}`}>
+        <div className="p-4 lg:p-8">
+          <div className="max-w-4xl mx-auto">
+            <div className="bg-white rounded-lg shadow-md mb-6 overflow-hidden">
+              {/* ... (Header card - no changes) ... */}
+              <div className="px-6 py-4 bg-gradient-to-r from-red-700 to-red-500 text-white">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <Icon className="w-8 h-8" />
+                    <div>
+                      <h1 className="text-2xl font-bold">{title}</h1>
+              _         <p className="text-sm text-red-100">{description}</p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm text-red-100">Scanned Items</p>
+        _             <p className="text-3xl font-bold">{cartItems.length}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
 
             <div className="bg-white rounded-lg shadow-md mb-6">
-              <div className="p-6 lg:p-8">
-                <div 
-                  className="relative w-full h-64 lg:h-80 border-4 border-dashed border-gray-300 rounded-2xl flex flex-col items-center justify-center bg-gradient-to-br from-gray-50 to-white hover:border-red-400 transition-all cursor-pointer"
-                >
-                  <QrCode className="w-20 h-20 text-red-600 animate-pulse mb-4" />
-                  <Barcode className="w-20 h-20 text-black opacity-20 absolute" />
-                  <p className="text-lg font-medium text-gray-700">Click to Simulate Scan</p>
-                  <p className="text-sm text-gray-500 mt-2">Or position the code within the frame</p>
-                </div>
+              <div className="p-6 lg:p-8">
+
+  {!isScanning && (
+                  <div 
+                    onClick={startScanning}
+                    className="relative w-full h-64 lg:h-80 border-4 border-dashed border-gray-300 rounded-2xl flex flex-col items-center justify-center bg-gradient-to-br from-gray-50 to-white hover:border-red-400 transition-all cursor-pointer"
+                  >
+                    <QrCode className="w-20 h-20 text-red-600 animate-pulse mb-4" />
+                    <Barcode className="w-20 h-20 text-black opacity-20 absolute" />
+                    <p className="text-lg font-medium text-gray-700">Click to Scan</p>
+                    <p className="text-sm text-gray-500 mt-2">Position the code within the frame</p>
+                  </div>
+                )}
+
+                {isScanning && (
+                  <div className="w-full text-center">
+                    {/* This div is where the scanner library will render the camera feed */}
+                    <div id="qr-reader" className="w-full max-w-md mx-auto rounded-lg overflow-hidden border-2 border-gray-200" />
+                    <button
+                      onClick={stopScanning}
+                      className="mt-4 px-6 py-2 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors font-medium shadow-md"
+                    >
+                      Stop Scanning
+                    </button>
+                  </div>
+                )}
+
+                {scannerError && (
+                  <div className="mt-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg text-center">
+                    <strong>Error:</strong> {scannerError}
+                  </div>
+                )}
 
                 <div className="mt-6 p-4 bg-red-50 rounded-lg">
                   <h3 className="font-semibold text-gray-800 mb-2 flex items-center gap-2">
@@ -662,42 +625,55 @@ export default function App() {
   };
 
   // UPDATED: Navigation function
-  const handleNavigate = (page: string) => {
-    setCurrentPage(page);
-    // Manually push a new entry into the browser's history
-    window.history.pushState({ page: page }, '', `#${page}`);
-  };
+  const handleNavigate = (page: string) => {
+    setCurrentPage(page);
+    // Manually push a new entry into the browser's history
+    window.history.pushState({ page: page }, '', `#${page}`);
+  };
 
-  // UPDATED: Submit function
-  const handleSubmit = (items: any[]) => {
-    setSubmittedData({ items, page: currentPage });
-    const successPage = 'success';
-    setCurrentPage(successPage);
-    // Push the 'success' page to the history as well
-    window.history.pushState({ page: successPage }, '', `#${successPage}`);
-  };
+  // UPDATED: Submit function
+  const handleSubmit = (items: any[]) => {
+    setSubmittedData({ items, page: currentPage });
+    const successPage = 'success';
+    setCurrentPage(successPage);
+    // Push the 'success' page to the history as well
+    window.history.pushState({ page: successPage }, '', `#${successPage}`);
+  };
 
-  // UPDATED: "Scan More" button function
-  const handleBackToScanner = () => {
-    // Instead of setting state, just tell the browser to go back.
-    // The 'popstate' listener will handle setting the state.
-    window.history.back();
-  };
+  // UPDATED: "Scan More" button function
+  const handleBackToScanner = () => {
+    // Instead of setting state, just tell the browser to go back.
+    // The 'popstate' listener will handle setting the state.
+    window.history.back();
+  };
 
-  if (currentPage === 'welcome') {
-    return <WelcomePage onNavigate={setCurrentPage} />;
+  // NEW: "Back to Home" button function for ScannerPage
+  const handleBackToWelcome = () => {
+    window.history.back();
+  };
+
+  if (currentPage === 'welcome') {
+    // **FIX 1: Pass handleNavigate, not setCurrentPage**
+    return <WelcomePage onNavigate={handleNavigate} />;
+  }
+
+  if (currentPage === 'success') {
+    return (
+      <SuccessPage 
+        onBack={handleBackToScanner} 
+        scannedCount={submittedData?.items?.length || 0}
+        scanType={scannerConfigs[submittedData?.page as keyof typeof scannerConfigs]?.title.split(' ')[0] || 'scanned'}
+      />
+    );
+  }
+
+  const config = scannerConfigs[currentPage as keyof typeof scannerConfigs];
+  
+  // Failsafe: If the page isn't 'welcome' or 'success' but has no config, go home.
+  if (!config) {
+    return <WelcomePage onNavigate={handleNavigate} />;
   }
 
-  if (currentPage === 'success') {
-    return (
-      <SuccessPage 
-        onBack={handleBackToScanner} 
-        scannedCount={submittedData?.items?.length || 0}
-        scanType={scannerConfigs[submittedData?.page as keyof typeof scannerConfigs]?.title.split(' ')[0] || 'scanned'}
-      />
-    );
-  }
-
-  const config = scannerConfigs[currentPage as keyof typeof scannerConfigs];
-  return <ScannerPage {...config} onBack={() => setCurrentPage('welcome')} onSubmit={handleSubmit} />;
+  // **FIX 2: Pass handleBackToWelcome for the onBack prop**
+  return <ScannerPage {...config} onBack={handleBackToWelcome} onSubmit={handleSubmit} />;
 }
