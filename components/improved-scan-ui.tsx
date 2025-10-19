@@ -152,7 +152,7 @@ function WelcomePage({ onNavigate }: { onNavigate: (page: string) => void }) {
               <div className="inline-flex items-center justify-center w-20 h-20 bg-red-600 rounded-full mb-4">
                 <Package className="w-10 h-10 text-white" />
               </div>
-              <h1 className="text-4xl lg:text-5xl font-bold text-gray-900 mb-4">Welcome to Asset Tracking</h1>
+              <h1 className="text-4xl lg:text-5xl font-bold text-gray-900 mb-4">Welcome to Asset Tracking bitch!</h1>
               <p className="text-xl text-gray-600">Choose a scanning option to get started</p>
             </div>
 
@@ -207,6 +207,9 @@ function ScannerPage({ title, description, icon: Icon, onBack, onSubmit }: {
   const [isMobile, setIsMobile] = useState(false);
   const [cartItems, setCartItems] = useState<any[]>([]);
   const [showCart, setShowCart] = useState(false);
+  const [isScanning, setIsScanning] = useState(false);
+  const [scannerError, setScannerError] = useState<string | null>(null);
+  const scannerRef = React.useRef<any>(null);
 
   useEffect(() => {
     const checkMobile = () => {
@@ -219,13 +222,151 @@ function ScannerPage({ title, description, icon: Icon, onBack, onSubmit }: {
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
-  // Simulate scanning
-  const handleScan = () => {
+  // Cleanup scanner on unmount
+  useEffect(() => {
+    return () => {
+      if (scannerRef.current) {
+        scannerRef.current.stop().catch((err: any) => console.error('Error stopping scanner:', err));
+      }
+    };
+  }, []);
+
+  // Start QR/Barcode scanning with camera
+  const startScanning = async () => {
+    try {
+      setScannerError(null);
+      setIsScanning(true);
+
+      // Check if getUserMedia is supported
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error('Camera access is not supported in this browser');
+      }
+
+      // Request camera permission
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+      
+      // Import BarcodeDetector if available (modern browsers)
+      if ('BarcodeDetector' in window) {
+        const barcodeDetector = new (window as any).BarcodeDetector({
+          formats: ['qr_code', 'code_128', 'code_39', 'code_93', 'ean_8', 'ean_13', 'upc_a', 'upc_e']
+        });
+
+        const video = document.createElement('video');
+        video.srcObject = stream;
+        video.play();
+
+        const scanFrame = async () => {
+          if (!isScanning) {
+            stream.getTracks().forEach(track => track.stop());
+            return;
+          }
+
+          try {
+            const barcodes = await barcodeDetector.detect(video);
+            if (barcodes.length > 0) {
+              const barcode = barcodes[0];
+              handleScanSuccess(barcode.rawValue, barcode.format);
+              
+              // Brief pause before next scan
+              setTimeout(() => scanFrame(), 1000);
+            } else {
+              requestAnimationFrame(scanFrame);
+            }
+          } catch (err) {
+            requestAnimationFrame(scanFrame);
+          }
+        };
+
+        video.addEventListener('loadeddata', () => {
+          scanFrame();
+        });
+
+        scannerRef.current = { video, stream };
+
+      } else {
+        // Fallback: Use html5-qrcode library
+        stream.getTracks().forEach(track => track.stop());
+        
+        const { Html5Qrcode } = await import('html5-qrcode');
+        const html5QrCode = new Html5Qrcode("qr-reader");
+        
+        await html5QrCode.start(
+          { facingMode: "environment" },
+          {
+            fps: 10,
+            qrbox: { width: 250, height: 250 }
+          },
+          (decodedText, decodedResult) => {
+            handleScanSuccess(decodedText, decodedResult.result.format?.formatName || 'Unknown');
+          },
+          (errorMessage) => {
+            // Silently handle scan errors
+          }
+        );
+
+        scannerRef.current = html5QrCode;
+      }
+
+    } catch (error: any) {
+      setScannerError(error.message || 'Failed to start camera. Please check permissions.');
+      setIsScanning(false);
+    }
+  };
+
+  // Handle successful scan
+  const handleScanSuccess = (code: string, format: string) => {
+    // Check for duplicates
+    const isDuplicate = cartItems.some(item => item.code === code);
+    
+    if (isDuplicate) {
+      alert('This item has already been scanned!');
+      return;
+    }
+
+    const newItem = {
+      id: Date.now(),
+      code: code,
+      time: new Date().toLocaleTimeString(),
+      name: `${title.split(' ')[0]} - ${code.substring(0, 15)}${code.length > 15 ? '...' : ''}`,
+      format: format
+    };
+    
+    setCartItems(prev => [...prev, newItem]);
+    setShowCart(true);
+    
+    // Play success sound
+    const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBTGH0fPTgjMGHm7A7+OZUQ0PVKzn77BdGgU+mtn0xG8qBSuBzvLZiTYIGWe77OWfTRAMUKnj7K5iHAY5j9n0xXksBS');
+    audio.play().catch(() => {});
+  };
+
+  // Stop scanning
+  const stopScanning = async () => {
+    if (scannerRef.current) {
+      try {
+        if (scannerRef.current.stop) {
+          await scannerRef.current.stop();
+          if (scannerRef.current.clear) {
+            await scannerRef.current.clear();
+          }
+        } else if (scannerRef.current.stream) {
+          scannerRef.current.stream.getTracks().forEach((track: any) => track.stop());
+        }
+      } catch (err) {
+        console.error('Error stopping scanner:', err);
+      }
+    }
+    setIsScanning(false);
+    setScannerError(null);
+  };
+
+  // Simulate scanning (fallback for testing)
+  const handleSimulateScan = () => {
     const newItem = {
       id: Date.now(),
       code: `${title.split(' ')[0].toUpperCase()}-${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`,
       time: new Date().toLocaleTimeString(),
       name: `${title.split(' ')[0]} Item ${cartItems.length + 1}`,
+      format: 'Simulated'
     };
     setCartItems([...cartItems, newItem]);
     setShowCart(true);
@@ -310,7 +451,6 @@ function ScannerPage({ title, description, icon: Icon, onBack, onSubmit }: {
             <div className="bg-white rounded-lg shadow-md mb-6">
               <div className="p-6 lg:p-8">
                 <div 
-                  onClick={handleScan}
                   className="relative w-full h-64 lg:h-80 border-4 border-dashed border-gray-300 rounded-2xl flex flex-col items-center justify-center bg-gradient-to-br from-gray-50 to-white hover:border-red-400 transition-all cursor-pointer"
                 >
                   <QrCode className="w-20 h-20 text-red-600 animate-pulse mb-4" />
@@ -491,6 +631,29 @@ export default function App() {
   const [currentPage, setCurrentPage] = useState('welcome');
   const [submittedData, setSubmittedData] = useState<any>(null);
 
+
+  //new function where user can use back button to access more scan options instead of redirecting to the login page
+  useEffect(() => {
+    // 1. This function runs when the user clicks the browser's Back/Forward buttons
+    const handlePopState = (event: PopStateEvent) => {
+      // Get the page name (e.g., 'welcome') we saved in the history state
+      if (event.state?.page) {
+        setCurrentPage(event.state.page);
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+
+    window.history.replaceState({ page: 'welcome' }, '', '#welcome');
+
+    // 4. Clean up the listener when the component unmounts
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, []); // The empty array [] means this effect runs only once on mount
+
+///new end 
+
   const scannerConfigs = {
     asset: { title: 'Asset Scanner', description: 'Scan asset QR codes or barcodes', icon: Package },
     staff: { title: 'Staff ID Scanner', description: 'Scan staff identification codes', icon: Users },
@@ -498,14 +661,27 @@ export default function App() {
     department: { title: 'Department Scanner', description: 'Scan department codes', icon: Building2 },
   };
 
-  const handleSubmit = (items: any[]) => {
-    setSubmittedData({ items, page: currentPage });
-    setCurrentPage('success');
+  // UPDATED: Navigation function
+  const handleNavigate = (page: string) => {
+    setCurrentPage(page);
+    // Manually push a new entry into the browser's history
+    window.history.pushState({ page: page }, '', `#${page}`);
   };
 
+  // UPDATED: Submit function
+  const handleSubmit = (items: any[]) => {
+    setSubmittedData({ items, page: currentPage });
+    const successPage = 'success';
+    setCurrentPage(successPage);
+    // Push the 'success' page to the history as well
+    window.history.pushState({ page: successPage }, '', `#${successPage}`);
+  };
+
+  // UPDATED: "Scan More" button function
   const handleBackToScanner = () => {
-    setCurrentPage(submittedData?.page || 'welcome');
-    setSubmittedData(null);
+    // Instead of setting state, just tell the browser to go back.
+    // The 'popstate' listener will handle setting the state.
+    window.history.back();
   };
 
   if (currentPage === 'welcome') {
