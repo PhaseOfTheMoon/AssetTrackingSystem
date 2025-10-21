@@ -47,7 +47,7 @@ const sidebarItems = [
 
 const placeholderItems = [
   { name: 'Dash (placeholder', icon: Bars3Icon, href: '/#' },
-  { name: 'Scanning (placeho-', icon: ScanBarcodeIcon, href: '/#' },
+  { name: 'Scanning (placeho-', icon: ScanBarcodeIcon, href: '/#/#' },
 ];
 
 const sidebarVariants: Variants = {
@@ -103,7 +103,7 @@ export default function Sidebar({ isOpen, setIsOpen }: { isOpen: boolean; setIsO
     <div className="relative mb-6">
       <span className="absolute -top-2 left-4 bg-white px-2 text-gray-500 text-xs font-medium z-10">{title}</span>
       <div className="border border-gray-200 rounded-md pt-4 pb-2 px-2">
-        <nav className="space-y-1 overflow-y-auto">
+        <nav className="space-y-1">
           {items.map((item) => (
             <div key={item.name}>
               {item.name === 'Dashboard' ? (
@@ -151,7 +151,7 @@ export default function Sidebar({ isOpen, setIsOpen }: { isOpen: boolean; setIsO
                     animate={{ height: 'auto', opacity: 1 }}
                     exit={{ height: 0, opacity: 0 }}
                     transition={{ duration: 0.2, ease: 'easeInOut' }}
-                    className="ml-8 space-y-1 mt-1 overflow-hidden"
+                    className="ml-8 space-y-1 mt-1"
                   >
                     {item.dropdown.map((subItem) => (
                       <a
@@ -176,18 +176,19 @@ export default function Sidebar({ isOpen, setIsOpen }: { isOpen: boolean; setIsO
     <AnimatePresence>
       {isOpen && (
         <motion.div
-          className={`sidebar bg-white shadow-lg flex flex-col z-40 overflow-hidden ${
+          className={`sidebar bg-white shadow-lg flex flex-col z-40 ${
             isMobile
               ? 'fixed top-0 left-0 w-full p-4 pt-6'
-              : 'min-h-screen w-64 p-4 fixed flex flex-col justify-between'
+              : 'min-h-screen w-64 p-4 fixed'
           }`}
+          style={{ maxHeight: 'calc(100vh - 2rem)', overflowY: 'auto' }}
           variants={sidebarVariants}
           initial={isMobile ? 'mobileClosed' : 'closed'}
           animate={isMobile ? (isOpen ? 'mobileOpen' : 'mobileClosed') : (isOpen ? 'open' : 'closed')}
           exit={isMobile ? 'mobileClosed' : 'closed'}
         >
           {/* Main Content */}
-          <div className={isMobile ? '' : 'flex-1'}>
+          <div className="flex-1">
             {/* Logo and Close Button for Mobile */}
             <div className="flex justify-between items-center mb-6 border-b border-gray-200 pb-4">
               <span className="text-xl font-bold">Swinburne University</span>
