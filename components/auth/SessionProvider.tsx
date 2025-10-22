@@ -11,6 +11,7 @@ interface UserSession {
   departmentId: string | null
   mobileNo: string | null
   microsoftUserId: string | null
+  role: 'admin' | 'user'
 }
 
 interface SessionContextType {
@@ -22,6 +23,18 @@ interface SessionContextType {
 }
 
 const SessionContext = createContext<SessionContextType | undefined>(undefined)
+
+//Define admin emails
+const ADMIN_EMAILS = [
+  '104385730@students.swinburne.edu.my',
+  '104401021@students.swinburne.edu.my',
+  '104401173@students.swinburne.edu.my'
+]
+
+// Helper function to determine user role based on email
+function determineRole(email: string): 'admin' | 'user' {
+  return ADMIN_EMAILS.includes(email.toLowerCase()) ? 'admin' : 'user'
+}
 
 export function SessionProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<UserSession | null>(null)
@@ -67,6 +80,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       const data = await response.json()
 
       if (data.success) {
+        const userRole = determineRole(staffData.email)
         const newSession: UserSession = {
           sessionId: data.session.session_id,
           staffId: staffData.staff_id,
@@ -74,9 +88,11 @@ export function SessionProvider({ children }: { children: ReactNode }) {
           email: staffData.email,
           departmentId: staffData.department_id,
           mobileNo: staffData.mobile_no,
-          microsoftUserId
+          microsoftUserId,
+          role: userRole
         }
         setSession(newSession)
+        console.log(`User logged in as: $(userRole)`, `Email: ${staffData.email}`)
       } else {
         console.error('Failed to start session:', data.error)
       }

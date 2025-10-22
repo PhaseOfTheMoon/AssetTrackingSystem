@@ -10,11 +10,11 @@ import {
 import LogoutButton from '../auth/LogoutButton';
 
 // Dynamically import Sidebar with SSR disabled
-const Sidebar = dynamic(() => import('./sideBar'), {
+const Sidebar = dynamic(() => import('./sidebar'), {
   ssr: false,
 });
 
-export default function navBar() {
+export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false); // Default to false on server, update on client
   const [isProfileOpen, setIsProfileOpen] = useState(false);
 

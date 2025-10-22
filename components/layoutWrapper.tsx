@@ -1,7 +1,7 @@
 'use client'
 
 import { usePathname } from 'next/navigation'
-import NavBar from '@/components/navbar/navBar'
+import NavBar from '@/components/navbar/navbar'
 import { ReactNode } from 'react'
 
 export default function LayoutWrapper({ children }: { children: ReactNode }) {

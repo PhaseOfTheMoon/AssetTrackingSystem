@@ -2,12 +2,13 @@
 
 import { useSession } from '@/components/auth/SessionProvider'
 import { useEffect, useState } from 'react'
-import Dashboard from '../admin/dashboard/page'
+import { useIsAuthenticated, useMsal } from '@azure/msal-react'
+import { useRouter } from 'next/navigation'
 
 export default function ProfilePage() {
-  // const isAuthenticated = useIsAuthenticated()
-  // const { accounts } = useMsal()
-  // const router = useRouter()
+  const isAuthenticated = useIsAuthenticated()
+  const { accounts } = useMsal()
+  const router = useRouter()
   const { session } = useSession()
   const [assignedAssets, setAssignedAssets] = useState<any[]>([])
   const [isLoadingAssets, setIsLoadingAssets] = useState(true)

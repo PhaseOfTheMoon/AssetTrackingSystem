@@ -35,4 +35,4 @@ CLAUDE.md
 .editorconfig
 *.cpp
 include/
-FETCH_HEAD
+FETCH_HEAD  

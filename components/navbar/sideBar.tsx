@@ -16,6 +16,7 @@ import {
 } from '@heroicons/react/24/outline';
 import LogoutButton from '../auth/LogoutButton';
 import { ScanBarcodeIcon } from 'lucide-react';
+import { useSession } from '../auth/SessionProvider';
 
 const sidebarItems = [
   { name: 'Dashboard', icon: Bars3Icon, href: '/admin/dashboard' },
@@ -41,7 +42,7 @@ const sidebarItems = [
     name: 'Staff',
     icon: UsersIcon,
     href: '/staff',
-    dropdown: ['Employees', 'Roles', 'Attendance'],
+    dropdown: ['addStaff', 'Roles', 'Attendance'],
   },
 ];
 
@@ -58,6 +59,8 @@ const sidebarVariants: Variants = {
 };
 
 export default function Sidebar({ isOpen, setIsOpen }: { isOpen: boolean; setIsOpen: (value: boolean) => void }) {
+  const { session } = useSession();
+  const userRole = session?.role || 'user'; // Default to 'user' if no session
   const [activeItem, setActiveItem] = useState<string | null>(null); // Controls dropdown visibility
   const [highlightedItem, setHighlightedItem] = useState<string | null>('/admin/dashboard'); // Controls highlight
   const [hoveredItem, setHoveredItem] = useState<string | null>(null);
@@ -156,7 +159,8 @@ export default function Sidebar({ isOpen, setIsOpen }: { isOpen: boolean; setIsO
                     {item.dropdown.map((subItem) => (
                       <a
                         key={subItem}
-                        href={`${item.href}/${subItem.toLowerCase()}`}
+                        // href={`${item.href}/${subItem.toLowerCase()}`}
+                        href={`${item.href}/${subItem}`} // Removed the toLowerCase()
                         className="block p-2 text-sm text-gray-600 hover:text-red-600 hover:bg-red-50 rounded transition-all duration-200 ease-in-out"
                       >
                         {subItem}
@@ -224,10 +228,10 @@ export default function Sidebar({ isOpen, setIsOpen }: { isOpen: boolean; setIsO
               </div>
             )}
 
-            {/* Admin Group */}
-            {renderGroup('Admin', sidebarItems)}
+            {/* Admin Group - Only visible for admin role */}
+            {userRole === 'admin' && renderGroup('Admin', sidebarItems)}
 
-            {/* User Group */}
+            {/* User Group - Always visible */}
             {renderGroup('User', placeholderItems)}
           </div>
 
