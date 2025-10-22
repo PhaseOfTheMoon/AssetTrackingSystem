@@ -41,7 +41,7 @@ const sidebarItems = [
   {
     name: 'Staff',
     icon: UsersIcon,
-    href: '/staff',
+    href: '/admin/staff',
     dropdown: ['addStaff', 'Roles', 'Attendance'],
   },
 ];
