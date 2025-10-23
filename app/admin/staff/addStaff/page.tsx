@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useIsAuthenticated } from '@azure/msal-react'
 import { useSession } from '@/components/auth/SessionProvider'
-// import Dashboard from '../../admin/dashboard/page'
+
 import {
   PencilIcon,
   PlusIcon
@@ -164,8 +164,7 @@ export default function AddStaffPage() {
 
   return (
     <div className="flex min-h-screen bg-gray-50 text-gray-900 font-sans antialiased">
-      {/* <Dashboard /> */}
-      <main className="p-6 flex-grow ml-auto w-[81%]">
+       <main className="p-6 flex-grow ml-auto w-[81%]">
         <div className="max-w-7xl mx-auto">
           <div className="mb-6">
             <h1 className="text-3xl font-bold text-gray-900">Staff Management</h1>
