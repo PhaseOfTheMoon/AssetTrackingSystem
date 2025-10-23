@@ -10,7 +10,7 @@ import {
 import LogoutButton from '../auth/LogoutButton';
 
 // Dynamically import Sidebar with SSR disabled
-const Sidebar = dynamic(() => import('./sidebar'), {
+const Sidebar = dynamic(() => import('../navbar/sideBar'), {
   ssr: false,
 });
 

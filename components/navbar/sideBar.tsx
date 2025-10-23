@@ -24,7 +24,7 @@ const sidebarItems = [
     name: 'Asset Management',
     icon: CogIcon,
     href: '/admin/assetManage/',
-    dropdown: ['Assets', 'Categories', 'Reports'],
+    dropdown: ['assets', 'Categories', 'Reports'],
   },
   {
     name: 'Location',
