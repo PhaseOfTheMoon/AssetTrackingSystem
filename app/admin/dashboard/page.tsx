@@ -1,13 +1,11 @@
 "use client";
 import React from 'react'
-import Dashboard from '../../../components/navbar/navigationBar'
 
 const page = () => {
   return (
     <div>
         {/* Page Content */}
-        <Dashboard />
-        <main className="p-6 flex-grow ml-auto w-[81%]  bg-gray-50">
+        <main className="p-6 flex-grow mt-2 ml-auto bg-gray-50">
           <h1 className="text-3xl font-bold text-gray-900 mb-6">Admin Dashboard</h1>
           {/* Top row of small placeholder boxes */}
           <div className="flex-1 bg-white border border-gray-200 p-4 rounded-lg shadow">

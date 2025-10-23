@@ -29,3 +29,10 @@ yarn-error.log*
 .claude
 CLAUDE.md.next/
 CLAUDE.md
+
+# VSCode and additional files
+.vscode/
+.editorconfig
+*.cpp
+include/
+FETCH_HEAD  

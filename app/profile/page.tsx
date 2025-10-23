@@ -1,10 +1,9 @@
 'use client'
 
+import { useSession } from '@/components/auth/SessionProvider'
+import { useEffect, useState } from 'react'
 import { useIsAuthenticated, useMsal } from '@azure/msal-react'
 import { useRouter } from 'next/navigation'
-import { useEffect, useState } from 'react'
-import Dashboard from '../admin/dashboard/page'
-import { useSession } from '@/components/SessionProvider'
 
 export default function ProfilePage() {
   const isAuthenticated = useIsAuthenticated()
@@ -13,6 +12,13 @@ export default function ProfilePage() {
   const { session } = useSession()
   const [assignedAssets, setAssignedAssets] = useState<any[]>([])
   const [isLoadingAssets, setIsLoadingAssets] = useState(true)
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true)
+  const [isProfileOpen, setIsProfileOpen] = useState(false)
+  const [activeItem, setActiveItem] = useState<string | null>('/profile')
+  const [hoveredItem, setHoveredItem] = useState<string | null>(null)
+  const [isTopBarVisible, setIsTopBarVisible] = useState(true)
+  const [lastScrollY, setLastScrollY] = useState(0)
+  const [isMobile, setIsMobile] = useState(false)
 
   // Fetch assigned assets when session is available
   useEffect(() => {
@@ -49,9 +55,9 @@ export default function ProfilePage() {
   const hasMoreAssets = assignedAssets.length > 3
 
   return (
-    <div className="flex min-h-screen bg-gray-50 text-gray-900 font-sans antialiased">
-      <Dashboard />
-      <main className="p-6 flex-grow ml-auto w-[81%] bg-gray-50">
+    <div className="min-h-screen bg-gray-50 text-gray-900 font-sans antialiased">
+      {/* Profile Content */}
+      <main className="p-6">
         <div className="max-w-4xl mx-auto">
           {/* Profile Card */}
           <div className="bg-white rounded-lg shadow-lg p-6 md:p-8">
