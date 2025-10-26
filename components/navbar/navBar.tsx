@@ -6,6 +6,7 @@ import {
   UserCircleIcon,
   CogIcon,
   ArrowRightOnRectangleIcon,
+  Bars3Icon,
 } from '@heroicons/react/24/outline';
 import LogoutButton from '../auth/LogoutButton';
 
@@ -14,15 +15,13 @@ const Sidebar = dynamic(() => import('../navbar/sideBar'), {
   ssr: false,
 });
 
-export default function Navbar() {
-  const [isOpen, setIsOpen] = useState(false); // Default to false on server, update on client
-  const [isProfileOpen, setIsProfileOpen] = useState(false);
+interface NavBarProps {
+  sidebarOpen: boolean
+  setSidebarOpen: (open: boolean) => void
+}
 
-  useEffect(() => {
-    // Set initial isOpen based on window width on client mount
-    const initialIsOpen = typeof window !== 'undefined' && window.innerWidth >= 768;
-    setIsOpen(initialIsOpen);
-  }, []);
+export default function Navbar({ sidebarOpen, setSidebarOpen }: NavBarProps) {
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
 
   return (
     <>
@@ -31,14 +30,13 @@ export default function Navbar() {
           <div className="flex items-center justify-between">
             <div className="flex items-center justify-start rtl:justify-end">
               <button
-                onClick={() => setIsOpen(!isOpen)}
+                onClick={() => setSidebarOpen(!sidebarOpen)}
                 type="button"
-                className="inline-flex items-center p-2 text-sm text-gray-500 rounded-lg sm:hidden hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-200 dark:text-gray-400 dark:hover:bg-gray-700 dark:focus:ring-gray-600"
+                className="inline-flex items-center p-2 text-sm text-gray-500 rounded-lg hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-200 dark:text-gray-400 dark:hover:bg-gray-700 dark:focus:ring-gray-600"
+                aria-label="Toggle sidebar"
               >
-                <span className="sr-only">Open sidebar</span>
-                <svg className="w-6 h-6" aria-hidden="true" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
-                  <path clipRule="evenodd" fillRule="evenodd" d="M2 4.75A.75.75 0 012.75 4h14.5a.75.75 0 010 1.5H2.75A.75.75 0 012 4.75zm0 10.5a.75.75 0 01.75-.75h7.5a.75.75 0 010 1.5h-7.5a.75.75 0 01-.75-.75zM2 10a.75.75 0 01.75-.75h14.5a.75.75 0 010 1.5H2.75A.75.75 0 012 10z" />
-                </svg>
+                <span className="sr-only">Toggle sidebar</span>
+                <Bars3Icon className="w-6 h-6" />
               </button>
               <a href="/admin/dashboard" className="flex ms-2 md:me-24">
                 <img src="/logo-long-full.svg" className="h-12 me-5" alt="Swinburne Logo" />
@@ -117,10 +115,10 @@ export default function Navbar() {
         </div>
       </nav>
 
-      <Sidebar isOpen={isOpen} setIsOpen={setIsOpen} />
+      <Sidebar isOpen={sidebarOpen} setIsOpen={setSidebarOpen} />
 
-      {isOpen && (
-        <div suppressHydrationWarning className="fixed inset-0 z-30 bg-black bg-opacity-50 sm:hidden" onClick={() => setIsOpen(false)} />
+      {sidebarOpen && (
+        <div suppressHydrationWarning className="fixed inset-0 z-30 bg-black bg-opacity-50 sm:hidden" onClick={() => setSidebarOpen(false)} />
       )}
     </>
   );

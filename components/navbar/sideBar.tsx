@@ -3,28 +3,25 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence, Variants } from 'framer-motion';
 // Import all required Heroicons
 import {
-  Bars3Icon,
-  UserCircleIcon,
   CogIcon,
-  ArrowRightOnRectangleIcon,
   MagnifyingGlassIcon,
   ChevronDownIcon,
   MapPinIcon,
   BuildingOfficeIcon,
   UsersIcon,
-  Bars3BottomLeftIcon,
+  ComputerDesktopIcon,
 } from '@heroicons/react/24/outline';
 import LogoutButton from '../auth/LogoutButton';
-import { ScanBarcodeIcon } from 'lucide-react';
+import { HomeIcon } from 'lucide-react';
 import { useSession } from '../auth/SessionProvider';
 
 const sidebarItems = [
-  { name: 'Dashboard', icon: Bars3Icon, href: '/admin/dashboard' },
+  { name: 'Home', icon: HomeIcon, href: '/admin/dashboard' },
   {
-    name: 'Asset Management',
-    icon: CogIcon,
-    href: '/admin/assetManage/',
-    dropdown: ['assets', 'Categories', 'Reports'],
+    name: 'Asset Tracking',
+    icon: ComputerDesktopIcon,
+    href: '/admin/assetTracking/',
+    dropdown: ['Assets', 'Categories', 'Reports'],
   },
   {
     name: 'Location',
@@ -47,8 +44,9 @@ const sidebarItems = [
 ];
 
 const placeholderItems = [
-  { name: 'Dash (placeholder', icon: Bars3Icon, href: '/#' },
-  { name: 'Scanning (placeho-', icon: ScanBarcodeIcon, href: '/#/#' },
+  { name: 'Main Menu', icon: HomeIcon, href: '/#' },
+  // You may add more items here
+  // { name: 'Scanning (placeho-', icon: ScanBarcodeIcon, href: '/#/#' },
 ];
 
 const sidebarVariants: Variants = {
@@ -104,17 +102,19 @@ export default function Sidebar({ isOpen, setIsOpen }: { isOpen: boolean; setIsO
 
   const renderGroup = (title: string, items: typeof sidebarItems) => (
     <div className="relative mb-6">
-      <span className="absolute -top-2 left-4 bg-white px-2 text-gray-500 text-xs font-medium z-10">{title}</span>
-      <div className="border border-gray-200 rounded-md pt-4 pb-2 px-2">
+      <span className="absolute -top-2 left-4 bg-white px-2 text-gray-700 text-xs font-semibold uppercase tracking-wide z-10">
+        {title}
+      </span>
+      <div className="bg-gray-50 shadow-sm rounded-lg p-3">
         <nav className="space-y-1">
           {items.map((item) => (
             <div key={item.name}>
-              {item.name === 'Dashboard' ? (
+              {item.name === 'Home' ? (
                 <a
                   href={item.href}
                   onMouseEnter={() => setHoveredItem(item.name)}
                   onMouseLeave={() => setHoveredItem(null)}
-                  className={`flex items-center w-full p-3 rounded-lg transition-all duration-200 ease-in-out whitespace-nowrap ${
+                  className={`flex items-center w-full p-2 rounded-md transition-all duration-200 ease-in-out whitespace-nowrap ${
                     highlightedItem === item.href
                       ? 'bg-red-600 text-white shadow-md'
                       : hoveredItem === item.name
@@ -130,7 +130,7 @@ export default function Sidebar({ isOpen, setIsOpen }: { isOpen: boolean; setIsO
                   onClick={() => toggleDropdown(item.href)}
                   onMouseEnter={() => setHoveredItem(item.name)}
                   onMouseLeave={() => setHoveredItem(null)}
-                  className={`flex items-center w-full p-3 rounded-lg transition-all duration-200 ease-in-out whitespace-nowrap ${
+                  className={`flex items-center w-full p-2 rounded-md transition-all duration-200 ease-in-out whitespace-nowrap ${
                     highlightedItem === item.href
                       ? 'bg-red-600 text-white shadow-md'
                       : hoveredItem === item.name
@@ -159,8 +159,7 @@ export default function Sidebar({ isOpen, setIsOpen }: { isOpen: boolean; setIsO
                     {item.dropdown.map((subItem) => (
                       <a
                         key={subItem}
-                        // href={`${item.href}/${subItem.toLowerCase()}`}
-                        href={`${item.href}/${subItem}`} // Removed the toLowerCase()
+                        href={`${item.href}/${subItem}`} // Removed toLowerCase()
                         className="block p-2 text-sm text-gray-600 hover:text-red-600 hover:bg-red-50 rounded transition-all duration-200 ease-in-out"
                       >
                         {subItem}
@@ -183,9 +182,9 @@ export default function Sidebar({ isOpen, setIsOpen }: { isOpen: boolean; setIsO
           className={`sidebar bg-white shadow-lg flex flex-col z-40 ${
             isMobile
               ? 'fixed top-0 left-0 w-full p-4 pt-6'
-              : 'min-h-screen w-64 p-4 fixed'
+              : 'min-h-screen w-64 p-4 fixed left-0'
           }`}
-          style={{ maxHeight: 'calc(100vh - 2rem)', overflowY: 'auto' }}
+          style={{ maxHeight: isMobile ? 'calc(100vh - 2rem)' : 'calc(100vh - 4rem)', overflowY: 'auto' }}
           variants={sidebarVariants}
           initial={isMobile ? 'mobileClosed' : 'closed'}
           animate={isMobile ? (isOpen ? 'mobileOpen' : 'mobileClosed') : (isOpen ? 'open' : 'closed')}
@@ -193,9 +192,10 @@ export default function Sidebar({ isOpen, setIsOpen }: { isOpen: boolean; setIsO
         >
           {/* Main Content */}
           <div className="flex-1">
-            {/* Logo and Close Button for Mobile */}
+            {/* Logo and Close Button for Mobile - Remove University text but keep layout */}
             <div className="flex justify-between items-center mb-6 border-b border-gray-200 pb-4">
-              <span className="text-xl font-bold">Swinburne University</span>
+              {/* Empty span to maintain layout spacing */}
+              <span className="text-xl font-bold invisible">Placeholder</span>
               {isMobile && (
                 <button onClick={() => setIsOpen(false)} className="text-red-600 hover:text-red-800">
                   <svg
