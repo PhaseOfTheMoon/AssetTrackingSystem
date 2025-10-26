@@ -1,6 +1,8 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence, Variants } from 'framer-motion';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 // Import all required Heroicons
 import {
   CogIcon,
@@ -58,11 +60,19 @@ const sidebarVariants: Variants = {
 
 export default function Sidebar({ isOpen, setIsOpen }: { isOpen: boolean; setIsOpen: (value: boolean) => void }) {
   const { session } = useSession();
-  const userRole = session?.role || 'user'; // Default to 'user' if no session
-  const [activeItem, setActiveItem] = useState<string | null>(null); // Controls dropdown visibility
-  const [highlightedItem, setHighlightedItem] = useState<string | null>('/admin/dashboard'); // Controls highlight
+  const pathname = usePathname();
+  const userRole = session?.role || 'user';
+  const [activeItem, setActiveItem] = useState<string | null>(null);
   const [hoveredItem, setHoveredItem] = useState<string | null>(null);
   const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth < 768);
+
+  // Persist sidebar state in localStorage
+  useEffect(() => {
+    const savedActiveItem = localStorage.getItem('sidebarActiveItem');
+    if (savedActiveItem) {
+      setActiveItem(savedActiveItem);
+    }
+  }, []);
 
   useEffect(() => {
     const handleResize = () => {
@@ -80,11 +90,9 @@ export default function Sidebar({ isOpen, setIsOpen }: { isOpen: boolean; setIsO
   }, [setIsOpen, isMobile]);
 
   const toggleDropdown = (href: string) => {
-    // Toggle activeItem for dropdown, keep highlight
-    setActiveItem((current) => (current === href ? null : href));
-    if (activeItem !== href) {
-      setHighlightedItem(href); // Highlight new item if different
-    }
+    const newActiveItem = activeItem === href ? null : href;
+    setActiveItem(newActiveItem);
+    localStorage.setItem('sidebarActiveItem', newActiveItem || '');
   };
 
   const handleOutsideClick = (e: MouseEvent) => {
@@ -110,12 +118,12 @@ export default function Sidebar({ isOpen, setIsOpen }: { isOpen: boolean; setIsO
           {items.map((item) => (
             <div key={item.name}>
               {item.name === 'Home' ? (
-                <a
+                <Link
                   href={item.href}
                   onMouseEnter={() => setHoveredItem(item.name)}
                   onMouseLeave={() => setHoveredItem(null)}
                   className={`flex items-center w-full p-2 rounded-md transition-all duration-200 ease-in-out whitespace-nowrap ${
-                    highlightedItem === item.href
+                    pathname === item.href
                       ? 'bg-red-600 text-white shadow-md'
                       : hoveredItem === item.name
                       ? 'bg-red-50 text-red-600'
@@ -124,14 +132,14 @@ export default function Sidebar({ isOpen, setIsOpen }: { isOpen: boolean; setIsO
                 >
                   <item.icon className="h-5 w-5 mr-3 flex-shrink-0" />
                   {item.name}
-                </a>
+                </Link>
               ) : (
                 <button
                   onClick={() => toggleDropdown(item.href)}
                   onMouseEnter={() => setHoveredItem(item.name)}
                   onMouseLeave={() => setHoveredItem(null)}
                   className={`flex items-center w-full p-2 rounded-md transition-all duration-200 ease-in-out whitespace-nowrap ${
-                    highlightedItem === item.href
+                    pathname.startsWith(item.href)
                       ? 'bg-red-600 text-white shadow-md'
                       : hoveredItem === item.name
                       ? 'bg-red-50 text-red-600'
@@ -157,13 +165,17 @@ export default function Sidebar({ isOpen, setIsOpen }: { isOpen: boolean; setIsO
                     className="ml-8 space-y-1 mt-1"
                   >
                     {item.dropdown.map((subItem) => (
-                      <a
+                      <Link
                         key={subItem}
-                        href={`${item.href}/${subItem}`} // Removed toLowerCase()
-                        className="block p-2 text-sm text-gray-600 hover:text-red-600 hover:bg-red-50 rounded transition-all duration-200 ease-in-out"
+                        href={`${item.href}/${subItem}`}
+                        className={`block p-2 text-sm rounded transition-all duration-200 ease-in-out ${
+                          pathname === `${item.href}/${subItem}`
+                            ? 'text-red-600 bg-red-50 font-medium'
+                            : 'text-gray-600 hover:text-red-600 hover:bg-red-50'
+                        }`}
                       >
                         {subItem}
-                      </a>
+                      </Link>
                     ))}
                   </motion.div>
                 )}
@@ -237,12 +249,12 @@ export default function Sidebar({ isOpen, setIsOpen }: { isOpen: boolean; setIsO
 
           {/* Separator and Bottom Items */}
           <div className="border-t border-gray-200 pt-4 space-y-2">
-            <a
+            <Link
               href="/settings"
               onMouseEnter={() => setHoveredItem('Settings')}
               onMouseLeave={() => setHoveredItem(null)}
               className={`flex items-center p-3 rounded-lg transition-all duration-200 ease-in-out ${
-                highlightedItem === '/settings'
+                pathname === '/settings'
                   ? 'bg-red-600 text-white shadow-md'
                   : hoveredItem === 'Settings'
                   ? 'bg-red-50 text-red-600'
@@ -251,10 +263,10 @@ export default function Sidebar({ isOpen, setIsOpen }: { isOpen: boolean; setIsO
             >
               <CogIcon className="h-5 w-5 mr-3 flex-shrink-0" />
               Settings
-            </a>
+            </Link>
             <LogoutButton
               className={`flex items-center w-full p-3 rounded-lg transition-all duration-200 ease-in-out ${
-                highlightedItem === '/logout'
+                pathname === '/logout'
                   ? 'bg-red-600 text-white shadow-md'
                   : hoveredItem === 'Log Out'
                   ? 'bg-red-50 text-red-600'
