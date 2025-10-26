@@ -57,27 +57,30 @@ export default function LogoutButton({
         onClick={cancelLogout}
       ></div>
       
-      {/* Modal - Centered in main content area (accounting for sidebar) */}
-      <div className="fixed top-0 right-0 bottom-0 left-0 sm:left-64 flex items-center justify-center z-[70] pointer-events-none">
-        <div className="pointer-events-auto">
-          <div className="bg-white rounded-lg shadow-xl p-6 max-w-sm w-full mx-4">
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">Confirm Logout</h3>
-            <p className="text-gray-600 mb-6">Are you sure you want to log out?</p>
-
-            <div className="flex space-x-3">
-              <button
-                onClick={cancelLogout}
-                className="flex-1 px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-md transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={confirmLogout}
-                className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-md transition-colors"
-              >
-                Log Out
-              </button>
+      {/* Modal - Centered on entire screen */}
+      <div className="fixed inset-0 flex items-center justify-center z-[70] p-4">
+        <div className="bg-white rounded-lg shadow-xl p-6 max-w-sm w-full mx-4 transform transition-all">
+          <div className="text-center">
+            <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 mb-4">
+              <ArrowRightOnRectangleIcon className="h-6 w-6 text-red-600" />
             </div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">Confirm Logout</h3>
+            <p className="text-gray-600 mb-6">Are you sure you want to log out of your account?</p>
+          </div>
+
+          <div className="flex space-x-3">
+            <button
+              onClick={cancelLogout}
+              className="flex-1 px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-md transition-colors font-medium"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={confirmLogout}
+              className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-md transition-colors font-medium"
+            >
+              Log Out
+            </button>
           </div>
         </div>
       </div>

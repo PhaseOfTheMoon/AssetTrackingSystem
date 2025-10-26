@@ -9,6 +9,7 @@ import {
   Bars3Icon,
 } from '@heroicons/react/24/outline';
 import LogoutButton from '../auth/LogoutButton';
+import { useSession } from '../auth/SessionProvider';
 
 // Dynamically import Sidebar with SSR disabled
 const Sidebar = dynamic(() => import('../navbar/sideBar'), {
@@ -22,6 +23,17 @@ interface NavBarProps {
 
 export default function Navbar({ sidebarOpen, setSidebarOpen }: NavBarProps) {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const { session } = useSession();
+
+  // Get user's initials for fallback, handling undefined values
+  const getUserInitials = (name: string | null | undefined): string => {
+    if (!name) return 'U';
+    return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+  };
+
+  // Safe getters for session data
+  const userName = session?.name || 'User';
+  const userEmail = session?.email || 'No email available';
 
   return (
     <>
@@ -68,9 +80,13 @@ export default function Navbar({ sidebarOpen, setSidebarOpen }: NavBarProps) {
                           src="https://flowbite.com/docs/images/people/profile-picture-5.jpg"
                           alt="user avatar"
                         />
-                        <div>
-                          <p className="text-sm font-medium text-gray-800">John Doe</p>
-                          <p className="text-xs text-gray-600 truncate">John Doe@gmail.com</p>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-gray-800 truncate">
+                            {userName}
+                          </p>
+                          <p className="text-xs text-gray-600 truncate" title={userEmail}>
+                            {userEmail}
+                          </p>
                         </div>
                       </div>
                       <div className="border-t border-gray-200 pt-4 space-y-2">

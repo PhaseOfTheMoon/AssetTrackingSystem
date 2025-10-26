@@ -9,6 +9,7 @@ export default function LayoutWrapper({ children }: { children: ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
   const [mounted, setMounted] = useState(false)
+  const [desktopSidebarState, setDesktopSidebarState] = useState(true) // Remember desktop state
   
   // Pages where navbar/sidebar should be hidden
   const authPages = ['/', '/session/start', '/session/end']
@@ -25,29 +26,37 @@ export default function LayoutWrapper({ children }: { children: ReactNode }) {
 
     const handleResize = () => {
       const mobile = window.innerWidth < 768
+      const wasMobile = isMobile
       setIsMobile(mobile)
       
-      // Load saved sidebar state from localStorage
-      const savedSidebarState = localStorage.getItem('sidebarOpen')
-      
-      if (!mobile) {
-        // On desktop, use saved state or default to true
-        setSidebarOpen(savedSidebarState ? JSON.parse(savedSidebarState) : true)
-      } else {
-        // On mobile, always start closed
+      if (!mobile && wasMobile) {
+        // Transitioning from mobile to desktop - restore desktop state
+        setSidebarOpen(desktopSidebarState)
+      } else if (mobile && !wasMobile) {
+        // Transitioning from desktop to mobile - save current state and close sidebar
+        if (!wasMobile) { // Only save if we were actually on desktop before
+          setDesktopSidebarState(sidebarOpen)
+        }
         setSidebarOpen(false)
+      } else if (!mobile) {
+        // Initial load on desktop - load saved state
+        const savedSidebarState = localStorage.getItem('sidebarOpen')
+        const initialState = savedSidebarState ? JSON.parse(savedSidebarState) : true
+        setSidebarOpen(initialState)
+        setDesktopSidebarState(initialState)
       }
     }
     
     handleResize()
     window.addEventListener('resize', handleResize)
     return () => window.removeEventListener('resize', handleResize)
-  }, [mounted])
+  }, [mounted, isMobile, sidebarOpen, desktopSidebarState])
 
-  // Save sidebar state to localStorage when it changes
+  // Save sidebar state to localStorage when it changes (desktop only)
   const handleSidebarToggle = (open: boolean) => {
     setSidebarOpen(open)
     if (!isMobile) {
+      setDesktopSidebarState(open)
       localStorage.setItem('sidebarOpen', JSON.stringify(open))
     }
   }
