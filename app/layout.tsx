@@ -1,8 +1,8 @@
 // app/layout.tsx
 import type { Metadata } from "next";
 import "./styles/globals.css";
-import AuthProvider from "@/components/auth/AuthProvider";
-import { SessionProvider } from "@/components/auth/SessionProvider";
+import { NextAuthProvider } from "@/components/auth/NextAuthProvider";
+import { SessionProvider } from "@/components/SessionProvider";
 import LayoutWrapper from "@/components/layoutWrapper";
 
 export const metadata: Metadata = {
@@ -24,13 +24,13 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="antialiased bg-white text-black">
-        <AuthProvider>
+        <NextAuthProvider>
           <SessionProvider>
             <LayoutWrapper>
               {children}
             </LayoutWrapper>
           </SessionProvider>
-        </AuthProvider>
+        </NextAuthProvider>
       </body>
     </html>
   );

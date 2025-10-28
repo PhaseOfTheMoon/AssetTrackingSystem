@@ -1,9 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useSession } from '@/components/auth/SessionProvider'
+import { useSession } from '@/components/SessionProvider'
 import { useRouter } from 'next/navigation'
-import { useIsAuthenticated } from '@azure/msal-react'
 import Breadcrumb from '@/components/ui/Breadcrumb'
 import {
   MagnifyingGlassIcon,
@@ -40,7 +39,6 @@ interface Department {
 }
 
 export default function AssetsPage() {
-  const isAuthenticated = useIsAuthenticated()
   const { session } = useSession()
   const router = useRouter()
 
@@ -83,22 +81,22 @@ export default function AssetsPage() {
   }, [])
 
   useEffect(() => {
-    if (mounted && (!isAuthenticated || !session)) {
+    if (mounted && !session) {
       router.push('/')
     }
-  }, [mounted, isAuthenticated, session, router])
+  }, [mounted, session, router])
 
   // Load initial data
   useEffect(() => {
-    if (mounted && isAuthenticated && session) {
+    if (mounted && session) {
       loadAssets()
       loadLocations()
       loadDepartments()
     }
-  }, [mounted, isAuthenticated, session, currentPage, recordsPerPage, sortBy, sortOrder])
+  }, [mounted, session, currentPage, recordsPerPage, sortBy, sortOrder])
 
   // Don't render anything until mounted and authenticated
-  if (!mounted || !isAuthenticated || !session) {
+  if (!mounted || !session) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">

@@ -2,8 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { useIsAuthenticated } from '@azure/msal-react'
-import { useSession } from '@/components/auth/SessionProvider'
+import { useSession } from '@/components/SessionProvider'
 
 import {
   PencilIcon,
@@ -22,7 +21,6 @@ interface Staff {
 }
 
 export default function AddStaffPage() {
-  const isAuthenticated = useIsAuthenticated()
   const { session, isLoading: sessionLoading } = useSession()
   const router = useRouter()
 
@@ -44,10 +42,10 @@ export default function AddStaffPage() {
 
   // Fetch staff list
   useEffect(() => {
-    if (isAuthenticated && session) {
+    if (session) {
       fetchStaffList()
     }
-  }, [isAuthenticated, session])
+  }, [session])
 
   const fetchStaffList = async () => {
     try {
@@ -157,7 +155,7 @@ export default function AddStaffPage() {
   }
 
   // Redirect to login if not authenticated
-  if (!isAuthenticated || !session) {
+  if (!session) {
     router.push('/')
     return null
   }

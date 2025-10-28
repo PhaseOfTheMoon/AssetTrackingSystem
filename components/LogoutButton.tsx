@@ -1,6 +1,6 @@
 'use client'
 
-import { useMsal } from '@azure/msal-react'
+import { signOut } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { ArrowRightOnRectangleIcon } from '@heroicons/react/24/outline'
@@ -17,7 +17,6 @@ export default function LogoutButton({
   showIcon = true,
   text = 'Log Out'
 }: LogoutButtonProps) {
-  const { instance } = useMsal()
   const router = useRouter()
   const { endSession } = useSession()
   const [showConfirmation, setShowConfirmation] = useState(false)
@@ -31,10 +30,8 @@ export default function LogoutButton({
       // End session in database first
       await endSession()
 
-      // Clear local session and redirect to login page
-      await instance.logoutRedirect({
-        postLogoutRedirectUri: '/',
-      })
+      // Sign out from NextAuth and redirect to login page
+      await signOut({ callbackUrl: '/' })
     } catch (error) {
       console.error('Logout failed:', error)
       // Fallback: just redirect to home if logout fails

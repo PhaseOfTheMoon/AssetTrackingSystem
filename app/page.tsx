@@ -1,15 +1,13 @@
 "use client";
 
-import { useIsAuthenticated, useMsal } from "@azure/msal-react";
-import MicrosoftLoginButton from "@/components/auth/MicrosoftLoginButton";
+import { useSession as useNextAuthSession, signIn, signOut } from "next-auth/react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { useSession } from "@/components/auth/SessionProvider";
+import { useSession } from "@/components/SessionProvider";
 import { useEffect, useState } from "react";
 
 export default function LoginPage() {
-  const isAuthenticated = useIsAuthenticated();
-  const { accounts, instance } = useMsal();
+  const { data: nextAuthSession, status } = useNextAuthSession();
   const router = useRouter();
   const { session, startSession } = useSession();
   const [isInitializing, setIsInitializing] = useState(false);
@@ -17,11 +15,10 @@ export default function LoginPage() {
   // Initialize session when user logs in with Microsoft
   useEffect(() => {
     const initializeSession = async () => {
-      if (isAuthenticated && accounts.length > 0 && !session && !isInitializing) {
+      if (status === 'authenticated' && nextAuthSession?.user && !session && !isInitializing) {
         setIsInitializing(true);
 
-        const account = accounts[0];
-        const microsoftUserId = account.localAccountId;
+        const microsoftUserId = nextAuthSession.user.microsoftUserId;
 
         try {
           // Fetch staff data from database
@@ -35,17 +32,16 @@ export default function LoginPage() {
 
           if (data.success && data.staff) {
             // Create session with staff data
-            await startSession(data.staff, microsoftUserId);
+            await startSession(data.staff, microsoftUserId!);
             router.push("/admin/dashboard");
           } else {
             // Staff not found - show error with Microsoft user ID
             console.warn('Staff not registered in database');
             console.log('Your Microsoft User ID:', microsoftUserId);
-            alert(`Your account is not registered. Please contact administrator.\n\nYour Microsoft User ID:
-          ${microsoftUserId}\n\n(Check browser console for details)`);
+            alert(`Your account is not registered. Please contact administrator.\n\nYour Microsoft User ID: ${microsoftUserId}\n\n(Check browser console for details)`);
 
             // Log out from Microsoft to prevent infinite loop
-            await instance.logoutPopup();
+            await signOut({ redirect: false });
 
             setIsInitializing(false);
           }
@@ -58,10 +54,10 @@ export default function LoginPage() {
     };
 
     initializeSession();
-  }, [isAuthenticated, accounts, session, startSession, router, isInitializing]);
+  }, [status, nextAuthSession, session, startSession, router, isInitializing]);
 
-  // Show loading if authenticated but initializing session
-  if (isAuthenticated && isInitializing) {
+  // Show loading if checking authentication status
+  if (status === 'loading') {
     return (
       <div className="min-h-screen bg-gray-100 flex items-center justify-center">
         <div className="text-center">
@@ -71,8 +67,19 @@ export default function LoginPage() {
     );
   }
 
+  // Show loading if authenticated but initializing session
+  if (status === 'authenticated' && isInitializing) {
+    return (
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-gray-600">Initializing session...</p>
+        </div>
+      </div>
+    );
+  }
+
   // Redirect to dashboard if already authenticated with session
-  if (isAuthenticated && session && !isInitializing) {
+  if (status === 'authenticated' && session && !isInitializing) {
     router.replace("/admin/dashboard");
     return null;
   }
@@ -106,7 +113,18 @@ export default function LoginPage() {
             </p>
           </div>
 
-          <MicrosoftLoginButton />
+          <button
+            onClick={() => signIn('azure-ad', { callbackUrl: '/admin/dashboard' })}
+            className="w-full flex items-center justify-center gap-3 px-4 py-3 border border-gray-300 rounded-md shadow-sm bg-white text-gray-700 hover:bg-gray-50 transition-colors font-medium"
+          >
+            <svg className="w-5 h-5" viewBox="0 0 21 21" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M10 0H0V10H10V0Z" fill="#F25022"/>
+              <path d="M21 0H11V10H21V0Z" fill="#7FBA00"/>
+              <path d="M10 11H0V21H10V11Z" fill="#00A4EF"/>
+              <path d="M21 11H11V21H21V11Z" fill="#FFB900"/>
+            </svg>
+            Sign in with Microsoft
+          </button>
 
           <div className="text-center">
             <p className="text-xs text-gray-500">

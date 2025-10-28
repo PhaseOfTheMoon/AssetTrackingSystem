@@ -8,8 +8,8 @@ import {
   ArrowRightOnRectangleIcon,
   Bars3Icon,
 } from '@heroicons/react/24/outline';
-import LogoutButton from '../auth/LogoutButton';
-import { useSession } from '../auth/SessionProvider';
+import LogoutButton from '../LogoutButton';
+import { useSession } from '../SessionProvider';
 
 // Dynamically import Sidebar with SSR disabled
 const Sidebar = dynamic(() => import('../navbar/sideBar'), {

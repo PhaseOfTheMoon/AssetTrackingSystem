@@ -1,9 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useSession } from '@/components/auth/SessionProvider'
+import { useSession } from '@/components/SessionProvider'
 import { useRouter } from 'next/navigation'
-import { useIsAuthenticated } from '@azure/msal-react'
 import Breadcrumb from '@/components/ui/Breadcrumb'
 import {
   ComputerDesktopIcon,
@@ -21,7 +20,6 @@ interface DashboardStats {
 }
 
 export default function DashboardPage() {
-  const isAuthenticated = useIsAuthenticated()
   const { session } = useSession()
   const router = useRouter()
   const [stats, setStats] = useState<DashboardStats>({
@@ -39,12 +37,12 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (!mounted) return
-    if (!isAuthenticated) {
+    if (!session) {
       router.push('/')
       return
     }
     fetchDashboardData()
-  }, [isAuthenticated, mounted, router])
+  }, [session, mounted, router])
 
   const fetchDashboardData = async () => {
     try {

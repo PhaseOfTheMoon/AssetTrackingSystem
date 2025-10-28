@@ -1,7 +1,6 @@
 'use client'
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
-import { useMsal } from '@azure/msal-react'
 
 interface UserSession {
   sessionId: string | null
@@ -26,7 +25,6 @@ const SessionContext = createContext<SessionContextType | undefined>(undefined)
 export function SessionProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<UserSession | null>(null)
   const [isLoading, setIsLoading] = useState(true)
-  const { accounts } = useMsal()
 
   // Load session from localStorage on mount
   useEffect(() => {

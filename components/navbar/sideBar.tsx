@@ -13,9 +13,9 @@ import {
   UsersIcon,
   ComputerDesktopIcon,
 } from '@heroicons/react/24/outline';
-import LogoutButton from '../auth/LogoutButton';
+import LogoutButton from '../LogoutButton';
 import { HomeIcon } from 'lucide-react';
-import { useSession } from '../auth/SessionProvider';
+import { useSession } from '../SessionProvider';
 
 const sidebarItems = [
   { name: 'Home', icon: HomeIcon, href: '/admin/dashboard' },
@@ -61,7 +61,14 @@ const sidebarVariants: Variants = {
 export default function Sidebar({ isOpen, setIsOpen }: { isOpen: boolean; setIsOpen: (value: boolean) => void }) {
   const { session } = useSession();
   const pathname = usePathname();
-  const userRole = session?.role || 'user';
+
+  // Determine user role based on email address
+  const adminEmails = [
+    '104385730@students.swinburne.edu.my',
+    '104401021@students.swinburne.edu.my',
+    '104401173@students.swinburne.edu.my'
+  ];
+  const userRole = session?.email && adminEmails.includes(session.email) ? 'admin' : 'user';
   const [activeItem, setActiveItem] = useState<string | null>(null);
   const [hoveredItem, setHoveredItem] = useState<string | null>(null);
   const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth < 768);
