@@ -1,6 +1,5 @@
 "use client"
 import React from 'react'
-import Dashboard from '../../../components/navbar/navigationBar'
 
 import { useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, Loader2, FileDown, Plus, X, Menu } from 'lucide-react';
@@ -289,7 +288,6 @@ export default function DataTable() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Dashboard />
       
       {/* Mobile Header */}
       <div className="lg:hidden bg-gradient-to-r from-red-700 to-red-500 text-white p-4">
