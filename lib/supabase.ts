@@ -1,8 +1,10 @@
 import { createClient } from '@supabase/supabase-js'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+// 1. Find these in your Supabase project settings
+const supabaseUrl = 'https://twdhyodkhzxyhtxzfqgp.supabase.co'
+const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR3ZGh5b2RraHp4eWh0eHpmcWdwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg3NzMyMjYsImV4cCI6MjA3NDM0OTIyNn0.NkYF6sbG0_pwnOpFIopRPaZF60ePMN1NHoZhOueHQS8'
 
+// 2. Create and export the client
 export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
 // Type definitions for our database (can be expanded later)
