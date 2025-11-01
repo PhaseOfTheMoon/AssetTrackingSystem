@@ -1,9 +1,8 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { motion, AnimatePresence, Variants } from 'framer-motion';
+import { motion, AnimatePresence, Variants, useDeprecatedInvertedScale } from 'framer-motion';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-// Import all required Heroicons
 import {
   CogIcon,
   MagnifyingGlassIcon,
@@ -17,7 +16,7 @@ import LogoutButton from '../LogoutButton';
 import { HomeIcon } from 'lucide-react';
 import { useSession } from '../SessionProvider';
 
-const sidebarItems = [
+const adminModules = [
   { name: 'Home', icon: HomeIcon, href: '/admin/dashboard' },
   {
     name: 'Asset Tracking',
@@ -45,10 +44,8 @@ const sidebarItems = [
   },
 ];
 
-const placeholderItems = [
-  { name: 'Main Menu', icon: HomeIcon, href: '/#' },
-  // You may add more items here
-  // { name: 'Scanning (placeho-', icon: ScanBarcodeIcon, href: '/#/#' },
+const userModules = [
+  { name: 'Main Menu', icon: HomeIcon, href: '/user' }, // ← clean link
 ];
 
 const sidebarVariants: Variants = {
@@ -62,44 +59,38 @@ export default function Sidebar({ isOpen, setIsOpen }: { isOpen: boolean; setIsO
   const { session } = useSession();
   const pathname = usePathname();
 
-  // Determine user role based on email address
   const adminEmails = [
     '104385730@students.swinburne.edu.my',
     '104401021@students.swinburne.edu.my',
-    '104401173@students.swinburne.edu.my'
+    '104401173@students.swinburne.edu.my',
   ];
   const userRole = session?.email && adminEmails.includes(session.email) ? 'admin' : 'user';
+
   const [activeItem, setActiveItem] = useState<string | null>(null);
   const [hoveredItem, setHoveredItem] = useState<string | null>(null);
   const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth < 768);
 
-  // Persist sidebar state in localStorage
   useEffect(() => {
     const savedActiveItem = localStorage.getItem('sidebarActiveItem');
-    if (savedActiveItem) {
-      setActiveItem(savedActiveItem);
-    }
+    if (savedActiveItem) setActiveItem(savedActiveItem);
   }, []);
 
   useEffect(() => {
     const handleResize = () => {
       const mobile = window.innerWidth < 768;
       setIsMobile(mobile);
-      if (mobile && !isMobile) {
-        setIsOpen(false); // Force close when entering mobile to trigger dropdown
-      } else if (!mobile && isMobile) {
-        setIsOpen(true); // Open on desktop transition
-      }
+      if (mobile && !isMobile) setIsOpen(false);
+      else if (!mobile && isMobile) setIsOpen(true);
     };
-    handleResize(); // Set initial state
+    handleResize();
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, [setIsOpen, isMobile]);
 
   const toggleDropdown = (href: string) => {
-    const newActiveItem = activeItem === href ? null : href;
-    setActiveItem(newActiveItem);
-    localStorage.setItem('sidebarActiveItem', newActiveItem || '');
+    const newActive = activeItem === href ? null : href;
+    setActiveItem(newActive);
+    localStorage.setItem('sidebarActiveItem', newActive || '');
   };
 
   const handleOutsideClick = (e: MouseEvent) => {
@@ -109,13 +100,11 @@ export default function Sidebar({ isOpen, setIsOpen }: { isOpen: boolean; setIsO
   };
 
   useEffect(() => {
-    if (isMobile && isOpen) {
-      document.addEventListener('click', handleOutsideClick);
-    }
+    if (isMobile && isOpen) document.addEventListener('click', handleOutsideClick);
     return () => document.removeEventListener('click', handleOutsideClick);
   }, [isMobile, isOpen]);
 
-  const renderGroup = (title: string, items: typeof sidebarItems) => (
+  const renderGroup = (title: string, items: typeof adminModules) => (
     <div className="relative mb-6">
       <span className="absolute -top-2 left-4 bg-white px-2 text-gray-700 text-xs font-semibold uppercase tracking-wide z-10">
         {title}
@@ -124,7 +113,8 @@ export default function Sidebar({ isOpen, setIsOpen }: { isOpen: boolean; setIsO
         <nav className="space-y-1">
           {items.map((item) => (
             <div key={item.name}>
-              {item.name === 'Home' ? (
+              {/* === NON-DROPDOWN ITEMS (Main Menu, Home) === */}
+              {item.dropdown ? null : (
                 <Link
                   href={item.href}
                   onMouseEnter={() => setHoveredItem(item.name)}
@@ -140,7 +130,10 @@ export default function Sidebar({ isOpen, setIsOpen }: { isOpen: boolean; setIsO
                   <item.icon className="h-5 w-5 mr-3 flex-shrink-0" />
                   {item.name}
                 </Link>
-              ) : (
+              )}
+
+              {/* === DROPDOWN ITEMS === */}
+              {item.dropdown && (
                 <button
                   onClick={() => toggleDropdown(item.href)}
                   onMouseEnter={() => setHoveredItem(item.name)}
@@ -155,13 +148,15 @@ export default function Sidebar({ isOpen, setIsOpen }: { isOpen: boolean; setIsO
                 >
                   <item.icon className="h-5 w-5 mr-3 flex-shrink-0" />
                   {item.name}
-                  {item.dropdown && (
-                    <ChevronDownIcon
-                      className={`h-5 w-5 ml-auto transition-transform duration-200 ${activeItem === item.href ? 'rotate-180' : ''}`}
-                    />
-                  )}
+                  <ChevronDownIcon
+                    className={`h-5 w-5 ml-auto transition-transform duration-200 ${
+                      activeItem === item.href ? 'rotate-180' : ''
+                    }`}
+                  />
                 </button>
               )}
+
+              {/* === DROPDOWN CONTENT === */}
               <AnimatePresence>
                 {item.dropdown && activeItem === item.href && (
                   <motion.div
@@ -209,33 +204,18 @@ export default function Sidebar({ isOpen, setIsOpen }: { isOpen: boolean; setIsO
           animate={isMobile ? (isOpen ? 'mobileOpen' : 'mobileClosed') : (isOpen ? 'open' : 'closed')}
           exit={isMobile ? 'mobileClosed' : 'closed'}
         >
-          {/* Main Content */}
           <div className="flex-1">
-            {/* Logo and Close Button for Mobile - Remove University text but keep layout */}
             <div className="flex justify-between items-center mb-6 border-b border-gray-200 pb-4">
-              {/* Empty span to maintain layout spacing */}
               <span className="text-xl font-bold invisible">Placeholder</span>
               {isMobile && (
                 <button onClick={() => setIsOpen(false)} className="text-red-600 hover:text-red-800">
-                  <svg
-                    className="h-6 w-6"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                    xmlns="http://www.w3.org/2000/svg"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M6 18L18 6M6 6l12 12"
-                    />
+                  <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                   </svg>
                 </button>
               )}
             </div>
 
-            {/* Search Bar for Mobile */}
             {isMobile && (
               <div className="relative mb-6">
                 <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
@@ -247,14 +227,20 @@ export default function Sidebar({ isOpen, setIsOpen }: { isOpen: boolean; setIsO
               </div>
             )}
 
-            {/* Admin Group - Only visible for admin role */}
-            {userRole === 'admin' && renderGroup('Admin', sidebarItems)}
+            {/* Desmond, 1 Nov 25 : Start of adding user role-based module rendering */}
+            {/* Admin sees both modules */}
+            {userRole === 'admin' && (
+              <>
+                {renderGroup('Admin', adminModules)}
+                {renderGroup('User', userModules)}
+              </>
+            )}
 
-            {/* User Group - Always visible */}
-            {renderGroup('User', placeholderItems)}
+            {/* Regular users see only the User module */}
+            {userRole === 'user' && renderGroup('User', userModules)}
+            {/* Desmond, 1 Nov 25 : End */}
           </div>
 
-          {/* Separator and Bottom Items */}
           <div className="border-t border-gray-200 pt-4 space-y-2">
             <Link
               href="/settings"

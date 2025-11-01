@@ -1,11 +1,15 @@
-"use client";
+// app/user/page.tsx
+'use client';
 
-import ImprovedScanUI from "@/components/improved-scan-ui";
+import WelcomeContent from '@/components/scanner/WelcomeContent';
+import { useRouter } from 'next/navigation';
 
-export default function ImprovedPage() {
+export default function UserHome() {
+  const router = useRouter();
+
   return (
-    <main className="min-h-screen flex items-center justify-center bg-gray-100">
-      <ImprovedScanUI />
-    </main>
+    <WelcomeContent
+      onNavigate={(type) => router.push(`/user/scanner?type=${type}`)}
+    />
   );
 }

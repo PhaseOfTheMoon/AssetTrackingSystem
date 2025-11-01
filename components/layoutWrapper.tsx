@@ -83,7 +83,7 @@ export default function LayoutWrapper({ children }: { children: ReactNode }) {
               : 'pt-16' // Only top padding when sidebar is closed
         }`}
       >
-        <div className="p-4">
+        <div> {/* Desmond, 1 Nov 25: This div is for the main content, can add padding here if stuff is too cramped */}
           {children}
         </div>
       </div>
