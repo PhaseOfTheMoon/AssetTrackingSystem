@@ -1,30 +1,30 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
-    // Fetch only approved staff members
-    const { data: staff, error } = await supabase
+    // Fetch all pending staff registrations
+    const { data: pendingStaff, error } = await supabase
       .from('staff')
       .select('*')
-      .eq('status', 'approved')
+      .eq('status', 'pending')
       .order('created_dt', { ascending: false })
 
     if (error) {
-      console.error('Error fetching staff:', error)
+      console.error('Error fetching pending staff:', error)
       return NextResponse.json(
-        { error: 'Failed to fetch staff list' },
+        { error: 'Failed to fetch pending registrations' },
         { status: 500 }
       )
     }
 
     return NextResponse.json({
       success: true,
-      staff: staff || []
+      staff: pendingStaff || []
     })
 
   } catch (error) {
-    console.error('List staff error:', error)
+    console.error('Get pending staff error:', error)
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
