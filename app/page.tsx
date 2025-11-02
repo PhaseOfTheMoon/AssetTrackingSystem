@@ -18,14 +18,15 @@ export default function LoginPage() {
       if (status === 'authenticated' && nextAuthSession?.user && !session && !isInitializing) {
         setIsInitializing(true);
 
+        const email = nextAuthSession.user.email;
         const microsoftUserId = nextAuthSession.user.microsoftUserId;
 
         try {
-          // Fetch staff data from database
-          const response = await fetch('/api/staff/get-by-microsoft-id', {
+          // Fetch staff data from database by email
+          const response = await fetch('/api/staff/get-by-email', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ microsoftUserId })
+            body: JSON.stringify({ email, microsoftUserId })
           });
 
           const data = await response.json();
@@ -35,10 +36,19 @@ export default function LoginPage() {
             await startSession(data.staff, microsoftUserId!);
             router.push("/admin/dashboard");
           } else {
-            // Staff not found - show error with Microsoft user ID
-            console.warn('Staff not registered in database');
-            console.log('Your Microsoft User ID:', microsoftUserId);
-            alert(`Your account is not registered. Please contact administrator.\n\nYour Microsoft User ID: ${microsoftUserId}\n\n(Check browser console for details)`);
+            // Handle different error scenarios
+            let errorMessage = '';
+
+            if (data.message === 'pending') {
+              errorMessage = 'Your registration is pending admin approval.\n\nPlease wait for confirmation before logging in.';
+            } else if (data.message === 'rejected') {
+              errorMessage = 'Your registration was rejected.\n\nPlease contact administrator for more information.';
+            } else {
+              errorMessage = `Your account is not registered.\n\nEmail: ${email}\n\nPlease register first or contact administrator.`;
+            }
+
+            console.warn('Staff login failed:', data.message || 'not found');
+            alert(errorMessage);
 
             // Log out from Microsoft to prevent infinite loop
             await signOut({ redirect: false });
@@ -130,6 +140,19 @@ export default function LoginPage() {
             <p className="text-xs text-gray-500">
               Secure authentication powered by Microsoft Azure AD
             </p>
+          </div>
+
+          {/* Registration Link */}
+          <div className="mt-6 pt-6 border-t border-gray-200">
+            <p className="text-center text-sm text-gray-600 mb-3">
+              Don't have access yet?
+            </p>
+            <a
+              href="/register"
+              className="block w-full text-center px-4 py-2 border border-red-600 text-red-600 rounded-md hover:bg-red-50 transition-colors font-medium"
+            >
+              Register for Access
+            </a>
           </div>
         </div>
       </div>

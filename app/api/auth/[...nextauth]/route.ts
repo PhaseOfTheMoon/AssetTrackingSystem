@@ -10,6 +10,7 @@ const authOptions: AuthOptions = {
       authorization: {
         params: {
           scope: "openid profile email User.Read",
+          prompt: "select_account", // Always show account selection screen
         }
       },
       checks: ["pkce", "state"],

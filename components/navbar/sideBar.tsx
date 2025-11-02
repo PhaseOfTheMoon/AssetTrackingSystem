@@ -40,7 +40,7 @@ const adminModules = [
     name: 'Staff',
     icon: UsersIcon,
     href: '/admin/staff',
-    dropdown: ['List', 'Roles', 'Attendance'],
+    dropdown: ['List', 'approvals', 'Roles', 'Attendance'],
   },
 ];
 
