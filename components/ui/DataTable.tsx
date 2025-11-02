@@ -155,14 +155,16 @@ export default function DataTable({
       <div className="px-4 sm:px-6 py-4 border-b border-gray-200">
         <div className="flex items-center justify-between">
           <h2 className="text-xl font-semibold text-gray-900">{title}</h2>
-          {showAddButton && onAdd && (
-            <button 
-              onClick={onAdd} 
-              className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-md text-sm hover:bg-red-700 transition-colors"
-            >
-              <PlusIcon className="h-4 w-4" /> {addButtonText}
-            </button>
-          )}
+          <div className="flex items-center gap-4">
+            {showAddButton && onAdd && (
+              <button 
+                onClick={onAdd} 
+                className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-md text-sm hover:bg-red-700 transition-colors"
+              >
+                <PlusIcon className="h-4 w-4" /> {addButtonText}
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -171,33 +173,33 @@ export default function DataTable({
         <div className="space-y-4">
           {/* Search Fields */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Asset ID Search */}
+            {/* Dynamic ID Search */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Search by Asset ID
+                Search by {title.replace(' Listing', '')} ID
               </label>
               <div className="flex gap-2">
                 <div className="relative flex-1">
                   <input
                     type="text"
-                    value={searchField === 'asset_id' ? localSearchTerm : ''}
+                    value={searchField === `${title.toLowerCase().split(' ')[0]}_id` ? localSearchTerm : ''}
                     onChange={e => {
-                      onSearchFieldChange?.('asset_id')
+                      onSearchFieldChange?.(`${title.toLowerCase().split(' ')[0]}_id`)
                       handleSearchChange(e.target.value)
                     }}
                     onKeyPress={handleKeyPress}
-                    placeholder="Enter Asset ID..."
+                    placeholder={`Enter ${title.replace(' Listing', '')} ID...`}
                     className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-red-500 focus:border-red-500"
                   />
                   <MagnifyingGlassIcon className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
                 </div>
               </div>
             </div>
-
-            {/* Asset Name Search */}
+            
+            {/* Dynamic Name Search */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Search by Asset Name
+                Search by {title.replace(' Listing', '')} Name
               </label>
               <div className="flex gap-2">
                 <div className="relative flex-1">
@@ -209,7 +211,7 @@ export default function DataTable({
                       handleSearchChange(e.target.value)
                     }}
                     onKeyPress={handleKeyPress}
-                    placeholder="Enter Asset Name..."
+                    placeholder={`Enter ${title.replace(' Listing', '')} Name...`}
                     className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-red-500 focus:border-red-500"
                   />
                   <MagnifyingGlassIcon className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />

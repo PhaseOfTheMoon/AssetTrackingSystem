@@ -21,19 +21,19 @@ const adminModules = [
   {
     name: 'Asset Tracking',
     icon: ComputerDesktopIcon,
-    href: '/admin/assetTracking/',
+    href: '/admin/assetTracking',
     dropdown: ['Assets', 'Categories', 'Reports'],
   },
   {
     name: 'Location',
     icon: MapPinIcon,
-    href: '/location',
-    dropdown: ['Sites', 'Rooms', 'Zones'],
+    href: '/admin/location',
+    dropdown: ['Rooms', 'Sites', 'Zones'],
   },
   {
     name: 'Department',
     icon: BuildingOfficeIcon,
-    href: '/department',
+    href: '/admin/department',
     dropdown: ['Units', 'Teams', 'Budgets'],
   },
   {

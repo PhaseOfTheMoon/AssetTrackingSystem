@@ -53,9 +53,9 @@ export default function DashboardPage() {
       // Fetch all data in parallel
       const [assetsRes, departmentsRes, staffRes, locationsRes] = await Promise.all([
         fetch('/api/assets?limit=1'),
-        fetch('/api/departments'),
+        fetch('/api/department'),
         fetch('/api/staff/list'),
-        fetch('/api/locations')
+        fetch('/api/location')
       ])
 
       const [assetsData, departmentsData, staffData, locationsData] = await Promise.all([
