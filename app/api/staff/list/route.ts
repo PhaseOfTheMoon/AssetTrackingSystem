@@ -3,10 +3,11 @@ import { supabase } from '@/lib/supabase'
 
 export async function GET(request: NextRequest) {
   try {
-    // Fetch all staff members
+    // Fetch only approved staff members
     const { data: staff, error } = await supabase
       .from('staff')
       .select('*')
+      .eq('status', 'approved')
       .order('created_dt', { ascending: false })
 
     if (error) {
