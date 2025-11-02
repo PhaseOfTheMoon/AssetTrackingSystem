@@ -160,6 +160,12 @@ types/                 # TypeScript type definitions
 | `npm start` | Start production server |
 | `npm run lint` | Run ESLint |
 
+# security 
+npm install @azure/msal-react @azure/msal-browser
+
+# Realtime chart
+npm install recharts
+
 ## Contributing
 
 This is a university project for Group 15. Please follow the existing code style and conventions.

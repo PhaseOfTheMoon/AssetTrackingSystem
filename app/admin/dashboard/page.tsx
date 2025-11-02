@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useSession } from '@/components/SessionProvider'
 import { useRouter } from 'next/navigation'
 import Breadcrumb from '@/components/ui/Breadcrumb'
+import RealtimeChart from '@/components/charts/realtimeChart'
 import {
   ComputerDesktopIcon,
   BuildingOfficeIcon,
@@ -30,6 +31,7 @@ export default function DashboardPage() {
   })
   const [loading, setLoading] = useState(true)
   const [mounted, setMounted] = useState(false)
+  const [selectedChart, setSelectedChart] = useState('assets')
 
   useEffect(() => {
     setMounted(true)
@@ -75,6 +77,44 @@ export default function DashboardPage() {
       setLoading(false)
     }
   }
+
+  // Chart configurations - using SINGULAR table names to match your database
+  const chartConfigs = [
+    {
+      id: 'assets',
+      label: 'Assets',
+      tableName: 'asset',  
+      title: 'Total Assets',
+      valueKey: 'count', 
+      labelKey: 'category',
+      chartType: 'combo' as const,
+      color: '#3b82f6',
+      icon: '',
+      dateKey: 'created_dt'
+    },
+    {
+      id: 'departments',
+      label: 'Departments',
+      tableName: 'department',  
+      title: 'Department Stats',
+      valueKey: 'total',
+      chartType: 'line' as const,
+      color: '#f59e0b',
+      icon: ''
+    },
+    {
+      id: 'locations',
+      label: 'Locations',
+      tableName: 'location', 
+      title: 'Location Analytics',
+      valueKey: 'count',
+      chartType: 'bar' as const,
+      color: '#ef4444',
+      icon: ''
+    }
+  ]
+
+  const activeChart = chartConfigs.find(c => c.id === selectedChart)
 
   const statCards = [
     {
@@ -164,6 +204,45 @@ export default function DashboardPage() {
                 </div>
               )
             })}
+          </div>
+
+          {/* Chart Section with Dropdown */}
+          <div className="w-full flex justify-center mb-6">
+            <div className="bg-white rounded-lg flex flex-col max-w-xl lg:col-span-2 min-h-[400px] p-4 border w-full">
+              {/* Dropdown Selector */}
+              <div className="mb-4 flex justify-between items-center">
+                <p className="font-bold text-xl">Analytics</p>
+                <div className="w-64 ml-4">
+                  <select
+                    value={selectedChart}
+                    onChange={(e) => setSelectedChart(e.target.value)}
+                    className="w-full px-4 py-2 bg-white border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all font-medium"
+                  >
+                    {chartConfigs.map((chart) => (
+                      <option key={chart.id} value={chart.id}>
+                        {chart.icon} {chart.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Realtime Chart */}
+              {activeChart && (
+                <RealtimeChart 
+                  config={{
+                    tableName: activeChart.tableName,
+                    title: activeChart.title,
+                    valueKey: activeChart.valueKey,
+                    labelKey: activeChart.labelKey,
+                    chartType: activeChart.chartType,
+                    color: activeChart.color,
+                    limit: 200,
+                    dateKey: activeChart.dateKey
+                  }}
+                />
+              )}
+            </div>
           </div>
 
           {/* Quick Actions */}
