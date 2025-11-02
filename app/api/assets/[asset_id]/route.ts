@@ -1,4 +1,4 @@
-// File 2: app/api/assets/[asset_id]/route.ts
+// app/api/assets/[asset_id]/route.ts
 import { supabase } from '@/lib/supabase'
 import { NextRequest, NextResponse } from 'next/server'
 
@@ -9,23 +9,32 @@ export async function PUT(
   try {
     const body = await request.json()
 
+    console.log('Updating asset:', params.asset_id, 'with data:', body)
+
+    // Prepare update object
+    const updateObject: any = {
+      updated_dt: new Date().toISOString()
+    }
+
+    // Only include fields that are provided
+    if (body.name) updateObject.name = body.name
+    if (body.model) updateObject.model = body.model
+    if (body.description !== undefined) updateObject.description = body.description
+    if (body.condition) updateObject.condition = body.condition // Keep as string
+    if (body.location_id) updateObject.location_id = body.location_id
+    if (body.department_id) updateObject.department_id = body.department_id
+    if (body.category) updateObject.category = body.category
+
     const { data, error } = await supabase
       .from('asset')
-      .update({
-        name: body.name,
-        model: body.model,
-        description: body.description,
-        condition: parseInt(body.condition) || 0,
-        location_id: body.location_id,
-        department_id: body.department_id,
-        category: body.category,
-        created_dt: new Date().toISOString(),
-        updated_dt: new Date().toISOString()
-      })
+      .update(updateObject)
       .eq('asset_id', params.asset_id)
       .select()
 
-    if (error) throw error
+    if (error) {
+      console.error('Supabase update error:', error)
+      throw error
+    }
 
     if (!data || data.length === 0) {
       return NextResponse.json(
@@ -57,7 +66,10 @@ export async function DELETE(
       .delete()
       .eq('asset_id', params.asset_id)
 
-    if (error) throw error
+    if (error) {
+      console.error('Supabase delete error:', error)
+      throw error
+    }
 
     return NextResponse.json({ success: true, message: 'Asset deleted successfully' })
   } catch (error) {

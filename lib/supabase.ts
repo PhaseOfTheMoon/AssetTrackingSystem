@@ -35,13 +35,13 @@ export type Database = {
         }
       }
       // Asset table
-      assets: {
+      asset: {
         Row: {
           asset_id: string
           name: string
           model: string
           description: string
-          condition: number
+          condition: string
           location_id: string
           department_id: string
           category: string
@@ -53,7 +53,7 @@ export type Database = {
           name: string
           model: string
           description: string
-          condition: number
+          condition: string
           location_id: string
           department_id: string
           category: string
@@ -65,7 +65,7 @@ export type Database = {
           name?: string
           model?: string
           description?: string
-          condition?: number
+          condition?: string
           location_id?: string
           department_id?: string
           category?: string

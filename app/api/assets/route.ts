@@ -1,4 +1,4 @@
-// File 1: app/api/assets/route.ts
+// app/api/assets/route.ts
 import { supabase } from '@/lib/supabase'
 import { NextRequest, NextResponse } from 'next/server'
 
@@ -42,9 +42,10 @@ export async function GET(request: NextRequest) {
 
     const { data, error, count } = await query
 
-    if (error) throw error
-
-    const totalPages = Math.ceil((count || 0) / limit)
+    if (error) {
+      console.error('Supabase query error:', error)
+      throw error
+    }
 
     return NextResponse.json({
       data: data || [],
@@ -82,7 +83,7 @@ export async function POST(request: NextRequest) {
         name: body.name,
         model: body.model,
         description: body.description || '',
-        condition: body.condition || 'Good',
+        condition: body.condition || 'In-use',
         location_id: body.location_id,
         department_id: body.department_id,
         category: body.category,
@@ -91,7 +92,10 @@ export async function POST(request: NextRequest) {
       }])
       .select()
 
-    if (error) throw error
+    if (error) {
+      console.error('Supabase insert error:', error)
+      throw error
+    }
 
     return NextResponse.json(data[0], { status: 201 })
   } catch (error) {
@@ -119,16 +123,32 @@ export async function PUT(request: NextRequest) {
       )
     }
 
+    console.log('Updating asset:', asset_id, 'with data:', updateData)
+
+    // Prepare update object with only valid fields
+    const updateObject: any = {
+      updated_dt: new Date().toISOString()
+    }
+
+    // Only include fields that are provided and valid
+    if (updateData.name) updateObject.name = updateData.name
+    if (updateData.model) updateObject.model = updateData.model
+    if (updateData.description !== undefined) updateObject.description = updateData.description
+    if (updateData.condition) updateObject.condition = updateData.condition
+    if (updateData.location_id) updateObject.location_id = updateData.location_id
+    if (updateData.department_id) updateObject.department_id = updateData.department_id
+    if (updateData.category) updateObject.category = updateData.category
+
     const { data, error } = await supabase
       .from('asset')
-      .update({
-        ...updateData,
-        updated_dt: new Date().toISOString()
-      })
+      .update(updateObject)
       .eq('asset_id', asset_id)
       .select()
 
-    if (error) throw error
+    if (error) {
+      console.error('Supabase update error:', error)
+      throw error
+    }
 
     if (!data || data.length === 0) {
       return NextResponse.json(
@@ -168,7 +188,10 @@ export async function DELETE(request: NextRequest) {
       .delete()
       .eq('asset_id', asset_id)
 
-    if (error) throw error
+    if (error) {
+      console.error('Supabase delete error:', error)
+      throw error
+    }
 
     return NextResponse.json({ success: true, message: 'Asset deleted successfully' })
   } catch (error) {

@@ -125,7 +125,7 @@ export default function AssetsPage() {
 
   const handleSearch = () => { setCurrentPage(1); loadAssets() }
   const handleReset = () => {
-    setSearchTerm(''); setConditionFilter(''); setCurrentPage(1)
+    setSearchTerm(''); setSearchField('name'); setConditionFilter(''); setCurrentPage(1)
     setSortBy('created_dt'); setSortOrder('desc')
   }
   const handleSort = (col: string) => {
@@ -153,7 +153,7 @@ export default function AssetsPage() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(formData)
     })
-    if (res.ok) { alert('Saved'); setShowModal(false); loadAssets() } else alert('Failed')
+    if (res.ok) { alert('Asset updated successfully!'); setShowModal(false); loadAssets() } else alert('Asset update failed!')
   }
 
   const handleExportPDF = async () => {
@@ -378,7 +378,12 @@ export default function AssetsPage() {
   }
 
   const columns = [
-    { key: 'asset_id', label: 'Asset ID', sortable: true, render: (v: string) => <span className="font-medium text-blue-600">{v}</span> },
+    { 
+      key: 'asset_id', 
+      label: 'Asset ID', 
+      sortable: true, 
+      render: (v: string) => <span className="font-medium text-gray-900">{v}</span> 
+    },
     { key: 'name', label: 'Asset Name', sortable: true },
     { key: 'model', label: 'Model', sortable: false },
     { key: 'category', label: 'Category', sortable: false },
@@ -398,75 +403,97 @@ export default function AssetsPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <main className="p-6">
+        <div className="max-w-7xl mx-auto">
+          {/* Breadcrumb and Header */}
           <Breadcrumb />
-          <h1 className="text-3xl font-bold text-gray-900 mt-4">Assets</h1>
-          <p className="text-sm text-gray-600">Manage and track your organisation's assets</p>
-        </div>
-      </div>
+          
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold text-gray-900">Assets</h1>
+            <p className="text-gray-600 mt-1">Manage and track your organization's assets</p>
+          </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <DataTable
-          title="Asset Listing"
-          columns={columns}
-          data={assets}
-          loading={loading}
-          searchTerm={searchTerm}
-          onSearchChange={setSearchTerm}
-          onSearch={handleSearch}
-          onReset={handleReset}
-          onExportPDF={handleExportPDF}
-          onExportCSV={handleExportCSV}
-          showConditionFilter={true}
-          conditionFilter={conditionFilter}
-          onConditionFilterChange={setConditionFilter}
-          currentPage={currentPage}
-          totalPages={totalPages}
-          totalItems={totalItems}
-          recordsPerPage={recordsPerPage}
-          onPageChange={setCurrentPage}
-          onRecordsPerPageChange={setRecordsPerPage}
-          sortBy={sortBy}
-          sortOrder={sortOrder}
-          onSort={handleSort}
-          actions={{ onEdit: handleEdit, onDelete: handleDelete }}
-        />
-      </div>
+          <DataTable
+            title="Asset Listing"
+            columns={columns}
+            data={assets}
+            loading={loading}
+            searchTerm={searchTerm}
+            searchField={searchField}
+            onSearchFieldChange={setSearchField}
+            onSearchChange={setSearchTerm}
+            onSearch={handleSearch}
+            onReset={handleReset}
+            onExportPDF={handleExportPDF}
+            onExportCSV={handleExportCSV}
+            showConditionFilter={true}
+            conditionFilter={conditionFilter}
+            onConditionFilterChange={setConditionFilter}
+            currentPage={currentPage}
+            totalPages={totalPages}
+            totalItems={totalItems}
+            recordsPerPage={recordsPerPage}
+            onPageChange={setCurrentPage}
+            onRecordsPerPageChange={setRecordsPerPage}
+            sortBy={sortBy}
+            sortOrder={sortOrder}
+            onSort={handleSort}
+            actions={{ onEdit: handleEdit, onDelete: handleDelete }}
+          />
+        </div>
+      </main>
 
       {showModal && (
         <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
             <h3 className="text-lg font-semibold mb-4">Edit Asset</h3>
             <div className="space-y-4">
-              <div><label className="block text-sm font-medium">Asset ID</label><input value={formData.asset_id} disabled className="mt-1 block w-full px-3 py-2 border rounded-md bg-gray-100" /></div>
-              <div><label className="block text-sm font-medium">Name *</label><input value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} className="mt-1 block w-full px-3 py-2 border rounded-md" /></div>
-              <div><label className="block text-sm font-medium">Model *</label><input value={formData.model} onChange={e => setFormData({ ...formData, model: e.target.value })} className="mt-1 block w-full px-3 py-2 border rounded-md" /></div>
-              <div><label className="block text-sm font-medium">Description</label><textarea value={formData.description} onChange={e => setFormData({ ...formData, description: e.target.value })} rows={3} className="mt-1 block w-full px-3 py-2 border rounded-md" /></div>
-              <div><label className="block text-sm font-medium">Category *</label><input value={formData.category} onChange={e => setFormData({ ...formData, category: e.target.value })} className="mt-1 block w-full px-3 py-2 border rounded-md" /></div>
-              <div><label className="block text-sm font-medium">Condition</label>
-                <select value={formData.condition} onChange={e => setFormData({ ...formData, condition: e.target.value })} className="mt-1 block w-full px-3 py-2 border rounded-md">
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Asset ID</label>
+                <input value={formData.asset_id} disabled className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Name *</label>
+                <input value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-red-500 focus:border-red-500" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Model *</label>
+                <input value={formData.model} onChange={e => setFormData({ ...formData, model: e.target.value })} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-red-500 focus:border-red-500" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Description</label>
+                <textarea value={formData.description} onChange={e => setFormData({ ...formData, description: e.target.value })} rows={3} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-red-500 focus:border-red-500" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Category *</label>
+                <input value={formData.category} onChange={e => setFormData({ ...formData, category: e.target.value })} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-red-500 focus:border-red-500" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Condition</label>
+                <select value={formData.condition} onChange={e => setFormData({ ...formData, condition: e.target.value })} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-red-500 focus:border-red-500">
                   <option value="In-use">In-use</option>
                   <option value="In-store">In-store</option>
                   <option value="Spoiled">Spoiled</option>
                 </select>
               </div>
-              <div><label className="block text-sm font-medium">Location *</label>
-                <select value={formData.location_id} onChange={e => setFormData({ ...formData, location_id: e.target.value })} className="mt-1 block w-full px-3 py-2 border rounded-md">
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Location *</label>
+                <select value={formData.location_id} onChange={e => setFormData({ ...formData, location_id: e.target.value })} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-red-500 focus:border-red-500">
                   <option value="">Select</option>
                   {locations.map(l => <option key={l.location_id} value={l.location_id}>{l.name}</option>)}
                 </select>
               </div>
-              <div><label className="block text-sm font-medium">Department *</label>
-                <select value={formData.department_id} onChange={e => setFormData({ ...formData, department_id: e.target.value })} className="mt-1 block w-full px-3 py-2 border rounded-md">
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Department *</label>
+                <select value={formData.department_id} onChange={e => setFormData({ ...formData, department_id: e.target.value })} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-red-500 focus:border-red-500">
                   <option value="">Select</option>
                   {departments.map(d => <option key={d.department_id} value={d.department_id}>{d.name}</option>)}
                 </select>
               </div>
             </div>
             <div className="flex justify-end gap-3 mt-6">
-              <button onClick={() => setShowModal(false)} className="px-4 py-2 border rounded-md">Cancel</button>
-              <button onClick={handleSave} className="px-4 py-2 bg-red-600 text-white rounded-md">Save</button>
+              <button onClick={() => setShowModal(false)} className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50">Cancel</button>
+              <button onClick={handleSave} className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700">Save</button>
             </div>
           </div>
         </div>
