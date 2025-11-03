@@ -5,12 +5,14 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useSession } from "@/components/SessionProvider";
 import { useEffect, useState } from "react";
+import { useToast } from '@/components/ui/Toast';
 
 export default function LoginPage() {
   const { data: nextAuthSession, status } = useNextAuthSession();
   const router = useRouter();
   const { session, startSession } = useSession();
   const [isInitializing, setIsInitializing] = useState(false);
+  const { showToast } = useToast();
 
   // Initialize session when user logs in with Microsoft
   useEffect(() => {
@@ -34,59 +36,27 @@ export default function LoginPage() {
           if (data.success && data.staff) {
             // Create session with staff data
             await startSession(data.staff, microsoftUserId!);
+            showToast('Login successfully!', 'success');
             router.push("/admin/dashboard");
           } else {
             // Handle different error scenarios
-            let errorMessage = '';
-
-            if (data.message === 'pending') {
-              errorMessage = 'Your registration is pending admin approval.\n\nPlease wait for confirmation before logging in.';
-            } else if (data.message === 'rejected') {
-              errorMessage = 'Your registration was rejected.\n\nPlease contact administrator for more information.';
-            } else {
-              errorMessage = `Your account is not registered.\n\nEmail: ${email}\n\nPlease register first or contact administrator.`;
-            }
-
-            console.warn('Staff login failed:', data.message || 'not found');
-            alert(errorMessage);
-
-            // Log out from Microsoft to prevent infinite loop
-            await signOut({ redirect: false });
-
-            setIsInitializing(false);
+            showToast(data.error || 'Login failed', 'error');
+            await signOut({ callbackUrl: '/' });
           }
         } catch (error) {
-          console.error('Error initializing session:', error);
+          console.error('Error:', error);
+          showToast('An error occurred during login', 'error');
+          await signOut({ callbackUrl: '/' });
+        } finally {
           setIsInitializing(false);
         }
       }
-      // Note: Redirect for existing session is handled in the render logic below
     };
 
     initializeSession();
-  }, [status, nextAuthSession, session, startSession, router, isInitializing]);
+  }, [status, nextAuthSession, session, isInitializing]);
 
-  // Show loading if checking authentication status
-  if (status === 'loading') {
-    return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-gray-600">Loading...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Show loading if authenticated but initializing session
-  if (status === 'authenticated' && isInitializing) {
-    return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-gray-600">Initializing session...</p>
-        </div>
-      </div>
-    );
-  }
+  
 
   // Redirect to dashboard if already authenticated with session
   if (status === 'authenticated' && session && !isInitializing) {

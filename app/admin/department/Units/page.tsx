@@ -21,7 +21,13 @@ const config: DynamicPageConfig = {
     { key: 'name', label: 'Name', sortable: true },
     { key: 'block', label: 'Block', sortable: true },
     { key: 'level', label: 'Level', sortable: true },
-    { key: 'created_dt', label: 'Created Date', sortable: true }
+    { key: 'created_dt', label: 'Created Date', sortable: true, 
+      render: (value: string) => new Date(value).toLocaleDateString('en-GB', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric'
+      })
+    }
   ],
   formFields: [
     { key: 'department_id', label: 'Department ID', type: 'text', required: true },

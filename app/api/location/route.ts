@@ -50,3 +50,77 @@ export async function GET(request: NextRequest) {
   }
 }
 
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json()
+    const { department_id, ...locationData } = body  // Remove department_id if present
+
+    if (!locationData.name) {
+      return NextResponse.json(
+        { error: 'Location name is required' },
+        { status: 400 }
+      )
+    }
+
+    const { data, error } = await supabase
+      .from('location')
+      .insert([{
+        ...locationData,
+        created_dt: new Date().toISOString(),
+        updated_dt: new Date().toISOString()
+      }])
+      .select()
+
+    if (error) throw error
+
+    return NextResponse.json({
+      data: data[0],
+      success: true
+    })
+  } catch (error) {
+    console.error('POST /api/location error:', error)
+    return NextResponse.json(
+      { 
+        error: error instanceof Error ? error.message : 'Failed to create location',
+        success: false
+      },
+      { status: 500 }
+    )
+  }
+}
+
+export async function DELETE(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url)
+    const id = searchParams.get('id')
+
+    if (!id) {
+      return NextResponse.json(
+        { error: 'Location ID is required' },
+        { status: 400 }
+      )
+    }
+
+    const { error } = await supabase
+      .from('location')
+      .delete()
+      .eq('location_id', id)
+
+    if (error) throw error
+
+    return NextResponse.json({
+      success: true,
+      message: 'Location deleted successfully'
+    })
+  } catch (error) {
+    console.error('DELETE /api/location error:', error)
+    return NextResponse.json(
+      { 
+        error: error instanceof Error ? error.message : 'Failed to delete location',
+        success: false
+      },
+      { status: 500 }
+    )
+  }
+}
+

@@ -75,12 +75,19 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
 
-    if (!body.asset_id || !body.name || !body.model || !body.category || !body.location_id || !body.department_id) {
+    if (!body.asset_id || !body.name || !body.model || !body.category) {
       return NextResponse.json(
-        { error: 'Missing required fields: asset_id, name, model, category, location_id, department_id' },
+        { error: 'Missing required fields: asset_id, name, model, category' },
         { status: 400 }
       )
     }
+
+    // if (!body.asset_id || !body.name || !body.model || !body.category || !body.location_id || !body.department_id) {
+    //   return NextResponse.json(
+    //     { error: 'Missing required fields: asset_id, name, model, category, location_id, department_id' },
+    //     { status: 400 }
+    //   )
+    // }
 
     const { data, error } = await supabase
       .from('asset')

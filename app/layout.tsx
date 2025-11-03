@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import "./styles/globals.css";
 import { NextAuthProvider } from "@/components/auth/NextAuthProvider";
 import { SessionProvider } from "@/components/SessionProvider";
+import { ToastProvider } from "@/components/ui/Toast";
 import LayoutWrapper from "@/components/layoutWrapper";
 
 export const metadata: Metadata = {
@@ -23,9 +24,11 @@ export default function RootLayout({
       <body className="antialiased bg-white text-black">
         <NextAuthProvider>
           <SessionProvider>
-            <LayoutWrapper>
-              {children}
-            </LayoutWrapper>
+            <ToastProvider>
+              <LayoutWrapper>
+                {children}
+              </LayoutWrapper>
+            </ToastProvider>
           </SessionProvider>
         </NextAuthProvider>
       </body>

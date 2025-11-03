@@ -80,7 +80,7 @@ export default function DynamicEdit({ config, recordId }: DynamicEditProps) {
     const selectFields = config.formFields.filter(field => 
       field.type === 'select' && !field.options && field.key.endsWith('_id')
     )
-
+  
     for (const field of selectFields) {
       try {
         let endpoint = ''
@@ -88,14 +88,18 @@ export default function DynamicEdit({ config, recordId }: DynamicEditProps) {
         else if (field.key === 'department_id') endpoint = '/api/department'
         
         if (endpoint) {
-          const response = await fetch(endpoint)
+          const response = await fetch(`${endpoint}?page=1&limit=1000`)
           const data = await response.json()
-          if (data.success) {
-            setRelatedData(prev => ({
-              ...prev,
-              [field.key]: data.data
-            }))
-          }
+          
+          const items = data.data || []
+          const formattedItems = items.map((item: any) => ({
+            value: item.location_id || item.department_id,
+            label: item.name
+          }))
+          setRelatedData(prev => ({
+            ...prev,
+            [field.key]: formattedItems
+          }))
         }
       } catch (error) {
         console.error(`Error loading ${field.key} data:`, error)
@@ -137,20 +141,18 @@ export default function DynamicEdit({ config, recordId }: DynamicEditProps) {
   const renderField = (field: FormFieldConfig) => {
     const value = formData[field.key] || ''
     const isIdField = field.key === config.primaryKey
-    const isDisabled = field.disabled || isIdField // Disable ID fields in edit mode
-
+    const isDisabled = field.disabled || isIdField
+  
     if (field.type === 'select') {
       let options = field.options || []
-      
+  
       if (field.key.endsWith('_id') && relatedData[field.key]) {
-        const keyField = field.key === 'location_id' ? 'location_id' : 
-                        field.key === 'department_id' ? 'department_id' : 'id'
         options = relatedData[field.key].map(item => ({
-          value: item[keyField],
+          value: item.location_id || item.department_id,
           label: item.name
         }))
       }
-
+  
       return (
         <select
           value={value}
@@ -223,62 +225,50 @@ export default function DynamicEdit({ config, recordId }: DynamicEditProps) {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="max-w-4xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
-        <Breadcrumb customItems={breadcrumbItems} />
-        
-        <div className="mt-6">
-          <div className="bg-white shadow rounded-lg">
-            <div className="px-6 py-4 border-b border-gray-200">
-              <div className="flex items-center justify-between">
-                <h1 className="text-2xl font-semibold text-gray-900">
-                  Edit {config.entityDisplayNameSingular}
-                </h1>
-                <button
-                  onClick={() => router.push(config.backUrl)}
-                  className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
-                >
-                  <ArrowLeftIcon className="h-4 w-4 mr-2" />
-                  Back
-                </button>
-              </div>
-            </div>
+      <main className="p-6">
+        <div className="max-w-4xl mx-auto">
+          <Breadcrumb />
+          
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold text-gray-900">Edit {config.entityDisplayNameSingular}</h1>
+            <p className="text-gray-600 mt-1">Update {config.entityDisplayNameSingular.toLowerCase()} details</p>
+          </div>
 
+          <div className="bg-white shadow-sm rounded-lg border border-gray-200">
             <form onSubmit={handleSubmit} className="p-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {config.formFields.map(field => (
-                  <div key={field.key} className={field.type === 'textarea' ? 'md:col-span-2' : ''}>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+              {/* Form fields */}
+              <div className="space-y-6">
+                {config.formFields.map((field) => (
+                  <div key={field.key}>
+                    <label htmlFor={field.key} className="block text-sm font-medium text-gray-700">
                       {field.label}
-                      {field.required && <span className="text-red-500 ml-1">*</span>}
-                      {field.key === config.primaryKey && (
-                        <span className="text-gray-500 text-xs ml-2">(Cannot be modified)</span>
-                      )}
                     </label>
-                    {renderField(field)}
+                    <div className="mt-1">
+                      {renderField(field)}
+                    </div>
                   </div>
                 ))}
               </div>
-
               <div className="mt-8 flex justify-end space-x-3">
                 <button
-                  type="button"
-                  onClick={() => router.push(config.backUrl)}
-                  className="px-6 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
-                >
-                  Cancel
+                    type="button"
+                    onClick={() => router.push(config.backUrl)}
+                    className="px-6 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                  >
+                    Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={loading}
                   className="px-6 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {loading ? 'Updating...' : `Update ${config.entityDisplayNameSingular}`}
+                  {loading ? 'Saving...' : `Save ${config.entityDisplayNameSingular}`}
                 </button>
               </div>
             </form>
           </div>
         </div>
-      </div>
+      </main>
     </div>
   )
 }

@@ -48,24 +48,39 @@ export async function GET(request: NextRequest) {
     )
   }
 }
-export async function POST() {
+export async function POST(request: NextRequest) {
   try {
+    const body = await request.json()
+    const { location_id, ...departmentData } = body  // Remove location_id if present
+
+    if (!departmentData.name) {
+      return NextResponse.json(
+        { error: 'Department name is required' },
+        { status: 400 }
+      )
+    }
+
     const { data, error } = await supabase
       .from('department')
-      .select('*')
-      .order('department_id', { ascending: true })
+      .insert([{
+        ...departmentData,
+        created_dt: new Date().toISOString(),
+        updated_dt: new Date().toISOString()
+      }])
+      .select()
 
     if (error) throw error
 
     return NextResponse.json({
-      data: data || []
+      success: true,
+      data: data[0]
     })
   } catch (error) {
-    console.error('GET /api/departments error:', error)
+    console.error('POST /api/department error:', error)
     return NextResponse.json(
       { 
-        error: error instanceof Error ? error.message : 'Failed to fetch departments',
-        details: error
+        error: error instanceof Error ? error.message : 'Failed to create department',
+        success: false
       },
       { status: 500 }
     )
@@ -94,24 +109,35 @@ export async function PUT() {
     )
   }
 }
-export async function DELETE() {
+export async function DELETE(request: NextRequest) {
   try {
-    const { data, error } = await supabase
+    const { searchParams } = new URL(request.url)
+    const id = searchParams.get('id')
+
+    if (!id) {
+      return NextResponse.json(
+        { error: 'Department ID is required' },
+        { status: 400 }
+      )
+    }
+
+    const { error } = await supabase
       .from('department')
-      .select('*')
-      .order('department_id', { ascending: true })
+      .delete()
+      .eq('department_id', id)
 
     if (error) throw error
 
     return NextResponse.json({
-      data: data || []
+      success: true,
+      message: 'Department deleted successfully'
     })
   } catch (error) {
-    console.error('GET /api/departments error:', error)
+    console.error('DELETE /api/department error:', error)
     return NextResponse.json(
       { 
-        error: error instanceof Error ? error.message : 'Failed to fetch departments',
-        details: error
+        error: error instanceof Error ? error.message : 'Failed to delete department',
+        success: false
       },
       { status: 500 }
     )
