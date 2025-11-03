@@ -9,10 +9,10 @@ export default function LayoutWrapper({ children }: { children: ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
   const [mounted, setMounted] = useState(false)
-  const [desktopSidebarState, setDesktopSidebarState] = useState(true) // Remember desktop state
+  const [desktopSidebarState, setDesktopSidebarState] = useState(true)
   
   // Pages where navbar/sidebar should be hidden
-  const authPages = ['/', '/session/start', '/session/end']
+  const authPages = ['/', '/session/start', '/session/end', '/register']
   const isAuthPage = authPages.includes(pathname)
 
   // Initialize component
