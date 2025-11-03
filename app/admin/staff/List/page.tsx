@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useSession } from '@/components/SessionProvider'
+import Breadcrumb from '@/components/ui/Breadcrumb'
 
 import {
   PencilIcon,
@@ -23,6 +24,11 @@ interface Staff {
 export default function AddStaffPage() {
   const { session, isLoading: sessionLoading } = useSession()
   const router = useRouter()
+  const breadcrumbItems = [
+    { label: 'Home', href: '/admin/dashboard', isClickable: true },
+    { label: 'Staff', href: '/admin/staff/List', isClickable: true },
+    { label: 'List', href: '', isClickable: false }
+  ]
 
   // Form state
   const [formData, setFormData] = useState({
@@ -164,6 +170,7 @@ export default function AddStaffPage() {
     <div className="flex min-h-screen bg-gray-50 text-gray-900 font-sans antialiased">
        <main className="p-6 flex-grow ml-auto w-[81%]">
         <div className="max-w-7xl mx-auto">
+          <Breadcrumb customItems={breadcrumbItems} />
           <div className="mb-6">
             <h1 className="text-3xl font-bold text-gray-900">Staff Management</h1>
             <p className="text-gray-600 mt-2">Add new staff members or edit existing ones</p>

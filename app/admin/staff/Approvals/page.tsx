@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useSession } from '@/components/SessionProvider'
+import Breadcrumb from '@/components/ui/Breadcrumb'
 import {
   CheckCircleIcon,
   XCircleIcon,
@@ -29,6 +30,11 @@ export default function ApprovalsPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [processingId, setProcessingId] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<'pending' | 'approved' | 'rejected'>('pending')
+  const breadcrumbItems = [
+    { label: 'Home', href: '/admin/dashboard', isClickable: true },
+    { label: 'Staff', href: '/admin/staff/List', isClickable: true },
+    { label: 'Approvals', href: '', isClickable: false }
+  ]
 
   useEffect(() => {
     if (session) {
@@ -152,6 +158,8 @@ export default function ApprovalsPage() {
     <div className="flex min-h-screen bg-gray-50 text-gray-900 font-sans antialiased">
       <main className="p-6 flex-grow ml-auto w-[81%]">
         <div className="max-w-7xl mx-auto">
+          {/* Breadcrumb */}
+            <Breadcrumb customItems={breadcrumbItems} />
           {/* Header */}
           <div className="mb-6">
             <h1 className="text-3xl font-bold text-gray-900">Staff Registration Approvals</h1>

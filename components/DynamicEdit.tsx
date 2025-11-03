@@ -180,7 +180,14 @@ export default function DynamicEdit({ config, recordId }: DynamicEditProps) {
   }
 
   const handleInputChange = (key: string, value: any) => {
-    setFormData((prev: { [key: string]: any }) => ({ ...prev, [key]: value }))
+    setFormData((prev: { [key: string]: any }) => {
+      const newData = { ...prev, [key]: value }
+      // Ensure condition is set when empty or using default option
+      if (key === 'condition' && (!value || value === '')) {
+        newData.condition = 'In-use'
+      }
+      return newData
+    })
   }
 
   const handleSubmit = async (e: React.FormEvent) => {

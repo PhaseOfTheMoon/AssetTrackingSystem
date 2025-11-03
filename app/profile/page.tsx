@@ -3,6 +3,7 @@
 import { useSession } from '@/components/SessionProvider'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Breadcrumb from '@/components/ui/Breadcrumb'
 
 export default function ProfilePage() {
   const router = useRouter()
@@ -50,12 +51,18 @@ export default function ProfilePage() {
   // Show max 3 assets, with "View All" if more than 3
   const displayAssets = assignedAssets.slice(0, 3)
   const hasMoreAssets = assignedAssets.length > 3
+  const breadcrumbItems = [
+    { label: 'Home', href: '/admin/dashboard', isClickable: true },
+    { label: 'Profile', href: '/profile', isClickable: true }
+  ]
 
   return (
-    <div className="min-h-screen bg-gray-50 text-gray-900 font-sans antialiased">
-      {/* Profile Content */}
+    <div className="min-h-screen bg-gray-50 text-gray-900 antialiased">
       <main className="p-6">
-        <div className="max-w-4xl mx-auto">
+        <div className="max-w-6xl mx-auto">
+          {/* Add Breadcrumb component */}
+          <Breadcrumb customItems={breadcrumbItems} />
+          
           {/* Profile Card */}
           <div className="bg-white rounded-lg shadow-lg p-6 md:p-8">
             {/* Header */}
