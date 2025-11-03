@@ -19,17 +19,15 @@ const config: DynamicPageConfig = {
   columns: [
     { key: 'department_id', label: 'Department ID', sortable: true },
     { key: 'name', label: 'Name', sortable: true },
-    { key: 'description', label: 'Description', sortable: true },
-    { key: 'status', label: 'Status', sortable: true }
+    { key: 'block', label: 'Block', sortable: true },
+    { key: 'level', label: 'Level', sortable: true },
+    { key: 'created_dt', label: 'Created Date', sortable: true }
   ],
   formFields: [
     { key: 'department_id', label: 'Department ID', type: 'text', required: true },
     { key: 'name', label: 'Name', type: 'text', required: true },
-    { key: 'description', label: 'Description', type: 'textarea' },
-    { key: 'status', label: 'Status', type: 'select', options: [
-      { value: 'active', label: 'Active' },
-      { value: 'inactive', label: 'Inactive' }
-    ]}
+    { key: 'block', label: 'Block', type: 'text' },
+    { key: 'level', label: 'Level', type: 'number' }
   ]
 }
 
