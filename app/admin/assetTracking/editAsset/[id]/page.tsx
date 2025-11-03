@@ -17,7 +17,7 @@ const editAssetConfig = {
       label: 'Asset ID', 
       type: 'text' as const, 
       required: true,
-      disabled: true // ID cannot be edited
+      disabled: true
     },
     { key: 'name', label: 'Name', type: 'text' as const, required: true },
     { key: 'model', label: 'Model', type: 'text' as const, required: true },
@@ -33,8 +33,8 @@ const editAssetConfig = {
         { value: 'Spoiled', label: 'Spoiled' }
       ]
     },
-    { key: 'location_id', label: 'Location', type: 'select' as const, required: true },
-    { key: 'department_id', label: 'Department', type: 'select' as const, required: true }
+    { key: 'location_id', label: 'Location', type: 'select' as const }, // Made optional by removing required
+    { key: 'department_id', label: 'Department', type: 'select' as const } // Made optional by removing required
   ]
 }
 

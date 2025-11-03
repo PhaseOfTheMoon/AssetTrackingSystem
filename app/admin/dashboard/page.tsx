@@ -228,14 +228,14 @@ export default function DashboardPage() {
                 <p className="text-sm text-gray-600 mt-1">Manage and track all assets</p>
               </button>
               <button
-                onClick={() => router.push('/admin/staff/addStaff')}
+                onClick={() => router.push('/admin/staff/List')}
                 className="p-4 text-left border border-gray-200 rounded-lg hover:border-red-300 hover:bg-red-50 transition-colors"
               >
                 <h3 className="font-medium text-gray-900">Manage Staff</h3>
                 <p className="text-sm text-gray-600 mt-1">Add or update staff members</p>
               </button>
               <button
-                onClick={() => router.push('/admin/assetManage/departments')}
+                onClick={() => router.push('/admin/department/Units')}
                 className="p-4 text-left border border-gray-200 rounded-lg hover:border-red-300 hover:bg-red-50 transition-colors"
               >
                 <h3 className="font-medium text-gray-900">Departments</h3>
