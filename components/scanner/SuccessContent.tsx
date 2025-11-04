@@ -28,7 +28,7 @@ export default function SuccessContent({ scannedCount, scanType }: { scannedCoun
             </div>
             <div className="text-sm text-green-700 space-y-2 mt-4">
               <p>Total Items: <span className="font-bold">{scannedCount}</span></p>
-              <p>Status: <span className="font-bold">Confirmed</span></p>
+              <p>Condition: <span className="font-bold">Confirmed</span></p>
               <p>Date: <span className="font-bold">{new Date().toLocaleDateString()}</span></p>
               <p>Time: <span className="font-bold">{new Date().toLocaleTimeString()}</span></p>
             </div>

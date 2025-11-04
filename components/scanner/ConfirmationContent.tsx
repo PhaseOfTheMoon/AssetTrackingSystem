@@ -19,7 +19,7 @@ type Asset = {
   description: string;
   location_id: string;
   department_id: string;
-  status: string;
+  condition: string;
 };
 type Location = { location_id: string; name: string; };
 type Department = { department_id: string; name: string; };
@@ -36,14 +36,14 @@ export default function ConfirmationContent({
   onBack: () => void;
   // --- MODIFIED: onSubmit now passes more data ---
   onSubmit: (data: {
-    status: string,
+    condition: string,
     location_id: string | null,
     department_id: string | null
   }) => Promise<void>; 
   onCreate: (data: { 
     name: string, 
     description: string, 
-    status: string,
+    condition: string,
     location_id: string | null,
     department_id: string | null 
   }) => Promise<void>; 
@@ -54,7 +54,7 @@ export default function ConfirmationContent({
   // Form State
   const [newName, setNewName] = useState('');
   const [newDescription, setNewDescription] = useState('');
-  const [status, setStatus] = useState("in use");
+  const [condition, setcondition] = useState("in use");
   
   // Dropdown List State
   const [locations, setLocations] = useState<Location[]>([]);
@@ -66,7 +66,7 @@ export default function ConfirmationContent({
   
   const [error, setError] = useState<string | null>(null);
 
-  const statusOptions = [
+  const conditionOptions = [
     { value: "in use", label: "In-use" },
     { value: "spoiled", label: "Spoiled" },
     { value: "in store", label: "In-store" },
@@ -113,14 +113,14 @@ export default function ConfirmationContent({
 
         if (error && error.code === 'PGRST116') {
           setMode('registering'); 
-          setStatus('in use'); 
+          setcondition('in use'); 
         } 
         else if (error) {
           throw error;
         }
         else if (data) {
           setAssetDetails(data as Asset);
-          setStatus(data.status || "in use");
+          setcondition(data.condition || "in use");
           // --- NEW: Pre-populate dropdowns for editing ---
           setSelectedLocation(data.location_id || '');
           setSelectedDepartment(data.department_id || '');
@@ -143,7 +143,7 @@ export default function ConfirmationContent({
     if (mode === 'editing') {
       // --- MODIFIED: Pass all edit data back ---
       onSubmit({
-        status,
+        condition,
         location_id: selectedLocation || null,
         department_id: selectedDepartment || null
       });
@@ -155,7 +155,7 @@ export default function ConfirmationContent({
       onCreate({ 
         name: newName, 
         description: newDescription, 
-        status,
+        condition,
         location_id: selectedLocation || null, 
         department_id: selectedDepartment || null 
       });
@@ -204,29 +204,29 @@ export default function ConfirmationContent({
     </div>
   );
 
-  // Helper to render the status selector (unchanged)
-  const renderStatusSelector = () => (
+  // Helper to render the condition selector (unchanged)
+  const renderconditionSelector = () => (
     // ... (This function is unchanged)
     <div className="space-y-4">
       <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">
-        {mode === 'editing' ? 'Update Status' : 'Set Initial Condition'}
+        {mode === 'editing' ? 'Update condition' : 'Set Initial Condition'}
       </h3>
       <div className="flex flex-col sm:flex-row gap-4">
-        {statusOptions.map((option) => (
+        {conditionOptions.map((option) => (
           <label
             key={option.value}
             className={`flex-1 p-4 border-2 rounded-lg cursor-pointer transition-all ${
-              status === option.value
+              condition === option.value
                 ? "border-red-600 bg-red-50 shadow-md"
                 : "border-gray-300 hover:border-gray-400"
             }`}
           >
             <input
               type="radio"
-              name="status"
+              name="condition"
               value={option.value}
-              checked={status === option.value}
-              onChange={() => setStatus(option.value)}
+              checked={condition === option.value}
+              onChange={() => setcondition(option.value)}
               className="sr-only"
             />
             <span className="text-lg font-medium text-gray-800">{option.label}</span>
@@ -279,7 +279,7 @@ export default function ConfirmationContent({
              {renderDropdownSelectors()}
           </div>
          
-          {renderStatusSelector()}
+          {renderconditionSelector()}
         </div>
       );
     }
@@ -330,7 +330,7 @@ export default function ConfirmationContent({
               {renderDropdownSelectors()}
             </div>
             
-           {renderStatusSelector()}
+           {renderconditionSelector()}
          </div>
       );
     }
@@ -385,7 +385,7 @@ export default function ConfirmationContent({
                 <Edit className="w-8 h-8" />
                 <div>
                   <h1 className="text-2xl font-bold">
-                    {mode === 'registering' ? 'Register Asset' : 'Confirm Asset Status'}
+                    {mode === 'registering' ? 'Register Asset' : 'Confirm Asset condition'}
                   </h1>
                   <p className="text-sm text-red-100">Scanned Code: {item?.code}</p>
                 </div>

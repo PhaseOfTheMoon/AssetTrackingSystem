@@ -389,7 +389,7 @@ export default function ScannerPage() {
   // ASSET HANDLERS
   // ============================================
   const handleAssetUpdate = async (newData: {
-    status: string,
+    condition: string,
     location_id: string | null,
     department_id: string | null
   }) => {
@@ -400,7 +400,7 @@ export default function ScannerPage() {
     
     try {
       const dataToUpdate = {
-        status: newData.status,
+        condition: newData.condition,
         location_id: newData.location_id,
         department_id: newData.department_id,
         updated_at: new Date().toISOString()
@@ -424,7 +424,7 @@ export default function ScannerPage() {
   const handleAssetCreate = async (newData: { 
     name: string, 
     description: string, 
-    status: string,
+    condition: string,
     location_id: string | null,
     department_id: string | null
   }) => {
@@ -438,7 +438,7 @@ export default function ScannerPage() {
         asset_id: scannedItem.code, 
         name: newData.name,
         description: newData.description,
-        status: newData.status,
+        condition: newData.condition,
         created_at: new Date().toISOString(),
         location_id: newData.location_id,
         department_id: newData.department_id,
