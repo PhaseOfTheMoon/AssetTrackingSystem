@@ -9,6 +9,7 @@ import SuccessContent from '@/components/scanner/SuccessContent';
 import ConfirmationContent from '@/components/scanner/ConfirmationContent';
 import { Package, Users, MapPin, Building2 } from 'lucide-react';
 
+// (configs are unchanged)
 const configs = {
   asset: { title: "Asset Scanner", description: "Scan asset QR codes or barcodes", icon: Package, idColumn: "asset_id" },
   staff: { title: "Staff ID Scanner", description: "Scan staff identification codes", icon: Users, idColumn: "staff_id" },
@@ -17,16 +18,17 @@ const configs = {
 };
 
 export default function ScannerPage() {
+  // (states are unchanged)
   const searchParams = useSearchParams();
   const type = (searchParams.get('type') || 'asset') as keyof typeof configs;
-  
   const [pageState, setPageState] = useState('scanning'); 
   const [scannedItem, setScannedItem] = useState<any>(null);
-  const [submittedData, setSubmittedData] = useState<any>(null); // This will now hold { item: {...}, page: '...' }
+  const [submittedData, setSubmittedData] = useState<any>(null);
   const [parentScan, setParentScan] = useState<{ type: string, id: string, name: string } | null>(null);
 
   const config = configs[type] || configs.asset;
 
+  // (useEffect is unchanged)
   useEffect(() => {
     setPageState('scanning');
     setScannedItem(null);
@@ -34,54 +36,78 @@ export default function ScannerPage() {
     setParentScan(null);
   }, [type]);
 
+  // (handleItemScanned is unchanged)
   const handleItemScanned = async (item: any) => {
-    // ... (This function is unchanged)
+    // ... (This function is unchanged from the previous step)
     const scannedCode = item.code;
+
     if (parentScan === null) {
       if (type === 'location' || type === 'department') {
-        const { data, error } = await supabase.from(type).select().eq(config.idColumn, scannedCode).single();
+        const { data, error } = await supabase
+          .from(type)
+          .select()
+          .eq(config.idColumn, scannedCode)
+          .single();
+
         if (error || !data) {
-          alert(`Error: ${type} ID "${scannedCode}" not found.`);
+          alert(`Error: ${type} ID "${scannedCode}" not found. Please scan a valid ${type}.`);
           return;
         }
         setParentScan({ type: type, id: scannedCode, name: data.name || scannedCode });
+        
       } else {
         setScannedItem(item);
         setPageState('confirmation');
       }
-    } else {
-      const { data: assetData, error: assetError } = await supabase.from('asset').select().eq('asset_id', scannedCode).single();
+    } 
+    else {
+      const { data: assetData, error: assetError } = await supabase
+        .from('asset')
+        .select()
+        .eq('asset_id', scannedCode)
+        .single();
+
       if (assetError) {
         setScannedItem(item);
         setPageState('confirmation');
         return;
       }
+
       try {
-        const { error: updateError } = await supabase.from('asset').update({ [config.idColumn]: parentScan.id, updated_at: new Date().toISOString() }).eq('asset_id', scannedCode);
+        const { error: updateError } = await supabase
+          .from('asset')
+          .update({ [config.idColumn]: parentScan.id, updated_at: new Date().toISOString() })
+          .eq('asset_id', scannedCode);
+
         if (updateError) throw updateError;
-        setSubmittedData({ item: { ...assetData, [config.idColumn]: parentScan.id }, page: `Tagged to ${parentScan.name}` });
+
+        setSubmittedData({ items: [item], page: `Tagged to ${parentScan.name}` });
         setPageState('success');
         setParentScan(null);
+
       } catch (e: any) {
         alert(`Error tagging asset: ${e.message}`);
       }
     }
-  };
-  
-  // --- MODIFIED: This function now accepts the full asset object ---
-  const handleAssetUpdate = async (updatedAsset: any) => {
+  };
+  
+  // (handleAssetUpdate is unchanged)
+  const handleAssetUpdate = async (newData: {
+    condition: string,
+    location_id: string | null,
+    department_id: string | null
+  }) => {
     if (!scannedItem || type !== 'asset') {
       alert("Error: No asset found to update.");
       return;
     }
     
     try {
-      // Prepare the data to send to Supabase
       const dataToUpdate = {
-        status: updatedAsset.status,
-        updated_status: updatedAsset.status, 
-        location_id: updatedAsset.location_id,
-        department_id: updatedAsset.department_id,
+        condition: newData.condition,
+        updated_condition: newData.condition, 
+        location_id: newData.location_id,
+        department_id: newData.department_id,
         updated_at: new Date().toISOString()
       };
 
@@ -92,8 +118,7 @@ export default function ScannerPage() {
 
       if (error) throw error;
       
-      // --- MODIFIED: Pass the full object to submittedData ---
-      setSubmittedData({ item: updatedAsset, page: type });
+      setSubmittedData({ items: [scannedItem], page: type });
       setPageState('success');
 
     } catch (e: any) {
@@ -101,15 +126,15 @@ export default function ScannerPage() {
     }
   };
 
-  // --- MODIFIED: This function passes the full object ---
-  const handleAssetCreate = async (newData: { 
+  // --- MODIFIED: This function's signature and data object ---
+  const handleAssetCreate = async (newData: { 
     name: string, 
     description: string, 
-    status: string,
+    condition: string,
     location_id: string | null,
     department_id: string | null,
-    category: string,
-    model: string
+    category: string, // <-- NEW
+    model: string     // <-- NEW
   }) => {
     if (!scannedItem || type !== 'asset') {
       alert("Error: No asset ID to create.");
@@ -121,12 +146,12 @@ export default function ScannerPage() {
         asset_id: scannedItem.code, 
         name: newData.name,
         description: newData.description,
-        status: newData.status,
+        condition: newData.condition,
         created_at: new Date().toISOString(),
         location_id: newData.location_id,
         department_id: newData.department_id,
-        category: newData.category,
-        model: newData.model,
+        category: newData.category, // <-- NEW
+        model: newData.model,       // <-- NEW
       };
       
       if (parentScan) {
@@ -139,8 +164,7 @@ export default function ScannerPage() {
 
       if (error) throw error;
       
-      // --- MODIFIED: Pass the full dataToInsert object ---
-      setSubmittedData({ item: dataToInsert, page: 'New Asset Registered' });
+      setSubmittedData({ items: [scannedItem], page: 'New Asset Registered' });
       setPageState('success');
       setParentScan(null);
 
@@ -149,14 +173,16 @@ export default function ScannerPage() {
     }
   };
 
-  // --- MODIFIED: Render section for SuccessContent ---
+  // (The render section is unchanged)
   if (pageState === 'success') {
     return (
       <SuccessContent
-        // Pass the item, pageType, and configs
-        item={submittedData.item}
-        pageType={submittedData.page}
-        configs={configs}
+        scannedCount={submittedData.items.length}
+        scanType={
+            (submittedData.page === 'New Asset Registered' || submittedData.page.startsWith('Tagged to'))
+            ? submittedData.page 
+            : configs[submittedData.page as keyof typeof configs].title.split(" ")[0]
+          }
       />
     );
   }
@@ -175,13 +201,12 @@ export default function ScannerPage() {
     );
   }
 
-  // (ScannerContent render is unchanged)
   return (
     <ScannerContent
       {...config}
       onItemScanned={handleItemScanned}
       onBack={() => window.location.href = '/user/dashboard'}
       parentScan={parentScan}
-    />
+   />
   );
 }
