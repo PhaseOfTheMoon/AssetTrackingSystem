@@ -33,9 +33,10 @@ export default function SuccessContent({ scannedCount, scanType }: { scannedCoun
               <p>Time: <span className="font-bold">{new Date().toLocaleTimeString()}</span></p>
               <p>Department: </p>
               <p>Location: </p>
-              <p>Name:     </p>
-              <p>Status: </p>
-              <p>Id: </p>
+              Name
+              condition
+              id
+              
             </div>
           </div>
 
