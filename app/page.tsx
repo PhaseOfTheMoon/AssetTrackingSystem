@@ -53,7 +53,21 @@ export default function LoginPage() {
             // Create session with staff data
             await startSession(data.staff, microsoftUserId!);
             showToast('Login successful!', 'success');
-            router.push("/admin/dashboard");
+
+            // Hardcoded admin emails
+            const ADMIN_EMAILS = [
+              '104385730@students.swinburne.edu.my',
+              '104401021@students.swinburne.edu.my',
+              '104401173@students.swinburne.edu.my',
+            ];
+
+            // Redirect based on role or email
+            const isAdmin = data.staff.role === 'admin' || ADMIN_EMAILS.includes(data.staff.email);
+            if (isAdmin) {
+              router.push("/admin/dashboard");
+            } else {
+              router.push("/user/dashboard");
+            }
           } else {
             // Handle different error scenarios
             showToast(data.error || 'Login failed', 'error');

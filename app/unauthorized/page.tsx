@@ -1,10 +1,19 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { signOut } from "next-auth/react";
+import { useSession } from "@/components/SessionProvider";
 import { ShieldExclamationIcon } from "@heroicons/react/24/outline";
 
 export default function UnauthorizedPage() {
   const router = useRouter();
+  const { endSession } = useSession();
+
+  const handleReturnToLogin = async () => {
+    // Clear session and logout
+    await endSession();
+    await signOut({ callbackUrl: '/' });
+  };
 
   return (
     <div className="min-h-screen bg-gray-100 flex items-center justify-center px-4">
@@ -41,7 +50,7 @@ export default function UnauthorizedPage() {
           </button>
 
           <button
-            onClick={() => router.push("/")}
+            onClick={handleReturnToLogin}
             className="w-full px-4 py-2 text-red-600 hover:text-red-700 transition-colors"
           >
             Return to Login
