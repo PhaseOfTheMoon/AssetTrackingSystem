@@ -130,7 +130,7 @@ export default function LoginPage() {
           <button
             onClick={() => signIn('azure-ad', { callbackUrl: '/admin/dashboard' })}
             className="w-full flex items-center justify-center gap-3 px-4 py-3 border border-gray-300 rounded-md shadow-sm bg-white text-gray-700 hover:bg-gray-50 transition-colors font-medium"
-            disabled={status === 'loading'}
+            disabled={sessionLoading || isInitializing}
           >
             <svg className="w-5 h-5" viewBox="0 0 21 21" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M10 0H0V10H10V0Z" fill="#F25022"/>
@@ -138,7 +138,7 @@ export default function LoginPage() {
               <path d="M10 11H0V21H10V11Z" fill="#00A4EF"/>
               <path d="M21 11H11V21H21V11Z" fill="#FFB900"/>
             </svg>
-            {status === 'loading' ? 'Loading...' : 'Sign in with Microsoft'}
+            {sessionLoading || isInitializing ? 'Loading...' : 'Sign in with Microsoft'}
           </button>
 
           <div className="text-center">
