@@ -6,7 +6,7 @@ module.exports = {
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/$1',
   },
-  testRegex: '(JUnitTesting/.*\\.(test|spec))\\.(jsx?|tsx?)$',
+  testRegex: '(JestUnitTesting/.*\\.(test|spec))\\.(jsx?|tsx?)$',
   testTimeout: 10000,
   transform: {
     '^.+\\.(js|jsx|ts|tsx)$': ['@swc/jest', {
