@@ -76,6 +76,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
           microsoftUserId,
           role: staffData.role
         }
+
         setSession(newSession)
 
         // Set secure cookie for middleware
@@ -84,7 +85,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             staffId: staffData.staff_id,
-            role: staffData.role
+            role: staffData.role,
+            email: staffData.email
           })
         })
       } else {
@@ -96,7 +98,12 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   }
 
   const endSession = async () => {
-    if (!session?.sessionId) return
+    if (!session?.sessionId) {
+      // Even if no session ID, clear everything
+      setSession(null)
+      localStorage.removeItem('userSession')
+      return
+    }
 
     try {
       await fetch('/api/sessions/end', {
@@ -115,11 +122,14 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         body: JSON.stringify({ action: 'clear' })
       })
 
+      // Clear session and localStorage
       setSession(null)
+      localStorage.removeItem('userSession')
     } catch (error) {
       console.error('Error ending session:', error)
       // Clear session anyway
       setSession(null)
+      localStorage.removeItem('userSession')
     }
   }
 

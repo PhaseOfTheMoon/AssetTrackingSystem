@@ -10,10 +10,18 @@ import { useToast } from '@/components/ui/Toast';
 export default function LoginPage() {
   const { data: nextAuthSession, status } = useNextAuthSession();
   const router = useRouter();
-  const { session, startSession } = useSession();
+  const { session, startSession, isLoading: sessionLoading } = useSession();
   const [isInitializing, setIsInitializing] = useState(false);
   const { showToast } = useToast();
   const hasInitialized = useRef(false); // Track if we've already initialized
+
+  // Clear old session data when landing on login page without authentication
+  useEffect(() => {
+    if (status === 'unauthenticated' && session) {
+      // User is not authenticated but has old session data in localStorage
+      localStorage.removeItem('userSession')
+    }
+  }, [status, session])
 
   // Initialize session when user logs in with Microsoft
   useEffect(() => {
@@ -73,8 +81,8 @@ export default function LoginPage() {
     }
   }, [status, session, isInitializing, router]);
 
-  // Show loading state while initializing
-  if (isInitializing) {
+  // Show loading state while session is loading or initializing
+  if (sessionLoading || isInitializing || status === 'loading') {
     return (
       <div className="min-h-screen bg-gray-100 flex items-center justify-center px-4">
         <div className="text-center">

@@ -3,7 +3,7 @@ import { cookies } from 'next/headers'
 
 export async function POST(request: NextRequest) {
   try {
-    const { staffId, role, action } = await request.json()
+    const { staffId, role, email, action } = await request.json()
 
     if (action === 'clear') {
       // Clear the session cookie
@@ -22,6 +22,7 @@ export async function POST(request: NextRequest) {
     const sessionData = {
       staffId,
       role,
+      email: email || null,
       timestamp: new Date().toISOString()
     }
 

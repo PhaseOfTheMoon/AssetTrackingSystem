@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { useSession } from '@/components/SessionProvider'
+import { useAdminAccess } from '@/hooks/useAdminAccess'
 import Breadcrumb from '@/components/ui/Breadcrumb'
 
 import {
@@ -22,7 +22,7 @@ interface Staff {
 }
 
 export default function AddStaffPage() {
-  const { session, isLoading: sessionLoading } = useSession()
+  const { session, isLoading: sessionLoading } = useAdminAccess()
   const router = useRouter()
   const breadcrumbItems = [
     { label: 'Home', href: '/admin/dashboard', isClickable: true },
@@ -149,8 +149,8 @@ export default function AddStaffPage() {
     })
   }
 
-  // Show loading while session is loading
-  if (sessionLoading) {
+  // Show loading while session is loading or checking access
+  if (sessionLoading || !session) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
@@ -158,12 +158,6 @@ export default function AddStaffPage() {
         </div>
       </div>
     )
-  }
-
-  // Redirect to login if not authenticated
-  if (!session) {
-    router.push('/')
-    return null
   }
 
   return (

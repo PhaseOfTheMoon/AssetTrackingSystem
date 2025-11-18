@@ -30,11 +30,15 @@ export default function LogoutButton({
       // End session in database first
       await endSession()
 
+      // Clear localStorage manually to ensure session is removed
+      localStorage.removeItem('userSession')
+
       // Sign out from NextAuth and redirect to login page
-      await signOut({ callbackUrl: '/' })
+      await signOut({ callbackUrl: '/', redirect: true })
     } catch (error) {
       console.error('Logout failed:', error)
-      // Fallback: just redirect to home if logout fails
+      // Fallback: clear storage and redirect
+      localStorage.removeItem('userSession')
       router.push('/')
     }
   }

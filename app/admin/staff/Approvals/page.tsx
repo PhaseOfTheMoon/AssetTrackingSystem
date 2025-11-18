@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { useSession } from '@/components/SessionProvider'
+import { useAdminAccess } from '@/hooks/useAdminAccess'
 import Breadcrumb from '@/components/ui/Breadcrumb'
 import {
   CheckCircleIcon,
@@ -21,7 +21,7 @@ interface PendingStaff {
 }
 
 export default function ApprovalsPage() {
-  const { session, isLoading: sessionLoading } = useSession()
+  const { session, isLoading: sessionLoading } = useAdminAccess()
   const router = useRouter()
 
   const [pendingStaff, setPendingStaff] = useState<PendingStaff[]>([])
@@ -137,8 +137,8 @@ export default function ApprovalsPage() {
     })
   }
 
-  // Show loading while session is loading
-  if (sessionLoading) {
+  // Show loading while session is loading or checking access
+  if (sessionLoading || !session) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
@@ -146,12 +146,6 @@ export default function ApprovalsPage() {
         </div>
       </div>
     )
-  }
-
-  // Redirect to login if not authenticated
-  if (!session) {
-    router.push('/')
-    return null
   }
 
   return (

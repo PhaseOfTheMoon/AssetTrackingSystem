@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useSession } from '@/components/SessionProvider'
+import { useAdminAccess } from '@/hooks/useAdminAccess'
 import { useRouter } from 'next/navigation'
 import Breadcrumb from '@/components/ui/Breadcrumb'
 import RealtimeChart from '@/components/charts/realtimeChart'
@@ -21,7 +21,7 @@ interface DashboardStats {
 }
 
 export default function DashboardPage() {
-  const { session } = useSession()
+  const { session, isLoading: sessionLoading } = useAdminAccess()
   const router = useRouter()
   const [stats, setStats] = useState<DashboardStats>({
     totalAssets: 0,
@@ -40,13 +40,10 @@ export default function DashboardPage() {
   }, [])
 
   useEffect(() => {
-    if (!mounted) return
-    if (!session) {
-      router.push('/')
-      return
-    }
+    if (!mounted || sessionLoading) return
+    if (!session) return
     fetchDashboardData()
-  }, [session, mounted, router])
+  }, [session, mounted, sessionLoading])
 
   const fetchDashboardData = async () => {
     try {
@@ -157,8 +154,14 @@ export default function DashboardPage() {
     }
   ]
 
-  if (!mounted) {
-    return null
+  if (!mounted || sessionLoading || !session) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    )
   }
 
   return (

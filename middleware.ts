@@ -1,6 +1,13 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
+// Hardcoded admin emails (temporary until role management is fully implemented)
+const ADMIN_EMAILS = [
+  '104385730@students.swinburne.edu.my',
+  '104401021@students.swinburne.edu.my',
+  '104401173@students.swinburne.edu.my',
+]
+
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
@@ -9,10 +16,13 @@ export function middleware(request: NextRequest) {
   const hasSession = !!sessionCookie
 
   let userRole: string | null = null
+  let userEmail: string | null = null
+
   if (sessionCookie) {
     try {
       const sessionData = JSON.parse(sessionCookie.value)
       userRole = sessionData.role
+      userEmail = sessionData.email
     } catch (error) {
       // Invalid cookie, treat as no session
       console.error('Invalid session cookie:', error)
@@ -37,11 +47,13 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(url)
   }
 
-  // Admin routes - require admin role
+  // Admin routes - require admin role or admin email
   if (pathname.startsWith('/admin')) {
-    if (userRole !== 'admin') {
+    const isAdmin = userRole === 'admin' || (userEmail && ADMIN_EMAILS.includes(userEmail))
+
+    if (!isAdmin) {
       // User is not admin → show unauthorized page
-      console.log(`[Middleware] User role '${userRole}' attempted to access admin route: ${pathname}`)
+      console.log(`[Middleware] User (role: '${userRole}', email: '${userEmail}') attempted to access admin route: ${pathname}`)
       const url = request.nextUrl.clone()
       url.pathname = '/unauthorized'
       return NextResponse.redirect(url)
