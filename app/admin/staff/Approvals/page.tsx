@@ -7,7 +7,8 @@ import Breadcrumb from '@/components/ui/Breadcrumb'
 import {
   CheckCircleIcon,
   XCircleIcon,
-  ClockIcon
+  ClockIcon,
+  ArrowPathIcon
 } from '@heroicons/react/24/outline'
 
 interface PendingStaff {
@@ -155,9 +156,19 @@ export default function ApprovalsPage() {
           {/* Breadcrumb */}
             <Breadcrumb customItems={breadcrumbItems} />
           {/* Header */}
-          <div className="mb-6">
-            <h1 className="text-3xl font-bold text-gray-900">Staff Registration Approvals</h1>
-            <p className="text-gray-600 mt-2">Review and approve pending staff registrations</p>
+          <div className="mb-6 flex justify-between items-start">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">Staff Registration Approvals</h1>
+              <p className="text-gray-600 mt-2">Review and approve pending staff registrations</p>
+            </div>
+            <button
+              onClick={() => fetchAllStaff()}
+              disabled={isLoading}
+              className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors disabled:bg-gray-400"
+            >
+              <ArrowPathIcon className={`h-5 w-5 ${isLoading ? 'animate-spin' : ''}`} />
+              Refresh
+            </button>
           </div>
 
           {/* Tabs */}
