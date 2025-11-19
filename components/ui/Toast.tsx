@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useContext, useState, useCallback } from 'react'
+import { createContext, useContext, useState, useCallback, useEffect } from 'react'
 import { CheckCircleIcon, XCircleIcon, ExclamationCircleIcon, XMarkIcon } from '@heroicons/react/24/outline'
 
 type ToastType = 'success' | 'error' | 'warning'
@@ -19,6 +19,11 @@ const ToastContext = createContext<ToastContextType | undefined>(undefined)
 
 export function ToastProvider({ children }: { children: React.ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([])
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   const showToast = useCallback((message: string, type: ToastType) => {
     const id = Date.now()
@@ -31,8 +36,9 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   return (
     <ToastContext.Provider value={{ showToast }}>
       {children}
-      <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 space-y-2">
-        {toasts.map(toast => (
+      {mounted && (
+        <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 space-y-2">
+          {toasts.map(toast => (
           <div
             key={toast.id}
             className={`flex items-center p-4 rounded-lg shadow-lg ${
@@ -54,8 +60,9 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
               <XMarkIcon className="h-5 w-5" />
             </button>
           </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
     </ToastContext.Provider>
   )
 }
