@@ -50,7 +50,7 @@ export default function ConfirmationContent({
   
   const [newName, setNewName] = useState('');
   const [newDescription, setNewDescription] = useState('');
-  const [condition, setCondition] = useState("in use");
+  const [condition, setCondition] = useState("In-use");
   const [newCategory, setNewCategory] = useState('');
   const [newModel, setNewModel] = useState('');
   
@@ -63,9 +63,9 @@ export default function ConfirmationContent({
   const [error, setError] = useState<string | null>(null);
 
   const conditionOptions = [
-    { value: "in use", label: "In Use" },
-    { value: "broken", label: "Broken" },
-    { value: "in store", label: "In Store" },
+    { value: "In-use", label: "In-use" },
+    { value: "Spoiled", label: "Spoiled" },
+    { value: "In-store", label: "In-store" },
   ];
 
   useEffect(() => {
@@ -109,14 +109,14 @@ export default function ConfirmationContent({
 
         if (error && error.code === 'PGRST116') {
           setMode('registering'); 
-          setCondition('in use'); 
+          setCondition('In-use'); 
         } 
         else if (error) {
           throw error;
         }
         else if (data) {
           setAssetDetails(data as Asset);
-          setCondition(data.condition || "in use");
+          setCondition(data.condition || "In-use");
           setSelectedLocation(data.location_id || '');
           setSelectedDepartment(data.department_id || '');
           setMode('editing');
