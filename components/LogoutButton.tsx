@@ -4,7 +4,6 @@ import { signOut } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { ArrowRightOnRectangleIcon } from '@heroicons/react/24/outline'
-import { useSession } from './auth/sessionProvider'
 
 interface LogoutButtonProps {
   className?: string
@@ -18,7 +17,6 @@ export default function LogoutButton({
   text = 'Log Out'
 }: LogoutButtonProps) {
   const router = useRouter()
-  const { endSession } = useSession()
   const [showConfirmation, setShowConfirmation] = useState(false)
 
   const handleLogout = () => {
@@ -27,19 +25,22 @@ export default function LogoutButton({
 
   const confirmLogout = async () => {
     try {
-      // End session in database first
-      await endSession()
+      // Clear the lastPath so toast shows on next login
+      sessionStorage.removeItem('lastPath');
+      // Call the API to end the session in the database
+      await fetch('/api/sessions/end', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      })
 
-      // Clear localStorage manually to ensure session is removed
-      localStorage.removeItem('userSession')
-
-      // Sign out from NextAuth and redirect to login page
-      await signOut({ callbackUrl: '/', redirect: true })
+      // Sign out from NextAuth and redirect the user to the login page
+      await signOut({ callbackUrl: '/login', redirect: true })
     } catch (error) {
       console.error('Logout failed:', error)
-      // Fallback: clear storage and redirect
-      localStorage.removeItem('userSession')
-      router.push('/')
+      // Fallback: Just sign out
+      await signOut({ callbackUrl: '/login', redirect: true })
     }
   }
 

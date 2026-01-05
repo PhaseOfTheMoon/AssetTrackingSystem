@@ -8,69 +8,48 @@ import { useToast } from '@/components/ui/toast';
 export default function LoginClient() {
   const { data: session, status } = useSession();
   const router = useRouter();
-  const [isLoading, setIsLoading] = useState(false);
   const { showToast } = useToast();
   const hasInitialized = useRef(false);
 
-  // Initialize session after successful Microsoft login
+  // Redirect the user after login successfully
   useEffect(() => {
-    if (hasInitialized.current) return;
-    
+    // Prevents the user from redirected multiple times
+    if (hasInitialized.current) {
+      return;
+    }
+
+    // Redirect the user to their respective dashboard if authenticated
     if (status === 'authenticated' && session?.user) {
       hasInitialized.current = true;
-      initializeAppSession();
-    }
-  }, [status, session]);
+      // Get the user role from the session
+      const role = (session.user as any).role;
 
-  const initializeAppSession = async () => {
-    setIsLoading(true);
-    try {
-      const response = await fetch('/api/staff/get-by-email', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: session?.user?.email,
-          microsoftUserId: session?.user?.microsoftUserId
-        }),
-      });
-
-      const data = await response.json();
-
-      if (data.success && data.staff) {
-        // Fetch role from server-side session, don't trust client
-        const sessionResponse = await fetch('/api/sessions/start', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            staffId: data.staff.id,
-            email: data.staff.email,
-          }),
-        });
-
-        const sessionData = await sessionResponse.json();
-        
-        if (sessionData.success && sessionData.redirectUrl) {
-          showToast('Login successful!', 'success');
-          setTimeout(() => {
-            router.push(sessionData.redirectUrl);
-          }, 5000);
-        } else {
-          throw new Error('Session initialization failed');
-        }
-      } else {
-        showToast(data.error || 'Login failed', 'error');
-        hasInitialized.current = false;
+      // Handle different account statuses
+      if (role === 'pending') {
+        showToast("Your account is pending admin approval", "warning");
+        return;
+      } else if (role == 'rejected') {
+        showToast("Your account has been rejected", "error");
+        return;
+      } else if (role === 'unregistered') {
+        showToast("Your account is not registered in the system. Please register for access", "warning");
+        return;
       }
-    } catch (error) {
-      console.error('Login error:', error);
-      showToast('An error occurred during login', 'error');
-      hasInitialized.current = false;
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
-  if (status === 'loading' || isLoading) {
+      // Store login success in sessionStorage so that toast can display
+      sessionStorage.setItem('loginSuccess', 'true');
+      console.log("Set loginsuccess in sessionstorage");
+
+      // Redirect based on role after a short delay
+      if (role == 'admin') {
+        router.push("/admin/dashboard");
+      } else {
+        router.push("/user/dashboard");
+      }
+    }
+  }, [status, session, router, showToast]);
+
+  if (status === 'loading') {
     return <LoadingState />;
   }
 
@@ -103,15 +82,14 @@ export default function LoginClient() {
           <button
             onClick={() => signIn('azure-ad')}
             className="w-full flex items-center justify-center gap-3 px-4 py-3 border border-gray-300 rounded-md shadow-sm bg-white text-gray-700 hover:bg-gray-50 transition-colors font-medium disabled:opacity-50"
-            disabled={isLoading}
+            disabled={false}
           >
             <svg className="w-5 h-5" viewBox="0 0 21 21" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M10 0H0V10H10V0Z" fill="#F25022" />
               <path d="M21 0H11V10H21V0Z" fill="#7FBA00" />
               <path d="M10 11H0V21H10V11Z" fill="#00A4EF" />
               <path d="M21 11H11V21H21V11Z" fill="#FFB900" />
-            </svg>
-            {isLoading ? 'Loading...' : 'Sign in with Microsoft'}
+            </svg>Sign in with Microsoft
           </button>
 
           {/* Registration Link */}

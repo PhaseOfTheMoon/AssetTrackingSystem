@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { signOut } from "next-auth/react";
 import { ShieldExclamationIcon } from "@heroicons/react/24/outline";
 
-export default function UnauthorizedPage() {
+export default function UnauthorisedPage() {
   const router = useRouter();
 
   const handleReturnToLogin = async () => {
