@@ -165,12 +165,6 @@ export default function LoginPage() {
             {sessionLoading || isInitializing ? 'Loading...' : 'Sign in with Microsoft'}
           </button>
 
-          <div className="text-center">
-            <p className="text-xs text-gray-500">
-              Secure authentication powered by Microsoft Azure AD
-            </p>
-          </div>
-
           {/* Registration Link */}
           <div className="mt-6 pt-6 border-t border-gray-200">
             <p className="text-center text-sm text-gray-600 mb-3">
