@@ -1,6 +1,6 @@
 'use client'
 
-import DynamicAdd from '@/components/DynamicAdd'
+import DynamicAdd from '@/components/dynamicAdd'
 
 const addDepartmentConfig = {
   entityName: 'department',
