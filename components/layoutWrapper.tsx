@@ -1,9 +1,9 @@
 'use client'
 
 import { usePathname } from 'next/navigation'
-import NavBar from './navbar/navBar'
+import NavBar from './navbar/navbar'
 import { ReactNode, useState, useEffect } from 'react'
-import { useToast } from '@/components/ui/Toast'
+import { useToast } from '@/components/ui/toast'
 
 export default function LayoutWrapper({ children }: { children: ReactNode }) {
   const pathname = usePathname()

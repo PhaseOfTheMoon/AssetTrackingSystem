@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { useAdminAccess } from '@/hooks/useAdminAccess'
 import { useRouter } from 'next/navigation'
 import Breadcrumb from '@/components/ui/breadcrumb'
-import RealtimeChart from '@/components/charts/RealtimeChart'
+import RealtimeChart from '@/components/charts/realtimeChart'
 import {
   ComputerDesktopIcon,
   BuildingOfficeIcon,

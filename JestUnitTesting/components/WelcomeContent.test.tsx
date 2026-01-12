@@ -1,6 +1,6 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
-import WelcomeContent from '@/components/scanner/WelcomeContent';
+import WelcomeContent from '@/components/scanner/welcomeContent';
 import '@testing-library/jest-dom';
 
 describe('WelcomeContent Component', () => {
