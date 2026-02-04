@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { supabase } from '@/lib/supabase/client'
 
 export async function POST(request: NextRequest) {
   try {
@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
     // Fetch assets assigned to this staff member
     // Join staff_asset with asset table to get full asset details
     const { data: assignments, error } = await supabase
-      .from('staff_asset')
+      .from('StaffAsset')
       .select(`
         id,
         staff_id,

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { supabase } from '@/lib/supabase/client'
 
 export async function POST(request: NextRequest) {
   try {
@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
 
     // Look up staff by Microsoft user ID
     const { data: staff, error } = await supabase
-      .from('staff')
+      .from('Staff')
       .select('*')
       .eq('microsoft_user_id', microsoftUserId)
       .single()

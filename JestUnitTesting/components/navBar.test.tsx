@@ -2,14 +2,14 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { act } from 'react';
 import { usePathname } from 'next/navigation';
 import Navbar from '@/components/navbar/navBar';
-import { useSession } from '@/components/SessionProvider';
+import { useSession } from 'next-auth/react';
 
 // Mock dependencies
 jest.mock('next/navigation', () => ({
   usePathname: jest.fn(),
 }));
 
-jest.mock('@/components/SessionProvider', () => ({
+jest.mock('next-auth/react', () => ({
   useSession: jest.fn(),
 }));
 
@@ -30,15 +30,17 @@ jest.mock('@/components/navbar/sideBar', () => ({
 describe('Navbar', () => {
   const mockSetSidebarOpen = jest.fn();
   const mockSession = {
-    name: 'Test User',
-    email: 'test@example.com',
+    user: {
+      name: 'Test User',
+      email: 'test@example.com',
+    }
   };
 
   beforeEach(() => {
     jest.clearAllMocks();
     (usePathname as jest.Mock).mockReturnValue('/admin/dashboard');
-    (useSession as jest.Mock).mockReturnValue({ session: mockSession });
-    
+    (useSession as jest.Mock).mockReturnValue({ data: mockSession });
+
     Object.defineProperty(window, 'innerWidth', {
       writable: true,
       configurable: true,
@@ -50,7 +52,7 @@ describe('Navbar', () => {
     await act(async () => {
       render(<Navbar sidebarOpen={false} setSidebarOpen={mockSetSidebarOpen} />);
     });
-    
+
     expect(screen.getByAltText('Swinburne Logo')).toBeInTheDocument();
     expect(screen.getByAltText('user photo')).toBeInTheDocument();
   });
@@ -59,13 +61,13 @@ describe('Navbar', () => {
     await act(async () => {
       render(<Navbar sidebarOpen={false} setSidebarOpen={mockSetSidebarOpen} />);
     });
-    
+
     const hamburgerButton = screen.getByLabelText('Toggle sidebar');
-    
+
     await act(async () => {
       fireEvent.click(hamburgerButton);
     });
-    
+
     expect(mockSetSidebarOpen).toHaveBeenCalledWith(true);
   });
 
@@ -73,13 +75,13 @@ describe('Navbar', () => {
     await act(async () => {
       render(<Navbar sidebarOpen={false} setSidebarOpen={mockSetSidebarOpen} />);
     });
-    
+
     const profileButton = screen.getAllByRole('button')[1];
-    
+
     await act(async () => {
       fireEvent.click(profileButton);
     });
-    
+
     expect(screen.getByText('Profile')).toBeInTheDocument();
     expect(screen.getByText('Settings')).toBeInTheDocument();
     expect(screen.getByText('Sign Out')).toBeInTheDocument();
@@ -89,41 +91,41 @@ describe('Navbar', () => {
     await act(async () => {
       render(<Navbar sidebarOpen={false} setSidebarOpen={mockSetSidebarOpen} />);
     });
-    
+
     const profileButton = screen.getAllByRole('button')[1];
-    
+
     await act(async () => {
       fireEvent.click(profileButton);
     });
-    
+
     expect(screen.getByText('Test User')).toBeInTheDocument();
     expect(screen.getByText('test@example.com')).toBeInTheDocument();
   });
 
   it('closes profile dropdown on navigation', async () => {
     let rerender: any;
-    
+
     await act(async () => {
       const result = render(
         <Navbar sidebarOpen={false} setSidebarOpen={mockSetSidebarOpen} />
       );
       rerender = result.rerender;
     });
-    
+
     const profileButton = screen.getAllByRole('button')[1];
-    
+
     await act(async () => {
       fireEvent.click(profileButton);
     });
-    
+
     expect(screen.getByText('Profile')).toBeInTheDocument();
-    
+
     (usePathname as jest.Mock).mockReturnValue('/profile');
-    
+
     await act(async () => {
       rerender(<Navbar sidebarOpen={false} setSidebarOpen={mockSetSidebarOpen} />);
     });
-    
+
     await waitFor(() => {
       expect(screen.queryByText('Profile')).not.toBeInTheDocument();
     });
@@ -139,24 +141,24 @@ describe('Navbar', () => {
     await act(async () => {
       render(<Navbar sidebarOpen={true} setSidebarOpen={mockSetSidebarOpen} />);
     });
-    
+
     const overlay = document.querySelector('.fixed.inset-0.z-30');
     expect(overlay).toBeInTheDocument();
   });
 
   it('handles missing session gracefully', async () => {
     (useSession as jest.Mock).mockReturnValue({ session: null });
-    
+
     await act(async () => {
       render(<Navbar sidebarOpen={false} setSidebarOpen={mockSetSidebarOpen} />);
     });
-    
+
     const profileButton = screen.getAllByRole('button')[1];
-    
+
     await act(async () => {
       fireEvent.click(profileButton);
     });
-    
+
     expect(screen.getByText('User')).toBeInTheDocument();
     expect(screen.getByText('No email available')).toBeInTheDocument();
   });
@@ -171,13 +173,13 @@ describe('Navbar', () => {
     await act(async () => {
       render(<Navbar sidebarOpen={true} setSidebarOpen={mockSetSidebarOpen} />);
     });
-    
+
     const profileButton = screen.getAllByRole('button')[1];
-    
+
     await act(async () => {
       fireEvent.click(profileButton);
     });
-    
+
     expect(mockSetSidebarOpen).toHaveBeenCalledWith(false);
   });
 
@@ -185,23 +187,23 @@ describe('Navbar', () => {
     await act(async () => {
       render(<Navbar sidebarOpen={false} setSidebarOpen={mockSetSidebarOpen} />);
     });
-    
+
     const profileButton = screen.getAllByRole('button')[1];
-    
+
     // Open dropdown
     await act(async () => {
       fireEvent.click(profileButton);
     });
-    
+
     await waitFor(() => {
       expect(screen.getByText('Profile')).toBeInTheDocument();
     });
-    
+
     // Close dropdown
     await act(async () => {
       fireEvent.click(profileButton);
     });
-    
+
     await waitFor(() => {
       expect(screen.queryByText('Profile')).not.toBeInTheDocument();
     });

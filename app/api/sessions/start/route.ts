@@ -1,75 +1,79 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "@/lib/auth";
+import { NextResponse } from "next/server";
+import { supabase } from "@/lib/supabase/client";
 
-export async function POST(request: NextRequest) {
+export async function POST() {
   try {
-    // Add content-type check and better error handling
-    const contentType = request.headers.get('content-type')
-    if (!contentType || !contentType.includes('application/json')) {
+    // Get authenticated user from NextAuth (trusted)
+    const session = await getServerSession(authOptions);
+
+    if (!session?.user?.email) {
       return NextResponse.json(
-        { error: 'Content-Type must be application/json' },
-        { status: 400 }
-      )
+        { success: false, error: "Unauthorized" },
+        { status: 401 }
+      );
     }
 
-    let requestBody
-    try {
-      const text = await request.text()
-      if (!text.trim()) {
-        return NextResponse.json(
-          { error: 'Request body is empty' },
-          { status: 400 }
-        )
-      }
-      requestBody = JSON.parse(text)
-    } catch (parseError) {
-      console.error('JSON parsing error:', parseError)
+    const email = session.user.email;
+    const microsoftUserId = (session.user as any).microsoftUserId;
+
+    // Lookup staff using server-trusted identity
+    const { data: staff, error: staffError } = await supabase
+      .from("Staff") // Staff table
+      .select("*") // Select everything
+      .eq("email", email) // Match email
+      .single(); // Expect single result
+
+    if (staffError || !staff) {
+      console.error("Staff lookup failed:", staffError);
       return NextResponse.json(
-        { error: 'Invalid JSON in request body' },
-        { status: 400 }
-      )
+        { success: false, error: "Staff not found" },
+        { status: 403 }
+      );
     }
 
-    const { microsoftUserId, staffId, loginLocation } = requestBody
-
-    if (!microsoftUserId || !staffId) {
-      return NextResponse.json(
-        { error: 'Missing required fields: microsoftUserId and staffId' },
-        { status: 400 }
-      )
-    }
-
-    // Create new session record
-    const { data: session, error } = await supabase
-      .from('sessions')
+    // Create session record (server-side only)
+    const { data: dbSession, error: dbError } = await supabase
+      .from("Sessions")
       .insert([
         {
-          staff_id: staffId,
-          login_location: loginLocation || 'Unknown',
-          status: 'active'
+          staff_id: staff.staff_id,
+          microsoft_id: microsoftUserId,
+          login_location: "Web App",
+          status: "active",
+          created_dt: new Date().toISOString(),
         }
       ])
       .select()
-      .single()
+      .single();
 
-    if (error) {
-      console.error('Error creating session:', error)
+    if (dbError || !dbSession) {
+      console.error("Session creation failed:", dbError);
       return NextResponse.json(
-        { error: 'Failed to create session' },
+        { success: false, error: "Failed to create session" },
         { status: 500 }
-      )
+      );
     }
 
+    // Return minimal safe data to client
     return NextResponse.json({
       success: true,
-      session
-    })
-
+      session: {
+        sessionId: dbSession.id,
+        staffId: staff.staff_id,
+        name: staff.name,
+        email: staff.email,
+        departmentId: staff.department_id,
+        mobileNo: staff.mobile_no,
+        microsoftUserId,
+      },
+    });
   } catch (error) {
-    console.error('Session start error:', error)
+    console.error("Session start error:", error);
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { success: false, error: "Failed to create session" },
       { status: 500 }
-    )
+    );
   }
 }

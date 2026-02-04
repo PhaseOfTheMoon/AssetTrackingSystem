@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { supabase } from '@/lib/supabase/client'
 
 export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     const { data, error } = await supabase
-      .from('department')
+      .from('Department')
       .select('*')
       .eq('department_id', params.id)
       .single()
@@ -24,11 +24,11 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
   try {
     const body = await request.json()
     const { department_id, ...updateData } = body
-    
+
     updateData.updated_dt = new Date().toISOString()
 
     const { data, error } = await supabase
-      .from('department')
+      .from('Department')
       .update(updateData)
       .eq('department_id', params.id)
       .select()

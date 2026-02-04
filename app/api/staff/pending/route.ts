@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { supabase } from '@/lib/supabase/client'
 
 // Disable caching for this route
 export const dynamic = 'force-dynamic'
@@ -9,7 +9,7 @@ export async function GET() {
   try {
     // Fetch all pending staff registrations
     const { data: pendingStaff, error } = await supabase
-      .from('staff')
+      .from('Staff')
       .select('*')
       .eq('status', 'pending')
       .order('created_dt', { ascending: false })

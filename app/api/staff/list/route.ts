@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { supabase } from '@/lib/supabase/client'
 
 export async function GET(request: NextRequest) {
   try {
     // Fetch only approved staff members
     const { data: staff, error } = await supabase
-      .from('staff')
+      .from('Staff')
       .select('*')
       .eq('status', 'approved')
       .order('created_dt', { ascending: false })

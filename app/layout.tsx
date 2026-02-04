@@ -1,35 +1,32 @@
-// app/layout.tsx
+// Root layout for the application which includes metadata and global styles
 import type { Metadata } from "next";
-import "./styles/globals.css";
-import { NextAuthProvider } from "@/components/auth/NextAuthProvider";
-import { SessionProvider } from "@/components/SessionProvider";
-import { ToastProvider } from "@/components/ui/Toast";
-import LayoutWrapper from "@/components/layoutWrapper";
+import "./globals.css";
+import { NextAuthProvider } from "@/components/auth/nextAuthProvider";
+import { ToastProvider } from "@/components/ui/toast";
 
+// Contain the metadata for the application
 export const metadata: Metadata = {
   title: "Asset Tracking System",
-  description: "IT Asset Tracking System with QR codes and barcodes",
+  description: "Swinburne Asset Tracking System for staff and IT department",
   icons: {
     icon: '/favicon.ico'
-  },
+  }
+  // Security policies are in next.config.js
 };
 
+// Root layout component that wraps the entire application
 export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+  children, // The child components (page) to be rendered within this layout
+}: {
+  children: React.ReactNode; // 
+}) {
   return (
     <html lang="en">
-      <body className="antialiased bg-white text-black">
-        <NextAuthProvider>
-          <SessionProvider>
-            <ToastProvider>
-              <LayoutWrapper>
-                {children}
-              </LayoutWrapper>
-            </ToastProvider>
-          </SessionProvider>
+      <body className="antialiased bg-white text-black"> {/* Global styles for body */}
+        <NextAuthProvider> {/* Provides authentication context to the app */}
+          <ToastProvider> {/* Provides toast notification (such as Login successful!) */}
+            {children} {/* Render the child components here */}
+          </ToastProvider>
         </NextAuthProvider>
       </body>
     </html>
