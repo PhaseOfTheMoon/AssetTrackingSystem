@@ -42,7 +42,8 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
         location:location_id(location_id, name),
         department:department_id(department_id, name)
       `)
-      .eq('asset_id', params.id) 
+      .eq('asset_id', params.id)
+      .is('deleted_dt', null) // Ensure only existing records are fetched 
       .single() // Expect one record
 
     // Return an error
@@ -92,6 +93,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
       .from('Asset')
       .update(updateData) // Update only the asset in the URL
       .eq('asset_id', params.id)
+      .is('deleted_dt', null) // Ensure only existing records can be updated
       .select(`
         *,
         location:location_id(location_id, name),

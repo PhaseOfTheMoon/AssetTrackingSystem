@@ -1,9 +1,10 @@
 // lib/supabase/types.ts
-/* Commented by Desmond @ 12-Jan-2026
-    - Split the supabase.ts file into three separate files: client.ts, server.ts and types.ts
-    - This file contains type definitions for the database tables in Supabase
-    - Each table has Row, Insert, and Update types to define the shape of data
-      when reading, inserting, or updating records
+/** Commented by Desmond @ 12-Jan-2026
+ * Split the supabase.ts file into three separate files: client.ts, server.ts and types.ts
+ * This file contains type definitions for the database tables in Supabase
+ * Each table has Row, Insert, and Update types to define the shape of data
+ * when reading, inserting, or updating records.
+ * Updated on 11-Feb-2026 to match the new DB schema including audit and soft deletion. 
 */
 
 // This matches PostgreSQL / JSONB columns
@@ -14,6 +15,13 @@ export type Json =
     | null
     | { [key: string]: Json | undefined }
     | Json[]
+
+/**
+ * Commented by Desmond @ 11-Feb-2026
+ * Set pre-determined asset condition to prevent incorrect or mismatched 
+ * values from being entered into the database records.
+ */
+export type AssetCondition = 'In-use' | 'In-store' | 'Spoiled'
 
 // Database interface: It represents the entire Supabase database schema
 // It is expected by "createClient<Database>" in client.ts and server.ts
@@ -49,7 +57,9 @@ export interface Database {
             Location: {
                 Row: {
                     location_id: string
-                    name: string | null
+                    // Commented by Desmond @ 11-Feb-2026 : Start
+                    // Changed so that location name cannot be null
+                    name: string
                     description: string | null
                     block: string | null
                     level: number | null
@@ -58,7 +68,8 @@ export interface Database {
                 }
                 Insert: {
                     location_id: string
-                    name?: string | null
+                    // Changed so that location name cannot be null
+                    name?: string
                     description?: string | null
                     block?: string | null
                     level?: number | null
@@ -67,7 +78,9 @@ export interface Database {
                 }
                 Update: {
                     location_id?: string
-                    name?: string | null
+                    // Changed so that location name cannot be null
+                    // Commented by Desmond @ 11-Feb-2026 : End
+                    name?: string
                     description?: string | null
                     block?: string | null
                     level?: number | null
@@ -80,7 +93,9 @@ export interface Database {
             Department: {
                 Row: {
                     department_id: string
-                    name: string | null
+                    // Commented by Desmond @ 11-Feb-2026 : Start
+                    // Changed so that department name cannot be null
+                    name: string
                     block: string | null
                     level: number | null
                     created_dt: string
@@ -88,7 +103,8 @@ export interface Database {
                 }
                 Insert: {
                     department_id: string
-                    name?: string | null
+                    // Changed so that department name cannot be null
+                    name?: string
                     block?: string | null
                     level?: number | null
                     created_dt?: string
@@ -96,7 +112,9 @@ export interface Database {
                 }
                 Update: {
                     department_id?: string
-                    name?: string | null
+                    // Changed so that department name cannot be null
+                    // Commented by Desmond @ 11-Feb-2026 : End
+                    name?: string
                     block?: string | null
                     level?: number | null
                     created_dt?: string
@@ -108,39 +126,59 @@ export interface Database {
             Asset: {
                 Row: {
                     asset_id: string
-                    name: string | null
-                    model: string | null
+                    // Commented by Desmond @ 11-Feb-2026 : Start
+                    // Changed so that asset name, model and category cannot be null
+                    name: string
+                    model: string
                     description: string | null
-                    condition: string | null
+                    // Changed it so that the condition will only accept pre-determined
+                    // values
+                    condition: AssetCondition
                     location_id: string | null
                     department_id: string | null
-                    category: string | null
+                    category: string
                     created_dt: string
+                    // The user who created the record
+                    created_by: string | null
                     updated_dt: string
+                    // deleted_dt having value means the record is removed
+                    deleted_dt: string | null
                 }
                 Insert: {
                     asset_id: string
-                    name?: string | null
-                    model?: string | null
+                    // Commented by Desmond @ 11-Feb-2026 : Start
+                    // Changed so that asset name, model and category cannot be null
+                    name?: string
+                    model?: string
                     description?: string | null
-                    condition?: string | null
+                    // Changed it so that the condition will only accept pre-determined
+                    // values
+                    condition?: AssetCondition
                     location_id?: string | null
                     department_id?: string | null
-                    category?: string | null
+                    category?: string
                     created_dt?: string
+                    created_by?: string | null
                     updated_dt?: string
+                    deleted_dt?: string | null
                 }
                 Update: {
                     asset_id?: string
-                    name?: string | null
-                    model?: string | null
+                    // Commented by Desmond @ 11-Feb-2026 : End
+                    // Changed so that asset name, model and category cannot be null
+                    name?: string
+                    model?: string
                     description?: string | null
-                    condition?: string | null
+                    // Changed it so that the condition will only accept pre-determined
+                    // values
+                    condition?: AssetCondition
                     location_id?: string | null
                     department_id?: string | null
-                    category?: string | null
+                    category?: string
                     created_dt?: string
+                    created_by?: string | null
                     updated_dt?: string
+                    deleted_dt?: string | null
                 }
                 Relationships: []
             }
@@ -240,19 +278,58 @@ export interface Database {
                     id: string
                     location_id: string | null
                     asset_id: string | null
-                    created_at: string
+                    created_dt: string
                 }
                 Insert: {
                     id: string
                     location_id?: string | null
                     asset_id?: string | null
-                    created_at?: string
+                    created_dt?: string
                 }
                 Update: {
                     id?: string
                     location_id?: string | null
                     asset_id?: string | null
-                    created_at?: string
+                    created_dt?: string
+                }
+                Relationships: []
+            }
+
+            /**
+             * Commented by Desmond @ 11-Feb-2026
+             * This is a new type for the audit log table in Supabase
+             * Currently a PLACEHOLDER
+             */
+            AuditLog: {
+                Row: {
+                    audit_id: number
+                    table_name: string
+                    record_id: string
+                    action: 'CREATE' | 'UPDATE' | 'DELETE' | 'RESTORE'
+                    old_values: Json | null
+                    new_values: Json | null
+                    user_id: string | null
+                    created_dt: string
+                }
+                Insert: {
+                    audit_id?: number
+                    table_name: string
+                    record_id: string
+                    action: 'CREATE' | 'UPDATE' | 'DELETE' | 'RESTORE'
+                    old_values?: Json | null
+                    new_values?: Json | null
+                    user_id?: string | null
+                    created_dt?: string
+                }
+                Update: {
+                    audit_id?: number
+                    table_name?: string
+                    record_id?: string
+                    action?: 'CREATE' | 'UPDATE' | 'DELETE' | 'RESTORE'
+                    old_values?: Json | null
+                    new_values?: Json | null
+                    user_id?: string | null
+                    created_dt?: string
                 }
                 Relationships: []
             }
