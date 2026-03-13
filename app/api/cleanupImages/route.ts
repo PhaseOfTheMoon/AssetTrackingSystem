@@ -15,13 +15,13 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Find all actioned records older than 30 days
+    // Find all actioned records older than 365 days/ 1 year
     const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 365);
 
     const { data: oldRecords, error: fetchError } = await supabaseAdmin
-      .from('Maintenance')             // 👈 change to your actual table name
-      .select('id, image_url')         // 👈 replace image_url with your actual image column name
+      .from('Maintenance')             
+      .select('id, image_url')      
       .in('approval_status', ['approved', 'rejected'])
       .lt('actioned_at', thirtyDaysAgo.toISOString())
 

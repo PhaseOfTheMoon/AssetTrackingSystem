@@ -3,7 +3,7 @@ import type { AssessmentInput, MaintenanceAssessment } from './types';
 
 export async function saveAssessment(
   input: AssessmentInput,
-  imageBase64?: string  // Add optional image parameter
+  imageBase64?: string 
 ): Promise<MaintenanceAssessment> {
   console.log('=== Saving Assessment ===');
   
@@ -56,6 +56,8 @@ export async function saveAssessment(
       ai_response: input.ai_response,
       assessed_by: input.assessed_by,
       image_url: imageUrl,  // Add image URL
+      approval_status: 'pending',  // always start as pending
+
     })
     .select()
     .single();
@@ -67,7 +69,7 @@ export async function saveAssessment(
     throw new Error(`Failed to save assessment: ${assessmentError.message}`);
   }
 
-  console.log('✅ Assessment saved:', assessment.id);
+  console.log('Assessment saved:', assessment.id);
 
   // Update asset's current condition
   const { error: updateError } = await supabaseAdmin
@@ -93,6 +95,8 @@ export async function saveAssessment(
     ai_response: assessment.ai_response,
     assessed_at: assessment.assessed_at,
     assessed_by: assessment.assessed_by,
+    image_url: assessment.image_url,       
+    approval_status: assessment.approval_status, 
     created_dt: assessment.created_dt,
     updated_dt: assessment.updated_dt,
   };

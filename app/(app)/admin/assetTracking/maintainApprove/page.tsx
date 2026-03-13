@@ -64,7 +64,7 @@ export default function MaintenanceReviewPage() {
     if (!confirm('Are you sure you want to approve this maintenance request?')) return;
     setProcessingId(assessmentId);
     try {
-      const res = await fetch('/api/approveAssessment', {
+      const res = await fetch('/api/approveAssessments', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ assessmentId }),
@@ -84,7 +84,7 @@ export default function MaintenanceReviewPage() {
     if (!confirm('Are you sure you want to reject this maintenance request?')) return;
     setProcessingId(assessmentId);
     try {
-      const res = await fetch('/api/rejectAssessment', {
+      const res = await fetch('/api/rejectAssessments', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ assessmentId }),
@@ -104,7 +104,7 @@ export default function MaintenanceReviewPage() {
     if (!confirm('Reopen this assessment and move it back to pending?')) return;
     setProcessingId(assessmentId);
     try {
-      const res = await fetch('/api/reopenAssessment', {
+      const res = await fetch('/api/reopenAssessments', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ assessmentId }),
