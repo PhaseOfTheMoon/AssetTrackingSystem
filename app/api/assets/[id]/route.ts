@@ -22,7 +22,10 @@ import { validateSession } from '@/lib/apiAuth' // Validate the user session
  * @async - wait for DB and authenticated first
  * @param id - comes from [id] in the URL (e.g., asset_id)
  */
-export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  // Await the params to get the id
+  const { id } = await params;
+
   // Read the session cookie and it returns 'authorized' either true or false
   const authResult = await validateSession();
 
@@ -42,7 +45,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
         location:location_id(location_id, name),
         department:department_id(department_id, name)
       `)
-      .eq('asset_id', params.id)
+      .eq('asset_id', id)
       .is('deleted_dt', null) // Ensure only existing records are fetched 
       .single() // Expect one record
 
@@ -68,7 +71,10 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
 }
 
 // Update an asset
-export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
+export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  // Await the params to get the id
+  const { id } = await params;
+
   // Only admins can update
   const authResult = await validateSession('admin')
 
@@ -92,7 +98,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     // Read from the asset table
       .from('Asset')
       .update(updateData) // Update only the asset in the URL
-      .eq('asset_id', params.id)
+      .eq('asset_id', id)
       .is('deleted_dt', null) // Ensure only existing records can be updated
       .select(`
         *,

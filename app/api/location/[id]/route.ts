@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase/client'
 
-export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   try {
     const { data, error } = await supabase
       .from('Location')
       .select('*')
-      .eq('location_id', params.id)
+      .eq('location_id', id)
       .single()
 
     if (error) {
@@ -20,7 +21,8 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
   }
 }
 
-export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
+export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   try {
     const body = await request.json()
     const { location_id, ...updateData } = body
@@ -30,7 +32,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     const { data, error } = await supabase
       .from('Location')
       .update(updateData)
-      .eq('location_id', params.id)
+      .eq('location_id', id)
       .select()
       .single()
 

@@ -14,7 +14,7 @@ const configs = {
   staff: { title: "Staff ID Scanner", description: "Scan staff identification codes", icon: Users, idColumn: "staff_id", tableName: "Staff" },
   location: { title: "Location Scanner", description: "Scan location QR codes or barcodes", icon: MapPin, idColumn: "location_id", tableName: "Location" },
   department: { title: "Department Scanner", description: "Scan department codes", icon: Building2, idColumn: "department_id", tableName: "Department" },
-};
+} as const;
 
 // ============================================
 // HELPER COMPONENTS (MODALS)
