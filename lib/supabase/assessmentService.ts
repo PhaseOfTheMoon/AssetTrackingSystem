@@ -3,48 +3,22 @@ import type { AssessmentInput, MaintenanceAssessment } from './types';
 
 export async function saveAssessment(
   input: AssessmentInput,
-  imageBase64?: string 
+  imageBase64?: string
 ): Promise<MaintenanceAssessment> {
   console.log('=== Saving Assessment ===');
-  
-  let imageUrl: string | null = null;
 
-  // Only save image if maintenance is needed
-  if (input.maintenance_needed && imageBase64) {
-    try {
-      console.log('Uploading image (maintenance needed)...');
-      
-      // Convert base64 to buffer
-      const buffer = Buffer.from(imageBase64, 'base64');
-      const fileName = `${input.asset_id}_${Date.now()}.jpg`;
-      
-      // Upload to Supabase Storage
-      const { data: uploadData, error: uploadError } = await supabaseAdmin
-        .storage
-        .from('AssetImage')
-        .upload(fileName, buffer, {
-          contentType: 'image/jpeg',
-          upsert: false
-        });
+  // STEP 1: Validate location_id exists BEFORE doing anything
+  const { data: locationExists, error: locationError } = await supabaseAdmin
+    .from('Location')
+    .select('location_id')
+    .eq('location_id', input.location_id)
+    .single();
 
-      if (uploadError) {
-        console.error('Image upload error:', uploadError);
-      } else {
-        // Get public URL
-        const { data: urlData } = supabaseAdmin
-          .storage
-          .from('AssetImage')
-          .getPublicUrl(fileName);
-        
-        imageUrl = urlData.publicUrl;
-        console.log('Image uploaded:', imageUrl);
-      }
-    } catch (error) {
-      console.error('Error uploading image:', error);
-    }
+  if (locationError || !locationExists) {
+    throw new Error(`Invalid location_id: ${input.location_id} does not exist`);
   }
 
-  // Insert assessment record
+  // STEP 2: Insert DB record first (no image yet)
   const { data: assessment, error: assessmentError } = await supabaseAdmin
     .from('Maintenance')
     .insert({
@@ -55,9 +29,8 @@ export async function saveAssessment(
       priority: input.priority,
       ai_response: input.ai_response,
       assessed_by: input.assessed_by,
-      image_url: imageUrl,  // Add image URL
-      approval_status: 'pending',  // always start as pending
-
+      image_url: null,              
+      approval_status: 'pending',
     })
     .select()
     .single();
@@ -71,7 +44,47 @@ export async function saveAssessment(
 
   console.log('Assessment saved:', assessment.id);
 
-  // Update asset's current condition
+  // STEP 3: Only upload image AFTER DB insert succeeds
+  let imageUrl: string | null = null;
+
+  if (input.maintenance_needed && imageBase64) {
+    try {
+      console.log('Uploading image (maintenance needed)...');
+      const buffer = Buffer.from(imageBase64, 'base64');
+      const fileName = `${input.asset_id}_${Date.now()}.jpg`;
+
+      const { data: uploadData, error: uploadError } = await supabaseAdmin
+        .storage
+        .from('AssetImage')
+        .upload(fileName, buffer, {
+          contentType: 'image/jpeg',
+          upsert: false,
+        });
+
+      if (uploadError) {
+        console.error('Image upload error:', uploadError);
+      } else {
+        const { data: urlData } = supabaseAdmin
+          .storage
+          .from('AssetImage')
+          .getPublicUrl(fileName);
+
+        imageUrl = urlData.publicUrl;
+        console.log('Image uploaded:', imageUrl);
+
+        // STEP 4: Update the record with the image URL
+        await supabaseAdmin
+          .from('Maintenance')
+          .update({ image_url: imageUrl })
+          .eq('id', assessment.id);
+      }
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      // DB record is safe — image upload failure is non-fatal
+    }
+  }
+
+  // STEP 5: Update asset condition
   const { error: updateError } = await supabaseAdmin
     .from('Asset')
     .update({
@@ -95,8 +108,8 @@ export async function saveAssessment(
     ai_response: assessment.ai_response,
     assessed_at: assessment.assessed_at,
     assessed_by: assessment.assessed_by,
-    image_url: assessment.image_url,       
-    approval_status: assessment.approval_status, 
+    image_url: imageUrl,
+    approval_status: assessment.approval_status,
     created_dt: assessment.created_dt,
     updated_dt: assessment.updated_dt,
   };

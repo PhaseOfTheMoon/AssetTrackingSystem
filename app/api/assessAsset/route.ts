@@ -13,10 +13,11 @@ const payloadSchema = z.object({
 }).strict();
 
 export async function POST(request: NextRequest) {
-  // Standard user auth: Any logged-in staff can submit an assessment
-  const authResult = await validateSession();
-  if (!authResult.authorized) return authResult.response;
-
+    console.log('ENV CHECK:', {
+    supabaseUrl: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
+    serviceKey: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
+    geminiKey: !!process.env.GEMINI_API_KEY,
+  });
   try {
     const body = await request.json();
     const validatedData = payloadSchema.parse(body);
