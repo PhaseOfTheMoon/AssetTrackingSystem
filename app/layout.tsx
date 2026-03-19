@@ -1,7 +1,7 @@
 // Root layout for the application which includes metadata and global styles
 import type { Metadata } from "next";
 import "./globals.css";
-import { NextAuthProvider } from "@/components/auth/nextAuthProvider";
+import { NextAuthProvider } from "@/components/auth/NextAuthProvider";
 import { ToastProvider } from "../components/ui/toast";
 
 // Contain the metadata for the application
