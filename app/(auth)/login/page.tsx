@@ -1,4 +1,5 @@
 import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import LoginClient from "./loginClient";
 
@@ -7,11 +8,12 @@ export const metadata = {
 };
 
 export default async function LoginPage() {
-  // If already authenticated, redirect to dashboard
-  const session = await getServerSession();
-  
+  // If already authenticated, redirect to the correct role-based dashboard
+  const session = await getServerSession(authOptions);
+
   if (session) {
-    redirect("/dashboard");
+    const role = (session.user as any)?.role;
+    redirect(role === 'admin' ? '/admin/dashboard' : '/user/dashboard');
   }
 
   return <LoginClient />;

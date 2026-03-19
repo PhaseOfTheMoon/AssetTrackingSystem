@@ -1,7 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase/client'
+// supabaseAdmin uses the service role key and only runs server-side — credentials are never exposed to the browser
+import { supabaseAdmin as supabase } from '@/lib/supabase/server'
+// Verifies the request has a valid login session before allowing access
+import { validateSession } from '@/lib/apiAuth'
 
 export async function POST(request: NextRequest) {
+  // Checks the user is logged in — any authenticated user can call this, returns 401 if not
+  const authResult = await validateSession()
+  if (!authResult.authorized) return authResult.response
+
   try {
     const { email, microsoftUserId } = await request.json()
 
@@ -29,7 +36,8 @@ export async function POST(request: NextRequest) {
         })
       }
 
-      console.error('Error fetching staff:', error)
+      // Logs only the message string, not the full error object which may expose DB internals
+      console.error('Error fetching staff:', { message: error.message })
       return NextResponse.json(
         { error: 'Failed to fetch staff data' },
         { status: 500 }
@@ -68,7 +76,8 @@ export async function POST(request: NextRequest) {
         .single()
 
       if (updateError) {
-        console.error('Error updating microsoft_user_id:', updateError)
+        // Logs only the message string, not the full error object which may expose DB internals
+        console.error('Error updating microsoft_user_id:', { message: updateError.message })
         // Continue with original staff data even if update fails
       } else {
         // Use updated staff data
@@ -95,8 +104,9 @@ export async function POST(request: NextRequest) {
       error: 'Invalid account status. Please contact administrator.'
     })
 
-  } catch (error) {
-    console.error('Get staff error:', error)
+  } catch (error: any) {
+    // error?.message safely accesses the message — if error is null/undefined it won't crash
+    console.error('Get staff error:', { message: error?.message })
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

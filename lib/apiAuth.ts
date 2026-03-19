@@ -65,7 +65,8 @@ export async function validateSession(requiredRole?: string): Promise<AuthResult
         return {
             authorized: false,
             response: NextResponse.json(
-                { error: 'Forbidden - ${requiredRole} role required' },
+                // Backticks enable template literals so ${requiredRole} inserts the actual role name e.g. 'admin'
+                { error: `Forbidden - ${requiredRole} role required` },
                 { status: 403 } // Server refuse to authorize the request
             )
         };
