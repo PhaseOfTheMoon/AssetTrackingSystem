@@ -42,7 +42,7 @@ import { Redis } from '@upstash/redis'
  */
 const redis = new Redis ({
   url: process.env.UPSTASH_REDIS_REST_URL!,
-  token: process.env.UNSTASH_REDIS_REST_TOKEN!
+  token: process.env.UPSTASH_REDIS_REST_TOKEN!
 })
 
 // Global limit
