@@ -1,6 +1,6 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
-// Load API key - try multiple methods
+// Load API key
 const apiKey = 
   process.env.GEMINI_API_KEY || 
   process.env.NEXT_PUBLIC_GEMINI_API_KEY;
@@ -21,7 +21,8 @@ if (!apiKey) {
 export const genAI = new GoogleGenerativeAI(apiKey);
 
 export const model = genAI.getGenerativeModel({ 
-  model: 'gemini-2.5-flash'
+  model: 'gemini-2.5-flash-lite'
+  // model: 'gemini-2.5-flash' remember change back
 });
 
 console.log('✅ Gemini client initialized successfully');

@@ -12,7 +12,7 @@ export async function GET() {
       .from('Maintenance')
       .select('*')
       .eq('maintenance_needed', true)
-      .order('assessed_at', { ascending: false });
+      .order('assessed_dt', { ascending: false });
 
     if (error) throw error;
 

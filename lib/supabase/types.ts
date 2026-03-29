@@ -342,11 +342,12 @@ export interface Database {
                     condition_status: 'In-use' | 'In-store' | 'Spoiled';
                     maintenance_needed: boolean;
                     priority: 'none' | 'low' | 'medium' | 'high';
-                    ai_response: string;
+                    ai_response: string | null;
+                    feedback: string | null; 
                     image_url?: string | null;  
                     actioned_at?: string | null;    
                     approval_status?: 'pending' | 'approved' | 'rejected'; 
-                    assessed_at: string;
+                    assessed_dt: string;
                     assessed_by: string | null;
                     created_dt: string;
                     updated_dt: string;
@@ -359,9 +360,11 @@ export interface Database {
                     maintenance_needed?: boolean;
                     priority?: 'none' | 'low' | 'medium' | 'high';
                     approval_status?: 'pending' | 'approved' | 'rejected'; 
+                    ai_response?: string | null;
+                    feedback?: string | null;  
                     image_url?: string | null;       
                     actioned_at?: string | null;    
-                    assessed_at?: string;
+                    assessed_dt?: string;
                     assessed_by?: string | null;
                     created_dt?: string;
                     updated_dt?: string;
@@ -376,8 +379,9 @@ export interface Database {
                     approval_status?: 'pending' | 'approved' | 'rejected';
                     image_url?: string | null;       
                     actioned_at?: string | null;    
-                    ai_response?: string;
-                    assessed_at?: string;
+                    ai_response?: string | null;
+                    feedback?: string | null;  
+                    assessed_dt?: string;
                     assessed_by?: string | null;
                     created_dt?: string;
                     updated_dt?: string;
@@ -432,21 +436,22 @@ export interface Database {
 }
 
 export interface MaintenanceAssessment {
-  id: string;
-  asset_id: string;          
-  location_id: string;       
-  condition_status: 'In-use' | 'In-store' | 'Spoiled';
-  maintenance_needed: boolean;
-  priority: 'none' | 'low' | 'medium' | 'high';
-  ai_response: string;
-  image_url?: string | null;           
-  approval_status?: 'pending' | 'approved' | 'rejected';           
-  actioned_at?: string | null;       
-  assessed_at: string;
-  assessed_by: string | null;
-  created_dt: string;
-  updated_dt: string;
-}
+    id: string;
+    asset_id: string;          
+    location_id: string;       
+    condition_status: 'In-use' | 'In-store' | 'Spoiled';
+    maintenance_needed: boolean;
+    priority: 'none' | 'low' | 'medium' | 'high';
+    ai_response?: string | null;
+    feedback?: string | null;  
+    image_url?: string | null;           
+    approval_status?: 'pending' | 'approved' | 'rejected';           
+    actioned_at?: string | null;       
+    assessed_dt: string;
+    assessed_by: string | null;
+    created_dt: string;
+    updated_dt: string;
+    }
 
 export interface AssessmentInput {
   asset_id: string;          
@@ -454,7 +459,7 @@ export interface AssessmentInput {
   condition_status: 'In-use' | 'In-store' | 'Spoiled';
   maintenance_needed: boolean;
   priority: 'none' | 'low' | 'medium' | 'high';
-  ai_response: string;
+  ai_response: string | null;
   assessed_by: string | null;
 }
 

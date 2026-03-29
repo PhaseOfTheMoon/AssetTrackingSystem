@@ -89,7 +89,7 @@ export async function saveAssessment(
     .from('Asset')
     .update({
       condition: input.condition_status,
-      last_assessed_at: new Date().toISOString(),
+      last_assessed_dt: new Date().toISOString(),
       updated_dt: new Date().toISOString(),
     })
     .eq('asset_id', input.asset_id);
@@ -106,7 +106,7 @@ export async function saveAssessment(
     maintenance_needed: assessment.maintenance_needed,
     priority: assessment.priority,
     ai_response: assessment.ai_response,
-    assessed_at: assessment.assessed_at,
+    assessed_dt: assessment.assessed_dt,
     assessed_by: assessment.assessed_by,
     image_url: imageUrl,
     approval_status: assessment.approval_status,

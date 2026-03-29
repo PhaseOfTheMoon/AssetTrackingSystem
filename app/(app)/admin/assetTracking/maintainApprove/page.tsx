@@ -19,7 +19,8 @@ interface Assessment {
   condition_status: string;
   maintenance_needed: boolean;
   priority: string;
-  ai_response: string;
+  ai_response: string | null;
+  feedback: string | null;
   image_url?: string | null;
   assessed_at: string;
   approval_status?: 'pending' | 'approved' | 'rejected';
@@ -161,8 +162,8 @@ export default function MaintenanceReviewPage() {
     activeTab === 'pending'
       ? pendingAssessments
       : activeTab === 'approved'
-      ? approvedAssessments
-      : rejectedAssessments;
+        ? approvedAssessments
+        : rejectedAssessments;
 
   return (
     <div className="flex min-h-screen bg-gray-50 text-gray-900 font-sans antialiased">
@@ -193,11 +194,10 @@ export default function MaintenanceReviewPage() {
             <div className="flex gap-2 border-b border-gray-200">
               <button
                 onClick={() => setActiveTab('pending')}
-                className={`px-4 py-2 font-medium text-sm transition-colors ${
-                  activeTab === 'pending'
+                className={`px-4 py-2 font-medium text-sm transition-colors ${activeTab === 'pending'
                     ? 'border-b-2 border-yellow-600 text-yellow-600'
                     : 'text-gray-500 hover:text-gray-700'
-                }`}
+                  }`}
               >
                 <div className="flex items-center gap-2">
                   <ClockIcon className="h-5 w-5" />
@@ -206,11 +206,10 @@ export default function MaintenanceReviewPage() {
               </button>
               <button
                 onClick={() => setActiveTab('approved')}
-                className={`px-4 py-2 font-medium text-sm transition-colors ${
-                  activeTab === 'approved'
+                className={`px-4 py-2 font-medium text-sm transition-colors ${activeTab === 'approved'
                     ? 'border-b-2 border-green-600 text-green-600'
                     : 'text-gray-500 hover:text-gray-700'
-                }`}
+                  }`}
               >
                 <div className="flex items-center gap-2">
                   <CheckCircleIcon className="h-5 w-5" />
@@ -219,11 +218,10 @@ export default function MaintenanceReviewPage() {
               </button>
               <button
                 onClick={() => setActiveTab('rejected')}
-                className={`px-4 py-2 font-medium text-sm transition-colors ${
-                  activeTab === 'rejected'
+                className={`px-4 py-2 font-medium text-sm transition-colors ${activeTab === 'rejected'
                     ? 'border-b-2 border-red-600 text-red-600'
                     : 'text-gray-500 hover:text-gray-700'
-                }`}
+                  }`}
               >
                 <div className="flex items-center gap-2">
                   <XCircleIcon className="h-5 w-5" />
@@ -268,7 +266,7 @@ export default function MaintenanceReviewPage() {
                         Assessed At
                       </th>
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        AI Response
+                        Response
                       </th>
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-28">
                         Status
@@ -297,24 +295,22 @@ export default function MaintenanceReviewPage() {
 
                         {/* Condition */}
                         <td className="px-6 py-4 whitespace-nowrap text-sm">
-                          <span className={`px-2 py-1 rounded text-xs font-semibold ${
-                            assessment.condition_status === 'Spoiled'
+                          <span className={`px-2 py-1 rounded text-xs font-semibold ${assessment.condition_status === 'Spoiled'
                               ? 'bg-red-100 text-red-800'
                               : 'bg-yellow-100 text-yellow-800'
-                          }`}>
+                            }`}>
                             {assessment.condition_status}
                           </span>
                         </td>
 
                         {/* Priority */}
                         <td className="px-6 py-4 whitespace-nowrap text-sm">
-                          <span className={`px-2 py-1 rounded-full text-xs font-bold ${
-                            assessment.priority === 'high'
+                          <span className={`px-2 py-1 rounded-full text-xs font-bold ${assessment.priority === 'high'
                               ? 'bg-red-100 text-red-800'
                               : assessment.priority === 'medium'
-                              ? 'bg-orange-100 text-orange-800'
-                              : 'bg-yellow-100 text-yellow-800'
-                          }`}>
+                                ? 'bg-orange-100 text-orange-800'
+                                : 'bg-yellow-100 text-yellow-800'
+                            }`}>
                             {assessment.priority.toUpperCase()}
                           </span>
                         </td>
@@ -324,19 +320,35 @@ export default function MaintenanceReviewPage() {
                           {formatDate(assessment.assessed_at)}
                         </td>
 
-                        {/* AI Response */}
+                        {/* Response (AI / Manual) */}
                         <td className="px-6 py-4 text-gray-700 w-80">
-                          <ul className="space-y-1.5">
-                            {parseAiPoints(assessment.ai_response).map((point, i) => (
-                              <li key={i} className="flex items-start gap-2">
-                                <span className="mt-1.5 h-2 w-2 rounded-full bg-red-400 flex-shrink-0" />
-                                <span className="text-sm text-gray-700 leading-snug">{point}</span>
-                              </li>
-                            ))}
-                            {parseAiPoints(assessment.ai_response).length === 0 && (
-                              <li className="text-sm text-gray-400 italic">No details</li>
-                            )}
-                          </ul>
+                          {assessment.ai_response ? (
+                            <div className="flex flex-col gap-1.5">
+                              <span className="inline-flex items-center gap-1 text-xs font-semibold text-indigo-700 bg-indigo-50 border border-indigo-200 rounded-full px-2 py-0.5 w-fit">
+                                AI Response
+                              </span>
+                              <ul className="space-y-1.5">
+                                {parseAiPoints(assessment.ai_response).map((point, i) => (
+                                  <li key={i} className="flex items-start gap-2">
+                                    <span className="mt-1.5 h-2 w-2 rounded-full bg-red-400 flex-shrink-0" />
+                                    <span className="text-sm text-gray-700 leading-snug">{point}</span>
+                                  </li>
+                                ))}
+                                {parseAiPoints(assessment.ai_response).length === 0 && (
+                                  <li className="text-sm text-gray-400 italic">No details</li>
+                                )}
+                              </ul>
+                            </div>
+                          ) : assessment.feedback ? (
+                            <div className="flex flex-col gap-1.5">
+                              <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-full px-2 py-0.5 w-fit">
+                                Staff feedback
+                              </span>
+                              <p className="text-sm text-gray-700 leading-snug">{assessment.feedback}</p>
+                            </div>
+                          ) : (
+                            <span className="text-sm text-gray-400 italic">No response</span>
+                          )}
                         </td>
 
                         {/* Status */}
@@ -413,7 +425,7 @@ export default function MaintenanceReviewPage() {
                           )}
                         </td>
 
-                        </tr>
+                      </tr>
                     ))}
                   </tbody>
                 </table>
