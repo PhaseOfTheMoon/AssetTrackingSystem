@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { validateSession } from '@/lib/apiAuth';
-import { z } from 'zod';
-import { assessFurnitureCondition } from '@/lib/ai/geminiService';
+import { getAiProvider } from '@/lib/ai/aiFactory';
 import { saveAssessment } from '@/lib/supabase/assessmentService';
 
 const payloadSchema = z.object({
@@ -30,7 +28,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const aiResult = await assessFurnitureCondition(image, mimeType);
+    const ai = getAiProvider();
+    const aiResult = await ai.assessAssetCondition(image, mimeType);
 
     const savedAssessment = await saveAssessment(
       {

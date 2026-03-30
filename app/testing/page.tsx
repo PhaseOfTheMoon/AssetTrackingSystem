@@ -1,9 +1,10 @@
 'use client';
 import SuccessContent from '@/components/scanner/successContent';
 import { useState, useRef, useEffect } from 'react';
+import { Html5Qrcode } from 'html5-qrcode';
 import {
   QrCode, Barcode, ChevronLeft, Sparkles, PenLine,
-  Upload, CheckCircle, RefreshCw, MapPin, Building2, Edit,
+  Upload, CheckCircle, RefreshCw, MapPin, Building2, Edit, XCircle,
 } from 'lucide-react';
 import type { AiAssessmentResult } from '@/lib/supabase/types';
 import { supabase } from '@/lib/supabase/client';
@@ -64,33 +65,55 @@ function conditionBadge(cond: string) {
   return 'px-3 py-1 rounded-full text-sm font-bold bg-yellow-100 text-yellow-800 border border-yellow-300';
 }
 
-// Scan the asset
+// ── Step 1: Scan Asset (real Html5Qrcode scanner + manual fallback) ────────────
+const SCANNER_REGION_ID = 'asset-qr-reader';
+
 function ScanAssetStep({ onAssetScanned }: {
   onAssetScanned: (asset: ScannedAsset) => void;
 }) {
-  const [manualCode, setManualCode] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  // Scanner state
+  const [isScanning,    setIsScanning]    = useState(false);
+  const [scannerError,  setScannerError]  = useState<string | null>(null);
+  const scannerRef          = useRef<Html5Qrcode | null>(null);
+  const lastScannedCodeRef  = useRef<string | null>(null);
+  const lastScannedTimeRef  = useRef<number>(0);
 
-  const handleScan = async () => {
-    if (!manualCode.trim()) return;
+  // Lookup state (used by both QR decode and manual input)
+  const [manualCode, setManualCode] = useState('');
+  const [loading,    setLoading]    = useState(false);
+  const [error,      setError]      = useState<string | null>(null);
+
+  // ── Safe scanner teardown ────────────────────────────────────
+  const safeStopAndClear = async (inst: Html5Qrcode | null) => {
+    if (!inst) return;
+    try {
+      const state = await (inst as any).getState();
+      if (state === 2) await (inst as any).stop();
+    } catch {
+      try { await (inst as any).stop(); } catch { /* silent */ }
+    }
+    try { (inst as any).clear(); } catch { /* silent */ }
+  };
+
+  // ── Supabase lookup — shared by QR decode & manual input ────
+  const lookupAsset = async (code: string) => {
     setLoading(true); setError(null);
     try {
-      const { data, error } = await supabase
+      const { data, error: dbErr } = await supabase
         .from('Asset')
         .select('asset_id, name, category, model, condition, location_id, department_id')
-        .eq('asset_id', manualCode.trim())
+        .eq('asset_id', code.trim())
         .single();
-      if (error || !data) {
-        setError(`Asset "${manualCode.trim()}" not found in database.`);
+      if (dbErr || !data) {
+        setError(`Asset "${code.trim()}" not found in database.`);
       } else {
         onAssetScanned({
-          id: data.asset_id,
-          name: data.name,
-          category: data.category,
-          model: data.model,
-          condition: data.condition,
-          location_id: data.location_id   || '',
+          id:            data.asset_id,
+          name:          data.name,
+          category:      data.category,
+          model:         data.model,
+          condition:     data.condition,
+          location_id:   data.location_id   || '',
           department_id: data.department_id || '',
         });
       }
@@ -98,9 +121,74 @@ function ScanAssetStep({ onAssetScanned }: {
     finally  { setLoading(false); }
   };
 
+  // Start scanner 
+  useEffect(() => {
+    if (!isScanning) return;
+    let isMounted = true;
+
+    const startScanner = async () => {
+      if (scannerRef.current) {
+        await safeStopAndClear(scannerRef.current);
+        scannerRef.current = null;
+      }
+      if (!isMounted) return;
+
+      try {
+        const scanner = new Html5Qrcode(SCANNER_REGION_ID);
+        scannerRef.current = scanner;
+
+        await (scanner as any).start(
+          { facingMode: 'environment' },
+          { fps: 30, qrbox: { width: 300, height: 300 }, aspectRatio: 1.0 },
+          (decodedText: string) => {
+            if (!isMounted) return;
+
+            // Debounce: ignore same code within 2 second
+            const now = Date.now();
+            if (lastScannedCodeRef.current === decodedText && now - lastScannedTimeRef.current < 2000) return;
+            lastScannedCodeRef.current = decodedText;
+            lastScannedTimeRef.current = now;
+
+            // Sounds Beep
+            try {
+              const audio = new Audio("data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBTGH0fPTgjMGHm7A7+OZUQ0PVKzn77BdGgU+mtn0xG8qBSuBzvLZiTYIGWe77OWfTRAMUKnj7K5iHAY5j9n0xXksBS");
+              audio.play().catch(() => {});
+            } catch { /* silent */ }
+
+            // Stop scanner then look up asset
+            stopScanning();
+            lookupAsset(decodedText);
+          },
+          () => {} 
+        );
+      } catch (err: any) {
+        if (isMounted) {
+          setScannerError(err.message || 'Camera access denied.');
+          setIsScanning(false);
+        }
+      }
+    };
+
+    startScanner();
+
+    return () => {
+      isMounted = false;
+      const inst = scannerRef.current;
+      scannerRef.current = null;
+      safeStopAndClear(inst);
+    };
+  }, [isScanning]); 
+
+  const handleStartClick = () => { setScannerError(null); setError(null); setIsScanning(true); };
+  const stopScanning     = () => setIsScanning(false);
+
+  const handleManualScan = () => { if (manualCode.trim()) lookupAsset(manualCode); };
+
   return (
     <div className="p-4 lg:p-8">
       <div className="max-w-4xl mx-auto">
+
+        {/* Header */}
         <div className="bg-white rounded-lg shadow-md mb-6 overflow-hidden">
           <div className="px-6 py-4 bg-gradient-to-r from-red-700 to-red-500 text-white">
             <div className="flex items-center gap-3">
@@ -113,15 +201,54 @@ function ScanAssetStep({ onAssetScanned }: {
           </div>
         </div>
 
+        {/* Scanner area */}
         <div className="bg-white rounded-lg shadow-md mb-6">
           <div className="p-6 lg:p-8">
-            <div className="relative w-full h-64 lg:h-80 border-4 border-dashed border-gray-300 rounded-2xl flex flex-col items-center justify-center bg-gradient-to-br from-gray-50 to-white">
-              <QrCode className="w-20 h-20 text-red-600 animate-pulse mb-4" />
-              <Barcode className="w-20 h-20 text-black opacity-20 absolute" />
-              <p className="text-lg font-medium text-gray-700">Scan Asset QR / Barcode</p>
-              <p className="text-sm text-gray-500 mt-2">Use the test input below to simulate</p>
-            </div>
 
+            {/* Idle state — tap to start */}
+            {!isScanning && (
+              <div
+                onClick={handleStartClick}
+                className="relative w-full h-64 lg:h-80 border-4 border-dashed border-gray-300 rounded-2xl flex flex-col items-center justify-center bg-gradient-to-br from-gray-50 to-white hover:border-red-400 transition-all cursor-pointer"
+              >
+                <QrCode className="w-20 h-20 text-red-600 animate-pulse mb-4" />
+                <Barcode className="w-20 h-20 text-black opacity-20 absolute" />
+                <p className="text-lg font-medium text-gray-700">Tap to Scan Asset</p>
+                <p className="text-sm text-gray-500 mt-2">Position the QR / barcode within the frame</p>
+              </div>
+            )}
+
+            {/* Live scanner */}
+            {isScanning && (
+              <div className="w-full text-center">
+                <div
+                  id={SCANNER_REGION_ID}
+                  className="w-full max-w-md mx-auto rounded-lg overflow-hidden border-2 border-gray-200"
+                />
+                <button
+                  onClick={stopScanning}
+                  className="mt-4 flex items-center justify-center gap-2 mx-auto px-6 py-2 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors font-medium shadow-md"
+                >
+                  <XCircle className="w-4 h-4" /> Stop Scanning
+                </button>
+              </div>
+            )}
+
+            {/* Scanner / lookup error */}
+            {(scannerError || error) && (
+              <div className="mt-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded-lg text-sm text-center">
+                {scannerError || error}
+              </div>
+            )}
+
+            {/* Loading indicator */}
+            {loading && (
+              <div className="mt-4 text-center text-sm text-gray-500 animate-pulse">
+                🔍 Looking up asset...
+              </div>
+            )}
+
+            {/* Tips */}
             <div className="mt-6 p-4 bg-red-50 rounded-lg">
               <h3 className="font-semibold text-gray-800 mb-2 flex items-center gap-2">
                 <QrCode className="w-5 h-5 text-red-600" /> Scanning Tips:
@@ -133,34 +260,38 @@ function ScanAssetStep({ onAssetScanned }: {
               </ul>
             </div>
 
+            {/* Manual fallback */}
             <div className="mt-4 p-4 bg-gray-50 border border-gray-200 rounded-lg">
-              <h3 className="text-sm font-semibold text-gray-700 mb-3">🧪 Test Mode — Enter Asset ID Manually</h3>
+              <h3 className="text-sm font-semibold text-gray-700 mb-3">⌨️ Enter Asset ID Manually</h3>
               <div className="flex gap-2">
                 <input
                   type="text"
                   value={manualCode}
                   onChange={(e) => setManualCode(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === 'Enter') handleScan(); }}
+                  onKeyDown={(e) => { if (e.key === 'Enter') handleManualScan(); }}
                   placeholder="Enter a real asset_id from Supabase"
                   className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-red-500 focus:border-red-500"
                 />
                 <button
-                  onClick={handleScan}
+                  onClick={handleManualScan}
                   disabled={!manualCode.trim() || loading}
                   className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
                 >
-                  {loading ? 'Checking...' : 'Simulate Scan'}
+                  {loading ? 'Checking...' : 'Look Up'}
                 </button>
               </div>
-              {error && <p className="text-xs text-red-500 mt-2">{error}</p>}
-              <p className="text-xs text-gray-400 mt-2">Fetches from your Supabase Asset table.</p>
+              <p className="text-xs text-gray-400 mt-2">Use this if scanning is unavailable on this device.</p>
             </div>
           </div>
         </div>
 
+        {/* Bottom nav */}
         <div className="bg-white rounded-lg shadow-md">
           <div className="px-4 lg:px-6 py-4 bg-gray-50">
-            <button className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors font-medium shadow-md">
+            <button
+              onClick={() => { if (isScanning) stopScanning(); }}
+              className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors font-medium shadow-md"
+            >
               <ChevronLeft className="w-5 h-5" /> Back to Home
             </button>
           </div>

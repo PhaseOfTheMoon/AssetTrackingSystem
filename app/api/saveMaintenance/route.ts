@@ -13,12 +13,12 @@ export async function POST(req: NextRequest) {
       priority,
       feedback,
       ai_response,
-      image_base64,   // raw base64 string (no data:image prefix)
-      image_mime,     // e.g. 'image/jpeg'
+      image_base64,   
+      image_mime,     
       assessed_by,
     } = body;
 
-    // ── STEP 1: Validate location_id exists (same as assessmentService) ──
+    // Validate location_id exists
     const { data: locationExists, error: locationError } = await supabaseAdmin
       .from('Location')
       .select('location_id')
@@ -32,7 +32,7 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // ── STEP 2: Insert DB record first (no image yet) ──
+    //  Insert DB record without image
     const { data: assessment, error: assessmentError } = await supabaseAdmin
       .from('Maintenance')
       .insert({
@@ -41,11 +41,11 @@ export async function POST(req: NextRequest) {
         condition_status,
         maintenance_needed,
         priority,
-        feedback:         feedback ?? null,
-        ai_response:      ai_response ?? null,
-        assessed_by:      assessed_by ?? null,
-        image_url:        null,
-        approval_status:  'pending',
+        feedback: feedback ?? null,
+        ai_response: ai_response ?? null,
+        assessed_by: assessed_by ?? null,
+        image_url: null,
+        approval_status: 'pending',
       })
       .select()
       .single();
@@ -60,7 +60,7 @@ export async function POST(req: NextRequest) {
 
     console.log('Assessment saved:', assessment.id);
 
-    // ── STEP 3: Upload image AFTER DB insert succeeds (same as assessmentService) ──
+    // Upload image AFTER DB insert succeeds
     let imageUrl: string | null = null;
 
     if (maintenance_needed && image_base64) {
@@ -97,11 +97,11 @@ export async function POST(req: NextRequest) {
         }
       } catch (err) {
         console.error('Error uploading image:', err);
-        // DB record is safe — image upload failure is non-fatal
+        // DB record is safe, image upload failure is non-fatal
       }
     }
 
-    // ── STEP 5: Update asset condition (same as assessmentService) ──
+    // Update asset condition
     const { error: updateError } = await supabaseAdmin
       .from('Asset')
       .update({

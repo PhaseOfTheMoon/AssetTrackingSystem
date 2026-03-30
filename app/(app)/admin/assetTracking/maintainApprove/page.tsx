@@ -22,7 +22,7 @@ interface Assessment {
   ai_response: string | null;
   feedback: string | null;
   image_url?: string | null;
-  assessed_at: string;
+  assessed_dt: string;
   approval_status?: 'pending' | 'approved' | 'rejected';
 }
 
@@ -317,7 +317,7 @@ export default function MaintenanceReviewPage() {
 
                         {/* Assessed At */}
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {formatDate(assessment.assessed_at)}
+                          {formatDate(assessment.assessed_dt)}
                         </td>
 
                         {/* Response (AI / Manual) */}
