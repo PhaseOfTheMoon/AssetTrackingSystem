@@ -141,23 +141,23 @@ export default function MaintenanceReviewPage() {
   const parseAiPoints = (text: string): string[] => {
     if (!text) return [];
 
-    // Try to find lines that look like issues/problems (contain keywords)
-    const issueKeywords = /rust|crack|broken|damage|wear|tear|leak|corrode|corroded|fray|frayed|deteriorat|fault|defect|issue|problem|missing|loose|bent|dent|scratch|stain|mold|mould|chip|peel/i;
+    // Try to extract from ISSUES: section first (structured AI response)
+    const issuesSection = text.split(/ISSUES:/i)[1];
+    if (issuesSection) {
+      const points = issuesSection
+        .split('\n')
+        .map(l => l.replace(/^[\s\-•*]+/, '').trim())
+        .filter(l => l.length > 3);
+      if (points.length > 0) return points.slice(0, 3);
+    }
 
-    // Split by newlines, bullet points, or sentences
-    const lines = text
-      .split(/[\n\r]+|(?<=\.)\s+/)
-      .map((l) => l.replace(/^[\s\-•*\d.]+/, '').trim())
-      .filter((l) => l.length > 10 && l.length < 120);
-
-    // Prefer lines with issue keywords
-    const issueLines = lines.filter((l) => issueKeywords.test(l));
-    const result = issueLines.length > 0 ? issueLines : lines;
-
-    // Return max 3 points
-    return result.slice(0, 3);
+    // Fallback: split by newlines for unstructured text
+    return text
+      .split(/[\n\r]+/)
+      .map(l => l.replace(/^[\s\-•*\d.]+/, '').trim())
+      .filter(l => l.length > 10 && l.length < 120)
+      .slice(0, 3);
   };
-
   const activeList =
     activeTab === 'pending'
       ? pendingAssessments
