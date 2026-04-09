@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const validatedData = payloadSchema.parse(body);
+    const { image, assetId, locationId, mimeType } = body;
 
     if (!image || !assetId || !locationId) {
       return NextResponse.json(

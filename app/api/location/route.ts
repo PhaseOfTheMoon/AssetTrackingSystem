@@ -32,7 +32,9 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const validatedParams = getQuerySchema.parse(Object.fromEntries(searchParams.entries()));
 
-    let query = supabaseAdmin.from('Location').select('*', { count: 'exact' });
+    let query = supabaseAdmin
+      .from('Location')
+      .select('*', { count: 'exact' })
 
     if (validatedParams.search) {
       query = query.ilike(validatedParams.searchField, `%${validatedParams.search}%`);
@@ -110,7 +112,27 @@ export async function DELETE(request: NextRequest) {
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: 'Validation failed', details: error.flatten() }, { status: 400 });
     }
-    return NextResponse.json({ error: 'Failed to delete location' }, { status: 500 });
+
+    const { error } = await supabaseAdmin
+      .from('Location')
+      .delete()
+      .eq('location_id', id)
+
+    if (error) throw error
+
+    return NextResponse.json({
+      success: true,
+      message: 'Location deleted successfully'
+    })
+  } catch (error) {
+    console.error('DELETE /api/location error:', error)
+    return NextResponse.json(
+      {
+        error: error instanceof Error ? error.message : 'Failed to delete location',
+        success: false
+      },
+      { status: 500 }
+    )
   }
 }
 

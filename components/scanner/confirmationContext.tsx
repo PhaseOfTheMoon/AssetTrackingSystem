@@ -136,36 +136,38 @@ export default function ConfirmationContent({
       if (!item?.code) { setMode('error'); setError('Invalid asset data.'); return; }
       setMode('loading');
 
-      const [{ data: locs }, { data: depts }] = await Promise.all([
-        supabase.from('Location').select('*'),
-        supabase.from('Department').select('*'),
-      ]);
-      setLocations(locs || []);
-      setDepartments(depts || []);
+    const [locRes, deptRes] = await Promise.all([
+      fetch('/api/location'),
+      fetch('/api/department'),
+    ]);
+    const locJson  = await locRes.json();
+    const deptJson = await deptRes.json();
+    setLocations(locJson.data   || []);
+    setDepartments(deptJson.data || []);
 
-      try {
-        const { data, error: dbErr } = await supabase
-          .from(tableName as any)
-          .select()
-          .eq('asset_id', item.code)
-          .single();
+    try {
+      const params = new URLSearchParams({
+        table: 'Asset',
+        idColumn: 'asset_id',
+        scannedCode: item.code,
+      });
+      const res    = await fetch(`/api/scanner?${params}`);
+      const result = await res.json();
 
-        if (dbErr?.code === 'PGRST116') {
-          setMode('registering');
-        } else if (dbErr) {
-          throw dbErr;
-        } else if (data) {
-          const d = data as unknown as Asset;
-          setAssetDetails(d);
-          setCondition((d.condition as ConditionStatus) || 'In-use');
-          setSelectedLocation(d.location_id   || '');
-          setSelectedDepartment(d.department_id || '');
-          setMode('editing');
-        }
-      } catch (err: any) {
-        setMode('error');
-        setError(err.message || 'An unknown error occurred.');
+      if (!result.success || !result.data) {
+        setMode('registering');
+      } else {
+        const d = result.data as Asset;
+        setAssetDetails(d);
+        setCondition((d.condition as ConditionStatus) || 'In-use');
+        setSelectedLocation(d.location_id   || '');
+        setSelectedDepartment(d.department_id || '');
+        setMode('editing');
       }
+    } catch (err: any) {
+      setMode('error');
+      setError(err.message || 'An unknown error occurred.');
+    }
     };
     load();
   }, [item, tableName]);

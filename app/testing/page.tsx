@@ -99,27 +99,26 @@ function ScanAssetStep({ onAssetScanned }: {
   const lookupAsset = async (code: string) => {
     setLoading(true); setError(null);
     try {
-      const { data, error: dbErr } = await supabase
-        .from('Asset')
-        .select('asset_id, name, category, model, condition, location_id, department_id')
-        .eq('asset_id', code.trim())
-        .single();
-      if (dbErr || !data) {
-        setError(`Asset "${code.trim()}" not found in database.`);
-      } else {
-        onAssetScanned({
-          id:            data.asset_id,
-          name:          data.name,
-          category:      data.category,
-          model:         data.model,
-          condition:     data.condition,
-          location_id:   data.location_id   || '',
-          department_id: data.department_id || '',
-        });
-      }
-    } catch { setError('Failed to fetch asset.'); }
-    finally  { setLoading(false); }
-  };
+        const params = new URLSearchParams({ table: 'Asset', idColumn: 'asset_id', scannedCode: code.trim() });
+        const res = await fetch(`/api/scanner?${params}`);
+        const result = await res.json();
+        if (!result.success || !result.data) {
+          setError(`Asset "${code.trim()}" not found in database.`);
+        }
+        else {
+          onAssetScanned({
+            id: result.data.asset_id,
+            name: result.data.name,
+            category: result.data.category,
+            model: result.data.model,
+            condition: result.data.condition,
+            location_id: result.data.location_id   || '',
+            department_id: result.data.department_id || '',
+          });
+        }
+      } catch { setError('Failed to fetch asset.'); }
+      finally  { setLoading(false); }
+    };
 
   // Start scanner 
   useEffect(() => {
@@ -921,12 +920,14 @@ export default function App() {
   // Shows the location and department in dropdownlist
   useEffect(() => {
     const load = async () => {
-      const [{ data: locs }, { data: depts }] = await Promise.all([
-        supabase.from('Location').select('*'),
-        supabase.from('Department').select('*'),
+      const [locRes, deptRes] = await Promise.all([
+        fetch('/api/location'),
+        fetch('/api/department'),
       ]);
-      setLocations(locs || []);
-      setDepartments(depts || []);
+      const locJson  = await locRes.json();
+      const deptJson = await deptRes.json();
+      setLocations(locJson.data   || []);
+      setDepartments(deptJson.data || []);
     };
     load();
   }, []);
