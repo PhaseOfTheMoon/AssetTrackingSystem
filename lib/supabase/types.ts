@@ -339,6 +339,7 @@ export interface Database {
                     id: string;
                     asset_id: string;
                     location_id: string;
+                    department_id?: string | null;
                     condition_status: 'In-use' | 'In-store' | 'Spoiled';
                     maintenance_needed: boolean;
                     priority: 'none' | 'low' | 'medium' | 'high';
@@ -356,6 +357,7 @@ export interface Database {
                     id?: string;
                     asset_id: string;
                     location_id: string;
+                    department_id?: string | null;   
                     condition_status: 'In-use' | 'In-store' | 'Spoiled';
                     maintenance_needed?: boolean;
                     priority?: 'none' | 'low' | 'medium' | 'high';
@@ -398,6 +400,12 @@ export interface Database {
                     columns: ["location_id"];
                     referencedRelation: "Location";
                     referencedColumns: ["location_id"];
+                    },
+                    {
+                    foreignKeyName: "maintenance_assessments_department_id_fkey";
+                    columns: ["department_id"];
+                    referencedRelation: "Department";
+                    referencedColumns: ["department_id"];
                     }
                 ];
             };
@@ -438,7 +446,8 @@ export interface Database {
 export interface MaintenanceAssessment {
     id: string;
     asset_id: string;          
-    location_id: string;       
+    location_id: string; 
+    department_id?: string | null;      
     condition_status: 'In-use' | 'In-store' | 'Spoiled';
     maintenance_needed: boolean;
     priority: 'none' | 'low' | 'medium' | 'high';
@@ -456,6 +465,7 @@ export interface MaintenanceAssessment {
 export interface AssessmentInput {
   asset_id: string;          
   location_id: string;       
+  department_id?: string | null;
   condition_status: 'In-use' | 'In-store' | 'Spoiled';
   maintenance_needed: boolean;
   priority: 'none' | 'low' | 'medium' | 'high';

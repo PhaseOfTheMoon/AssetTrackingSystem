@@ -349,10 +349,10 @@ export default function ConfirmationContent({
       const result = await saveToDb({
         condition_status:   condition,
         maintenance_needed: maintenanceNeeded,
-        priority:           maintenanceNeeded ? priority : 'none',
-        feedback:           feedback.trim() ? truncateToWords(feedback.trim(), FEEDBACK_MAX_WORDS) : null,
-        ai_response:        null,
-        image_file:         imageFile,
+        priority: maintenanceNeeded ? priority : 'none',
+        feedback: feedback.trim() ? truncateToWords(feedback.trim(), FEEDBACK_MAX_WORDS) : null,
+        ai_response: null,
+        image_file: imageFile,
       });
       if (!result.success) { setManualError(result.error || 'Failed to save. Please try again.'); scrollToError(); return; }
       onSubmit({
@@ -386,19 +386,19 @@ export default function ConfirmationContent({
       const result = await saveToDb({
         condition_status:   aiResult.condition,
         maintenance_needed: aiResult.maintenanceNeeded ?? false,
-        priority:           aiResult.priority ?? 'none',
-        feedback:           null,
-        ai_response:        truncateToWords(aiResult.fullResponse, FEEDBACK_MAX_WORDS) || null,
-        image_file:         imageFile,
+        priority: aiResult.priority ?? 'none',
+        feedback: null,
+        ai_response: truncateToWords(aiResult.fullResponse, FEEDBACK_MAX_WORDS) || null,
+        image_file: imageFile,
       });
       if (!result.success) { setAiSubmitError(result.error || 'Failed to save. Please try again.'); scrollToError(); return; }
       onSubmit({
-        asset_id:      assetDetails?.asset_id  || item.code,
-        name:          assetDetails?.name      || 'N/A',
-        category:      assetDetails?.category  || 'N/A',
-        model:         assetDetails?.model     || 'N/A',
-        condition:     aiResult.condition,
-        location_id:   selectedLocation   || null,
+        asset_id: assetDetails?.asset_id  || item.code,
+        name: assetDetails?.name      || 'N/A',
+        category: assetDetails?.category  || 'N/A',
+        model: assetDetails?.model     || 'N/A',
+        condition: aiResult.condition,
+        location_id: selectedLocation   || null,
         department_id: selectedDepartment || null,
         submitType: 'ai',
       });

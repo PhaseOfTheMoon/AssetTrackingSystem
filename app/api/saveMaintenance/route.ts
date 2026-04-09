@@ -9,6 +9,7 @@ export async function POST(req: NextRequest) {
       asset_id,
       location_id,
       condition_status,
+      department_id,
       maintenance_needed,
       priority,
       feedback,
@@ -38,6 +39,7 @@ export async function POST(req: NextRequest) {
       .insert({
         asset_id,
         location_id,
+        department_id,
         condition_status,
         maintenance_needed,
         priority,
@@ -105,8 +107,10 @@ export async function POST(req: NextRequest) {
     const { error: updateError } = await supabaseAdmin
       .from('Asset')
       .update({
-        condition:   condition_status,
-        updated_dt:  new Date().toISOString(),
+        condition:     condition_status,
+        location_id:   location_id   ?? null,
+        department_id: department_id ?? null,
+        updated_dt:    new Date().toISOString(),
       })
       .eq('asset_id', asset_id);
 
@@ -121,6 +125,7 @@ export async function POST(req: NextRequest) {
         asset_id:           assessment.asset_id,
         location_id:        assessment.location_id,
         condition_status:   assessment.condition_status,
+        department_id:      assessment.department_id,
         maintenance_needed: assessment.maintenance_needed,
         priority:           assessment.priority,
         feedback:           assessment.feedback,

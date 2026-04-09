@@ -975,8 +975,43 @@ export default function App() {
     finally  { setIsSubmitting(false); }
   };
 
-  const handleAiDone = (data: AiSubmitData, _locationId: string, _departmentId: string) => {
-    setSubmitData(data); setSubmitType('ai'); setStep('result');
+  const handleAiDone = async (data: AiSubmitData, locationId: string, departmentId: string) => {
+    if (!scannedAsset || isSubmitting) return;
+    setIsSubmitting(true); setSubmitError(null);
+    try {
+      let image_base64: string | null = null;
+      let image_mime: string | null = null;
+      if (data.image_file) {
+        image_base64 = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload  = () => resolve((reader.result as string).split(',')[1]);
+          reader.onerror = reject;
+          reader.readAsDataURL(data.image_file!);
+        });
+        image_mime = data.image_file.type;
+      }
+      const response = await fetch('/api/saveMaintenance', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          asset_id:           scannedAsset.id,
+          location_id:        locationId   || null,
+          department_id:      departmentId || null,
+          condition_status:   data.condition_status,
+          maintenance_needed: data.maintenance_needed,
+          priority:           data.priority,
+          feedback:           null,
+          ai_response:        data.ai_response,
+          image_base64,
+          image_mime,
+          assessed_by:        null,
+        }),
+      });
+      const result = await response.json();
+      if (!result.success) { setSubmitError(result.error || 'Failed to save'); return; }
+      setSubmitData(data); setSubmitType('ai'); setStep('result');
+    } catch { setSubmitError('Unexpected error. Check your connection.'); }
+    finally  { setIsSubmitting(false); }
   };
 
   const handleReset = () => {

@@ -24,6 +24,7 @@ export async function saveAssessment(
     .insert({
       asset_id: input.asset_id,
       location_id: input.location_id,
+      department_id: input.department_id ?? null,
       condition_status: input.condition_status,
       maintenance_needed: input.maintenance_needed,
       priority: input.priority,
@@ -103,6 +104,7 @@ export async function saveAssessment(
     asset_id: assessment.asset_id,
     location_id: assessment.location_id,
     condition_status: assessment.condition_status,
+    department_id: assessment.department_id,
     maintenance_needed: assessment.maintenance_needed,
     priority: assessment.priority,
     ai_response: assessment.ai_response,
