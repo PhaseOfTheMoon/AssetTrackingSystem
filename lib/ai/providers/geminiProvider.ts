@@ -1,9 +1,10 @@
 import { GoogleGenerativeAI, GenerativeModel } from '@google/generative-ai';
 import type { AiProvider, AiAssessmentResult } from '../aiProvider';
 
+// GeminiProvider implements AiProvider using free Google Gemini API for asset condition assessment.
 export class GeminiProvider implements AiProvider {
   private model: GenerativeModel;
-
+  // Initialize Gemini API client and model in the constructor, throwing an error if the API key is missing (WC)
   constructor() {
     const apiKey = process.env.GEMINI_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API_KEY;
     if (!apiKey) throw new Error('GEMINI_API_KEY is not set in environment variables');
@@ -12,7 +13,7 @@ export class GeminiProvider implements AiProvider {
     console.log('GeminiProvider initialized successfully');
   }
 
-  //  Public method (implements AiProvider interface)
+  //  Main method to assess asset condition from an image, with detailed logging and error handling (WC)
   async assessAssetCondition(
     imageBase64: string,
     mimeType: string = 'image/jpeg'
@@ -116,8 +117,7 @@ Important rules:
     }
   }
 
-  // Retries a Gemini call on 503 (high demand) with exponential backoff.
-  // Attempts: 1 → wait 2s,  2 → wait 4s, 3 → fail.
+  // Helper method to retry API calls on transient 503 errors, with exponential backoff (WC)
   private async withRetry<T>(
     fn: () => Promise<T>,
     retries = 3,
@@ -143,8 +143,7 @@ Important rules:
     throw new Error('Gemini retry limit reached');
   }
 
-  // Pre-screens the image before full assessment.
-  // Acts as a gatekeeper — rejects non-asset images early to save quota.
+  // Sends a prompt to Gemini to identify the asset type in the image, returning structured results.(WC)
   private async identifyAsset(
     imageBase64: string,
     mimeType: string
@@ -166,7 +165,8 @@ Respond ONLY in this exact format (no extra text):
 IS_VALID_ASSET: [Yes/No]
 DETECTED_ASSET: [exact asset name from the list above, or "Unknown" if not found]
 REASON: [one sentence explaining your decision]`;
-
+    // Send the image to Gemini with the identification prompt, 
+    // and parse the structured response to determine if it's a valid asset and what type it is (WC)
     const result = await this.model.generateContent([
       identificationPrompt,
       { inlineData: { data: imageBase64, mimeType } },
@@ -187,6 +187,7 @@ REASON: [one sentence explaining your decision]`;
 
   // Returns asset-specific inspection criteria for the assessment prompt.
   private getAssetCriteria(assetType: string): string {
+  //  Provides detailed, asset-specific condition criteria to guide Gemini's assessment, improving accuracy and relevance of results (WC)
     const criteria: Record<string, string> = {
       Chair: `
 - Structural: cracks or breaks in frame/legs, wobbling legs, bent metal parts
@@ -270,6 +271,7 @@ REASON: [one sentence explaining your decision]`;
       .filter(issue => issue.length > 0)
       .slice(0, 3);
 
+    // Default to "In-store" if STATUS is missing or unrecognized, to avoid false "In-use" classifications.
     let condition: 'In-use' | 'In-store' | 'Spoiled' = 'In-store';
     if (statusMatch) {
       const matched = statusMatch[1];

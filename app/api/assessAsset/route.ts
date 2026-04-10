@@ -1,14 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
+// get the selected AI model from aiFactory folder
 import { getAiProvider } from '@/lib/ai/aiFactory';
 
-const payloadSchema = z.object({
-  image: z.string().min(1, 'Image data is required'),
-  assetId: z.string().uuid('Invalid Asset ID'),
-  locationId: z.string().uuid('Invalid Location ID'),
-  userId: z.string().uuid().optional().nullable(),
-  mimeType: z.string().optional(),
-}).strict();
-
+// API route to assess asset condition using Gemini AI (WC)
 export async function POST(request: NextRequest) {
   console.log('ENV CHECK:', {
     supabaseUrl: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -18,7 +12,7 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const { image, assetId, locationId, mimeType } = body;
-
+    // validate required fields are return error 400 is missing required fields (WC)
     if (!image || !assetId || !locationId) {
       return NextResponse.json(
         { error: 'Missing required fields: image, assetId, locationId' },
@@ -29,6 +23,7 @@ export async function POST(request: NextRequest) {
     const ai = getAiProvider();
     const aiResult = await ai.assessAssetCondition(image, mimeType);
 
+    //Save assessment while asset and location ID matches in the database (WC)
     return NextResponse.json({
       success: true,
       assessment: {
@@ -43,6 +38,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     if (error instanceof Error && error.message.startsWith('INVALID_ASSET:')) {
       const detail = error.message.replace('INVALID_ASSET: ', '');
+      // The asset is not in the predefined list of acceptable assets, return 422 with details and accepted assets list (WC)
       return NextResponse.json(
         {
           error: 'Invalid asset image',

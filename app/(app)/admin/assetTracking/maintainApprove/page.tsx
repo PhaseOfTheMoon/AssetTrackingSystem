@@ -25,7 +25,8 @@ interface Assessment {
   assessed_dt: string;
   approval_status?: 'pending' | 'approved' | 'rejected';
 }
-
+// MaintenanceReviewPage component provides an interface for admins to review, approve, reject, or reopen asset maintenance assessments, 
+// with tabbed navigation for different assessment statuses. (WC)
 export default function MaintenanceReviewPage() {
   // Block non-admins from accessing this page on the client side
   const { isLoading: isAuthLoading, isAdmin } = useAdminAccess();
@@ -68,7 +69,7 @@ export default function MaintenanceReviewPage() {
       setIsLoading(false);
     }
   };
-
+  // handleApprove sends a request to approve the assessment, then refreshes the list (WC)
   const handleApprove = async (assessmentId: string) => {
     if (!confirm('Are you sure you want to approve this maintenance request?')) return;
     setProcessingId(assessmentId);
@@ -88,7 +89,7 @@ export default function MaintenanceReviewPage() {
       setProcessingId(null);
     }
   };
-
+  // handleReject sends a request to reject the assessment, then refreshes the list (WC)
   const handleReject = async (assessmentId: string) => {
     if (!confirm('Are you sure you want to reject this maintenance request?')) return;
     setProcessingId(assessmentId);
@@ -108,7 +109,7 @@ export default function MaintenanceReviewPage() {
       setProcessingId(null);
     }
   };
-
+  // handleReopen sends a request to reopen the assessment (set it back to pending), then refreshes the list (WC)
   const handleReopen = async (assessmentId: string) => {
     if (!confirm('Reopen this assessment and move it back to pending?')) return;
     setProcessingId(assessmentId);
@@ -125,7 +126,7 @@ export default function MaintenanceReviewPage() {
       setProcessingId(null);
     }
   };
-
+  // formatDate converts a date string into a more readable format for display in the table (WC)
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString('en-MY', {
@@ -137,11 +138,11 @@ export default function MaintenanceReviewPage() {
     });
   };
 
-  // Extracts up to 3 short bullet points from a long ai_response string
+  // Extracts up to 3 short bullet points from a long ai_response string (WC)
   const parseAiPoints = (text: string): string[] => {
     if (!text) return [];
 
-    // Try to extract from ISSUES: section first (structured AI response)
+    // Try to extract from ISSUES: section first (structure the AI response) (WC)
     const issuesSection = text.split(/ISSUES:/i)[1];
     if (issuesSection) {
       const points = issuesSection
@@ -158,6 +159,7 @@ export default function MaintenanceReviewPage() {
       .filter(l => l.length > 10 && l.length < 120)
       .slice(0, 3);
   };
+  // activeList determines which list of assessments to show based on the active tab (pending, approved, rejected) (WC)
   const activeList =
     activeTab === 'pending'
       ? pendingAssessments

@@ -21,14 +21,15 @@ import {
   XCircle,
 } from "lucide-react";
 
-// ── Types ─────────────────────────────────────────────────────────────────────
+// Types (WC)
 type Asset = {
   asset_id: string; name: string; description: string;
   location_id: string; department_id: string;
   condition: string; category: string; model: string;
 };
+
 type Department = Database['public']['Tables']['Department']['Row'];
-type Location   = Database['public']['Tables']['Location']['Row'];
+type Location = Database['public']['Tables']['Location']['Row'];
 type PriorityLevel = 'none' | 'low' | 'medium' | 'high';
 type ConditionStatus = 'In-use' | 'In-store' | 'Spoiled';
 
@@ -43,7 +44,7 @@ export type SubmitResult = {
   submitType: string;
 };
 
-// ── Word helpers ──────────────────────────────────────────────────────────────
+// limit the feedback to 50 words, sanitize input to prevent any special characters that could cause issues in the database or display (WC)
 const FEEDBACK_MAX_WORDS = 50;
 function countWords(text: string): number {
   return text.trim() === '' ? 0 : text.trim().split(/\s+/).length;
@@ -58,14 +59,15 @@ function truncateToWords(text: string | null | undefined, maxWords: number): str
 
 const conditionOptions: ConditionStatus[] = ['In-use', 'In-store', 'Spoiled'];
 
+// Priority level colors (WC)
 const priorityColors: Record<PriorityLevel, { bg: string; border: string; text: string }> = {
-  high:   { bg: '#fef2f2', border: '#fca5a5', text: '#dc2626' },
+  high: { bg: '#fef2f2', border: '#fca5a5', text: '#dc2626' },
   medium: { bg: '#fff7ed', border: '#fdba74', text: '#ea580c' },
-  low:    { bg: '#fefce8', border: '#fde047', text: '#ca8a04' },
-  none:   { bg: '#f0fdf4', border: '#86efac', text: '#16a34a' },
+  low: { bg: '#fefce8', border: '#fde047', text: '#ca8a04' },
+  none: { bg: '#f0fdf4', border: '#86efac', text: '#16a34a' },
 };
 
-// ── Component ─────────────────────────────────────────────────────────────────
+// Main component (WC) 
 export default function ConfirmationContent({
   item,
   tableName,
@@ -85,52 +87,52 @@ export default function ConfirmationContent({
   }) => Promise<void>;
   parentScan: { type: string; id: string; name: string } | null;
 }) {
-  // ── Page state ──────────────────────────────────────────
-  const [mode, setMode]           = useState<'loading' | 'editing' | 'registering' | 'error'>('loading');
+  // State variables (WC)
+  const [mode, setMode] = useState<'loading' | 'editing' | 'registering' | 'error'>('loading');
   const [assetDetails, setAssetDetails] = useState<Asset | null>(null);
-  const [pageStep, setPageStep]   = useState<'confirm' | 'update'>('confirm');
+  const [pageStep, setPageStep] = useState<'confirm' | 'update'>('confirm');
   const [conditionMethod, setConditionMethod] = useState<'manual' | 'ai'>('manual');
-  const [error, setError]         = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // ── Dropdown data ────────────────────────────────────────
+  // Dropdown data, select location and department from the dropdown list (WC)
   const [locations,   setLocations]   = useState<Location[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [selectedLocation,   setSelectedLocation]   = useState('');
   const [selectedDepartment, setSelectedDepartment] = useState('');
 
-  // ── Register fields ──────────────────────────────────────
-  const [newName,        setNewName]        = useState('');
+  // Registration fields (WC)
+  const [newName, setNewName] = useState('');
   const [newDescription, setNewDescription] = useState('');
-  const [newCategory,    setNewCategory]    = useState('');
-  const [newModel,       setNewModel]       = useState('');
+  const [newCategory, setNewCategory] = useState('');
+  const [newModel, setNewModel] = useState('');
   const [registerCondition, setRegisterCondition] = useState<ConditionStatus>('In-use');
 
-  // ── Manual update fields ─────────────────────────────────
-  const [condition,         setCondition]         = useState<ConditionStatus>('In-use');
+  //  Manual update fields, condition, priority, and feedback (WC)
+  const [condition, setCondition] = useState<ConditionStatus>('In-use');
   const [maintenanceNeeded, setMaintenanceNeeded] = useState(false);
-  const [priority,          setPriority]          = useState<PriorityLevel>('none');
-  const [feedback,          setFeedback]          = useState('');
-  const [manualError,       setManualError]       = useState<string | null>(null);
-  const [aiSubmitError,     setAiSubmitError]     = useState<string | null>(null);
+  const [priority, setPriority] = useState<PriorityLevel>('none');
+  const [feedback, setFeedback] = useState('');
+  const [manualError, setManualError] = useState<string | null>(null);
+  const [aiSubmitError,setAiSubmitError] = useState<string | null>(null);
 
-  // ── Image (upload + camera) ──────────────────────────────
-  const [imageFile,    setImageFile]    = useState<File | null>(null);
+  // Uploaded image state, capture or upload from local storage (WC)
+  const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string>('');
-  const [showCamera,   setShowCamera]   = useState(false);
-  const [stream,       setStream]       = useState<MediaStream | null>(null);
-  const [facingMode,   setFacingMode]   = useState<'user' | 'environment'>('environment');
+  const [showCamera, setShowCamera] = useState(false);
+  const [stream, setStream] = useState<MediaStream | null>(null);
+  const [facingMode, setFacingMode] = useState<'user' | 'environment'>('environment');
   const [pendingCameraMode, setPendingCameraMode] = useState<'user' | 'environment' | null>(null);
-  const videoRef   = useRef<HTMLVideoElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef  = useRef<HTMLCanvasElement>(null);
   const errorRef   = useRef<HTMLDivElement>(null);
 
-  // ── AI assessment ────────────────────────────────────────
-  const [aiLoading,  setAiLoading]  = useState(false);
-  const [aiResult,   setAiResult]   = useState<any>(null);
-  const [aiError,    setAiError]    = useState<string>('');
+  //  AI assessment result and loading/error state (WC)
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiResult, setAiResult] = useState<any>(null);
+  const [aiError, setAiError] = useState<string>('');
 
-  // ── Data fetching ────────────────────────────────────────
+  //  Data fetching (WC)
   useEffect(() => {
     const load = async () => {
       if (!item?.code) { setMode('error'); setError('Invalid asset data.'); return; }
@@ -146,12 +148,15 @@ export default function ConfirmationContent({
     setDepartments(deptJson.data || []);
 
     try {
+      // Check if asset exists in the database (WC)
       const params = new URLSearchParams({
         table: 'Asset',
         idColumn: 'asset_id',
         scannedCode: item.code,
       });
-      const res    = await fetch(`/api/scanner?${params}`);
+
+      // If asset is not found, we will go to the registering page, otherwise we will show the editing page (WC)
+      const res = await fetch(`/api/scanner?${params}`);
       const result = await res.json();
 
       if (!result.success || !result.data) {
@@ -160,7 +165,7 @@ export default function ConfirmationContent({
         const d = result.data as Asset;
         setAssetDetails(d);
         setCondition((d.condition as ConditionStatus) || 'In-use');
-        setSelectedLocation(d.location_id   || '');
+        setSelectedLocation(d.location_id || '');
         setSelectedDepartment(d.department_id || '');
         setMode('editing');
       }
@@ -172,7 +177,7 @@ export default function ConfirmationContent({
     load();
   }, [item, tableName]);
 
-  // ── Camera helpers ────────────────────────────────────────
+  // Camera setup and handlers (WC)
   useEffect(() => {
     if (pendingCameraMode && videoRef.current) {
       initializeCamera(pendingCameraMode);
@@ -180,6 +185,7 @@ export default function ConfirmationContent({
     }
   }, [pendingCameraMode, showCamera]);
 
+  // Cleanup camera stream on unmount (WC)
   const initializeCamera = async (m: 'user' | 'environment') => {
     try {
       const ms = await navigator.mediaDevices.getUserMedia({
@@ -189,17 +195,21 @@ export default function ConfirmationContent({
     } catch (err) { console.error('Camera error:', err); setShowCamera(false); }
   };
 
+  // Start camera with specified mode, default to environment (rear) camera.
+  //  Stop camera and release stream when done. Capture photo from video stream and convert to File object for upload (WC)
   const startCamera = (m: 'user' | 'environment' = 'environment') => {
     if (stream) stream.getTracks().forEach(t => t.stop());
     setShowCamera(true);
     setPendingCameraMode(m);
   };
 
+  // Stop camera and release stream (WC)
   const stopCamera = () => {
     if (stream) { stream.getTracks().forEach(t => t.stop()); setStream(null); }
     setShowCamera(false);
   };
 
+  // Toggle between front and rear camera (WC)
   const capturePhoto = () => {
     if (videoRef.current && canvasRef.current) {
       const v = videoRef.current, c = canvasRef.current;
@@ -217,25 +227,30 @@ export default function ConfirmationContent({
     }
   };
 
-  // ── Image helpers ─────────────────────────────────────────
+  // Handle image file selection from local storage, validate file type and size, and create preview (WC)
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    // Only allow jpeg, png, webp under 10MB, you can adjust this as needed (WC)
     const valid = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
     if (!valid.includes(file.type) || file.size > 10 * 1024 * 1024) return;
     setImageFile(file);
+    // Create image preview (WC)
     const reader = new FileReader();
     reader.onload = (ev) => setImagePreview(ev.target?.result as string);
     reader.readAsDataURL(file);
   };
 
+  // Clear selected image and preview, and stop camera if active (WC)
   const clearImage = () => {
     setImageFile(null); setImagePreview(''); stopCamera();
   };
 
+  // Reset AI result and errors when user changes condition or maintenance needed status, 
+  // to prompt them to re-analyze if they make changes after an AI assessment (WC)
   const resetAi = () => { setAiResult(null); setAiError(''); clearImage(); };
 
-  // ── Encode image ──────────────────────────────────────────
+  // Utility function to encode image file to base64 for API upload (WC)
   const encodeImage = (file: File): Promise<{ base64: string; mime: string }> =>
     new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -244,7 +259,7 @@ export default function ConfirmationContent({
       reader.readAsDataURL(file);
     });
 
-  // ── AI analyze ────────────────────────────────────────────
+  //  Handle AI analysis, send image and asset info to API, and display result or error (WC)
   const handleAiAnalyze = async () => {
     if (!imageFile) return;
     if (!selectedLocation) {
@@ -257,6 +272,7 @@ export default function ConfirmationContent({
       setTimeout(() => errorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 50);
       return;
     }
+    // Reset previous AI result and errors before new analysis (WC)
     setAiLoading(true); setAiError(''); setAiResult(null);
     try {
       const { base64, mime } = await encodeImage(imageFile);
@@ -271,9 +287,13 @@ export default function ConfirmationContent({
           mimeType: mime,
         }),
       });
+      // Handle non-200 responses with error details from API (WC)
       const data = await res.json();
+      // If API returns success false, it means the assessment failed, 
+      // we show the error message from API (which could be validation error or processing error),
+      //  if available, otherwise show a generic error (WC)
       if (data.success) { setAiResult(data.assessment); }
-      else              { setAiError(data.detail || data.error || 'AI assessment failed.'); }
+      else { setAiError(data.detail || data.error || 'AI assessment failed.'); }
     } catch {
       setAiError('Failed to analyze image. Check your connection.');
     } finally {
@@ -281,7 +301,8 @@ export default function ConfirmationContent({
     }
   };
 
-  // ── Save to DB ────────────────────────────────────────────
+  //  Save assessment to database, this function is used by both manual submit and AI submit handlers. 
+  // It sends the assessment data along with the image (if available) to the API route for saving (WC)
   const saveToDb = async (payload: {
     condition_status: string;
     maintenance_needed: boolean;
@@ -291,38 +312,43 @@ export default function ConfirmationContent({
     image_file: File | null;
   }) => {
     let image_base64: string | null = null;
-    let image_mime:   string | null = null;
+    let image_mime: string | null = null;
     if (payload.image_file) {
       const enc = await encodeImage(payload.image_file);
       image_base64 = enc.base64;
-      image_mime   = enc.mime;
+      image_mime = enc.mime;
     }
+    // Send data to API route for saving, the API will handle inserting the maintenance record,
+    //  uploading the image to storage, and updating the asset condition (WC)
     const res = await fetch('/api/saveMaintenance', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        asset_id:           assetDetails?.asset_id || item.code,
-        location_id:        selectedLocation   || null,
-        department_id:      selectedDepartment || null,
-        condition_status:   payload.condition_status,
+        asset_id: assetDetails?.asset_id || item.code,
+        location_id: selectedLocation || null,
+        department_id: selectedDepartment || null,
+        condition_status: payload.condition_status,
         maintenance_needed: payload.maintenance_needed,
-        priority:           payload.priority,
-        feedback:           payload.feedback,
-        ai_response:        payload.ai_response,
+        priority: payload.priority,
+        feedback: payload.feedback,
+        ai_response: payload.ai_response,
         image_base64,
         image_mime,
-        assessed_by:        null,
+        assessed_by: null,
       }),
     });
+    // The API returns { success: boolean, error?: string },
+    //  we return this to the caller to handle success or show error message (WC)
     return res.json();
   };
 
-  // ── Scroll to error helper ────────────────────────────────
+  // Utility function to scroll to the error message when validation fails (WC)
   const scrollToError = () => {
     setTimeout(() => errorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 50);
   };
 
-  // ── Manual submit ─────────────────────────────────────────
+  //  Manual submit handler, validate inputs, call saveToDb, 
+  // and then call onSubmit with the result to go back to success page (WC)
   const handleManualSubmit = async () => {
     setManualError(null); setAiSubmitError(null);
 
@@ -343,7 +369,7 @@ export default function ConfirmationContent({
         setManualError('Please upload a photo of the asset since maintenance is needed.'); scrollToError(); return;
       }
     }
-
+    // Call saveToDb with the assessment data and image, the API will handle saving to database and storage (WC)
     setIsSubmitting(true);
     try {
       const result = await saveToDb({
@@ -356,20 +382,24 @@ export default function ConfirmationContent({
       });
       if (!result.success) { setManualError(result.error || 'Failed to save. Please try again.'); scrollToError(); return; }
       onSubmit({
-        asset_id:      assetDetails?.asset_id  || item.code,
-        name:          assetDetails?.name      || 'N/A',
-        category:      assetDetails?.category  || 'N/A',
-        model:         assetDetails?.model     || 'N/A',
+        asset_id: assetDetails?.asset_id || item.code,
+        name: assetDetails?.name || 'N/A',
+        category: assetDetails?.category || 'N/A',
+        model: assetDetails?.model || 'N/A',
         condition,
-        location_id:   selectedLocation   || null,
+        location_id: selectedLocation || null,
         department_id: selectedDepartment || null,
         submitType: 'manual',
       });
-    } catch { setManualError('Unexpected error. Check your connection.'); scrollToError(); }
+    } 
+    // Catch any unexpected errors that occur during the save process, such as network errors, 
+    // and show a generic error message (WC)
+    catch { setManualError('Unexpected error. Check your connection.'); scrollToError(); } 
     finally  { setIsSubmitting(false); }
   };
 
-  // ── AI submit ─────────────────────────────────────────────
+  // AI submit handler, similar to manual submit but uses AI result,
+  // validate that AI result exists and required fields are selected (WC)
   const handleAiSubmit = async () => {
     if (!aiResult || isSubmitting) return;
     setManualError(null); setAiSubmitError(null);
@@ -383,8 +413,9 @@ export default function ConfirmationContent({
 
     setIsSubmitting(true);
     try {
+      // Call saveToDb with AI assessment data and image, the API will handle saving to database and storage (WC)
       const result = await saveToDb({
-        condition_status:   aiResult.condition,
+        condition_status: aiResult.condition,
         maintenance_needed: aiResult.maintenanceNeeded ?? false,
         priority: aiResult.priority ?? 'none',
         feedback: null,
@@ -394,11 +425,11 @@ export default function ConfirmationContent({
       if (!result.success) { setAiSubmitError(result.error || 'Failed to save. Please try again.'); scrollToError(); return; }
       onSubmit({
         asset_id: assetDetails?.asset_id  || item.code,
-        name: assetDetails?.name      || 'N/A',
-        category: assetDetails?.category  || 'N/A',
-        model: assetDetails?.model     || 'N/A',
+        name: assetDetails?.name || 'N/A',
+        category: assetDetails?.category || 'N/A',
+        model: assetDetails?.model || 'N/A',
         condition: aiResult.condition,
-        location_id: selectedLocation   || null,
+        location_id: selectedLocation || null,
         department_id: selectedDepartment || null,
         submitType: 'ai',
       });
@@ -406,7 +437,7 @@ export default function ConfirmationContent({
     finally  { setIsSubmitting(false); }
   };
 
-  // ── Register submit ───────────────────────────────────────
+  // Registration submit handler, validate inputs, call onCreate to create new asset (WC)
   const handleRegisterSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newName || !newCategory || !newModel) {
@@ -415,13 +446,14 @@ export default function ConfirmationContent({
     }
     await onCreate({
       name: newName, description: newDescription, condition: registerCondition,
-      location_id:   selectedLocation   || null,
+      location_id: selectedLocation || null,
       department_id: selectedDepartment || null,
       category: newCategory, model: newModel,
     });
   };
 
-  // ── Shared image upload section (upload + camera) ─────────
+  // Render functions for different sections of the UI, such as image upload,
+  //  AI result display, manual input form, etc. (WC)
   const renderImageSection = (required = false) => (
     <div>
       <label className="text-sm font-semibold text-gray-700 block mb-2">
@@ -502,18 +534,20 @@ export default function ConfirmationContent({
     </div>
   );
 
-  // ── Helpers ───────────────────────────────────────────────
+  // Utility function to get badge styles based on condition status, 
+  // used for displaying current condition and AI predicted condition (WC)
   const getConditionBadge = (cond: string) => {
     const base = 'px-3 py-1 rounded-full text-sm font-bold';
-    if (cond === 'In-use')  return `${base} bg-green-100  text-green-800  border border-green-300`;
-    if (cond === 'Spoiled') return `${base} bg-red-100    text-red-800    border border-red-300`;
-    return                         `${base} bg-yellow-100 text-yellow-800 border border-yellow-300`;
+    if (cond === 'In-use') return `${base} bg-green-100 text-green-800 border border-green-300`;
+    if (cond === 'Spoiled') return `${base} bg-red-100 text-red-800 border border-red-300`;
+    return `${base} bg-yellow-100 text-yellow-800 border border-yellow-300`;
   };
 
-  // ── STEP 1: Confirm — read-only ───────────────────────────
+  // Confirmation, show asset details and current location/department, 
+  // and allow user to confirm before going to update page (WC)
   const renderConfirmStep = () => {
     const locationName = locations.find(l => l.location_id === assetDetails?.location_id)?.name || assetDetails?.location_id || '—';
-    const deptName     = departments.find(d => d.department_id === assetDetails?.department_id)?.name || assetDetails?.department_id || '—';
+    const deptName = departments.find(d => d.department_id === assetDetails?.department_id)?.name || assetDetails?.department_id || '—';
     return (
       <div className="p-6 lg:p-8 space-y-6">
         <div className="space-y-3">
@@ -548,7 +582,8 @@ export default function ConfirmationContent({
     );
   };
 
-  // ── STEP 2: Update ────────────────────────────────────────
+  // Update step, show dropdowns to update location and department,
+  // show current condition with badge, and allow user to choose manual or AI assessment (WC)
   const renderUpdateStep = () => (
     <div className="p-4 lg:p-6 space-y-4">
 
@@ -818,7 +853,8 @@ export default function ConfirmationContent({
     </div>
   );
 
-  // ── Registering mode ──────────────────────────────────────
+  // Render dropdown selectors for location and department,
+  // with icons and conditional display based on parent scan type (WC)
   const renderDropdownSelectors = () => (
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
       {(!parentScan || parentScan.type !== 'location') && (
@@ -898,10 +934,11 @@ export default function ConfirmationContent({
     </div>
   );
 
-  // ── Content dispatcher ────────────────────────────────────
+  // Render main content based on current mode and page step, 
+  // showing loading state, error message, confirmation details, or update form as needed (WC)
   const renderFormContent = () => {
     if (mode === 'loading') return <div className="p-8 text-center text-gray-500">Searching for asset...</div>;
-    if (mode === 'error')   return (
+    if (mode === 'error') return (
       <div className="p-8">
         <div className="p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg text-center">
           <strong className="flex items-center justify-center gap-2"><AlertCircle className="w-5 h-5" /> Error</strong>
@@ -909,18 +946,19 @@ export default function ConfirmationContent({
         </div>
       </div>
     );
-    if (mode === 'editing')     return pageStep === 'confirm' ? renderConfirmStep() : renderUpdateStep();
+    if (mode === 'editing') return pageStep === 'confirm' ? renderConfirmStep() : renderUpdateStep();
     if (mode === 'registering') return renderRegisteringContent();
     return null;
   };
 
+  // Get header title based on mode and page step, to provide clear context to user (WC)
   const getHeaderTitle = () => {
-    if (mode === 'registering')                        return 'Register Asset';
-    if (mode === 'editing' && pageStep === 'update')   return 'Update Asset';
+    if (mode === 'registering') return 'Register Asset';
+    if (mode === 'editing' && pageStep === 'update') return 'Update Asset';
     return 'Confirm Asset';
   };
 
-  // ── Bottom buttons ────────────────────────────────────────
+  // Bottom buttons 
   const renderButtons = () => {
     if (mode === 'loading' || mode === 'error') {
       return (
@@ -975,7 +1013,8 @@ export default function ConfirmationContent({
     return null;
   };
 
-  // ── Render ────────────────────────────────────────────────
+  // Main render with conditional content and buttons based on mode and page step, 
+  // wrapped in a form for handling submissions (WC) 
   return (
     <div className="p-4 lg:p-8">
       <div className="max-w-2xl mx-auto">

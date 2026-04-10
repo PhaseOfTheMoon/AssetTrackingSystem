@@ -7,7 +7,7 @@ export async function saveAssessment(
 ): Promise<MaintenanceAssessment> {
   console.log('=== Saving Assessment ===');
 
-  // STEP 1: Validate location_id exists BEFORE doing anything
+  // Validate location_id exists before doing anything (WC)
   const { data: locationExists, error: locationError } = await supabaseAdmin
     .from('Location')
     .select('location_id')
@@ -18,7 +18,7 @@ export async function saveAssessment(
     throw new Error(`Invalid location_id: ${input.location_id} does not exist`);
   }
 
-  // STEP 2: Insert DB record first (no image yet)
+  // Insert DB record first (no image yet)
   const { data: assessment, error: assessmentError } = await supabaseAdmin
     .from('Maintenance')
     .insert({
@@ -45,7 +45,7 @@ export async function saveAssessment(
 
   console.log('Assessment saved:', assessment.id);
 
-  // STEP 3: Only upload image AFTER DB insert succeeds
+  // Only upload image after DB insert succeeds
   let imageUrl: string | null = null;
 
   if (input.maintenance_needed && imageBase64) {
@@ -73,7 +73,7 @@ export async function saveAssessment(
         imageUrl = urlData.publicUrl;
         console.log('Image uploaded:', imageUrl);
 
-        // STEP 4: Update the record with the image URL
+        // Only update the record with the image URL if the upload was successful
         await supabaseAdmin
           .from('Maintenance')
           .update({ image_url: imageUrl })
@@ -81,11 +81,11 @@ export async function saveAssessment(
       }
     } catch (error) {
       console.error('Error uploading image:', error);
-      // DB record is safe — image upload failure is non-fatal
+      // DB record is safe, the image upload failure is non-fatal
     }
   }
 
-  // STEP 5: Update asset condition
+  // Update asset condition
   const { error: updateError } = await supabaseAdmin
     .from('Asset')
     .update({
@@ -98,7 +98,6 @@ export async function saveAssessment(
   if (updateError) {
     console.error('Error updating asset:', updateError);
   }
-
   return {
     id: assessment.id,
     asset_id: assessment.asset_id,

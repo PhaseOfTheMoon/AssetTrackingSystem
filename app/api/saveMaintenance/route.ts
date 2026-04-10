@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/server';
 
 export async function POST(req: NextRequest) {
+  // This route handles saving maintenance assessments (WC)
   try {
     const body = await req.json();
     const {
@@ -19,7 +20,7 @@ export async function POST(req: NextRequest) {
       assessed_by,
     } = body;
 
-    // Validate location_id exists
+    // Validate the existing location_id (WC)
     const { data: locationExists, error: locationError } = await supabaseAdmin
       .from('Location')
       .select('location_id')
@@ -33,7 +34,7 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    //  Insert DB record without image
+    //  Insert DB record without image (WC)
     const { data: assessment, error: assessmentError } = await supabaseAdmin
       .from('Maintenance')
       .insert({
@@ -62,7 +63,7 @@ export async function POST(req: NextRequest) {
 
     console.log('Assessment saved:', assessment.id);
 
-    // Upload image AFTER DB insert succeeds
+    // Upload image AFTER DB insert succeeds (WC)
     let imageUrl: string | null = null;
 
     if (maintenance_needed && image_base64) {
@@ -91,7 +92,7 @@ export async function POST(req: NextRequest) {
           imageUrl = urlData.publicUrl;
           console.log('Image uploaded:', imageUrl);
 
-          // ── STEP 4: Update the record with the image URL ──
+          //Update the record with the image URL (WC)
           await supabaseAdmin
             .from('Maintenance')
             .update({ image_url: imageUrl })
@@ -99,43 +100,45 @@ export async function POST(req: NextRequest) {
         }
       } catch (err) {
         console.error('Error uploading image:', err);
-        // DB record is safe, image upload failure is non-fatal
+        // DB record is safe, image upload failure is non-critical, 
+        // so we just log the error and continue without the image URL (WC)
       }
     }
 
-    // Update asset condition
+    // Update asset condition (WC)
     const { error: updateError } = await supabaseAdmin
       .from('Asset')
       .update({
-        condition:     condition_status,
-        location_id:   location_id   ?? null,
+        condition: condition_status,
+        location_id: location_id   ?? null,
         department_id: department_id ?? null,
-        updated_dt:    new Date().toISOString(),
+        updated_dt: new Date().toISOString(),
       })
       .eq('asset_id', asset_id);
 
     if (updateError) {
       console.error('Error updating asset condition:', updateError.message);
     }
-
+    // Even if asset update fails, we still return success for the assessment save, since the main purpose of this route is to save the maintenance assessment.
+    //  The asset update is a secondary action that we attempt but don't want to cause the whole operation to fail if it doesn't work (WC)
     return NextResponse.json({
       success: true,
       assessment: {
-        id:                 assessment.id,
-        asset_id:           assessment.asset_id,
-        location_id:        assessment.location_id,
-        condition_status:   assessment.condition_status,
-        department_id:      assessment.department_id,
+        id: assessment.id,
+        asset_id: assessment.asset_id,
+        location_id: assessment.location_id,
+        condition_status: assessment.condition_status,
+        department_id: assessment.department_id,
         maintenance_needed: assessment.maintenance_needed,
-        priority:           assessment.priority,
-        feedback:           assessment.feedback,
-        ai_response:        assessment.ai_response,
-        image_url:          imageUrl,
-        approval_status:    assessment.approval_status,
-        assessed_dt:        assessment.assessed_dt,
-        assessed_by:        assessment.assessed_by,
-        created_dt:         assessment.created_dt,
-        updated_dt:         assessment.updated_dt,
+        priority: assessment.priority,
+        feedback: assessment.feedback,
+        ai_response: assessment.ai_response,
+        image_url: imageUrl,
+        approval_status: assessment.approval_status,
+        assessed_dt: assessment.assessed_dt,
+        assessed_by: assessment.assessed_by,
+        created_dt: assessment.created_dt,
+        updated_dt: assessment.updated_dt,
       },
     });
 

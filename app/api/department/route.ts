@@ -101,7 +101,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      data: data[0]
+      data: data
     })
   } catch (error) {
     console.error('POST /api/department error:', error)
@@ -137,21 +137,6 @@ export async function PUT() {
     )
   }
 }
-export async function DELETE(request: NextRequest) {
-  try {
-    const { searchParams } = new URL(request.url)
-    const id = searchParams.get('department_id')
-
-    if (!id) {
-      return NextResponse.json(
-        { error: 'Department ID is required' },
-        { status: 400 }
-      )
-    }
-    return NextResponse.json({ error: 'Failed to create department' }, { status: 500 });
-  }
-}
-
 export async function DELETE(request: NextRequest) {
   // RBAC: Only admins can delete departments
   const authResult = await validateSession('admin');

@@ -1,3 +1,5 @@
+// This is just a testing page!, will remove after successsful merge into main branch (WC)
+
 'use client';
 import SuccessContent from '@/components/scanner/successContent';
 import { useState, useRef, useEffect } from 'react';

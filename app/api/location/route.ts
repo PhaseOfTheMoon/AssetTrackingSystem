@@ -112,27 +112,7 @@ export async function DELETE(request: NextRequest) {
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: 'Validation failed', details: error.flatten() }, { status: 400 });
     }
-
-    const { error } = await supabaseAdmin
-      .from('Location')
-      .delete()
-      .eq('location_id', id)
-
-    if (error) throw error
-
-    return NextResponse.json({
-      success: true,
-      message: 'Location deleted successfully'
-    })
-  } catch (error) {
-    console.error('DELETE /api/location error:', error)
-    return NextResponse.json(
-      {
-        error: error instanceof Error ? error.message : 'Failed to delete location',
-        success: false
-      },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'Failed to delete location' }, { status: 500 });
   }
 }
 
