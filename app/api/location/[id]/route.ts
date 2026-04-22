@@ -19,7 +19,7 @@ const putSchema = z.object({
   level: z.number().optional().nullable(),
 }).strict();
 
-export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   // Check that the user has a valid session before fetching
   const authResult = await validateSession();
   if (!authResult.authorized) return authResult.response;

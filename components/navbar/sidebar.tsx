@@ -23,16 +23,6 @@ import { HomeIcon } from 'lucide-react';
 import { useSession } from "next-auth/react";
 
 // Commented by Desmond @ 20-April-26
-// Props for the sidebar component
-// This controls both props using the parent navbar component, so sidebar state is shared with the hamburger.
-interface sidebarProps {
-  // Whether the sidebar is currently visible
-  isOpen: boolean;
-  // Callback to show or hide the sidebar
-  setIsOpen: (value: boolean) => void;
-}
-
-// Commented by Desmond @ 20-April-26
 // These arrays define what appears in the sidebar for each role.
 // Each item has:
 //  name - label shown in the sidebar
