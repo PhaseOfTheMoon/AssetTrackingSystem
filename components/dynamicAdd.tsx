@@ -87,15 +87,12 @@ const assetFormSchema = z.object({
   department_id: z.string().trim().max(30).nullable().optional()
 })
 
-/**
+/** ---------------------------------------------------------------------------
  * Add more zod schemas here for location and department here in the future...
- */
-
-// Use the TypeScript 'infer' to derive the type of the form values from the zod schema
-type assetFormValues = z.infer<typeof assetFormSchema>
+ * ----------------------------------------------------------------------------/
 
 /** Commented by Desmond @ 13-April-26
- * Duplicate check badge - green tick if available, red error if the id is already taken
+ * ---------------------- Duplicate check badge - green tick if available, red error if the id is already taken -----------------------
  * @param status - Current state of the duplicate check
  * @param assetId - The asset ID in the input field (above the barcode preview)
  */
@@ -149,7 +146,8 @@ function DuplicateCheckBadge({ status, assetId }: { status: duplicateCheckResult
   return null
 }
 
-// Export the main component - DynamicAdd
+
+// ------------------- Export the main component - DynamicAdd ------------------------------------
 // It renders the form based on the config passed in, and handles form submission, input changes, duplicate checking and related data loading
 export default function DynamicAdd({ config }: dynamicAddProps) {
   const { status } = useSession()
@@ -210,7 +208,8 @@ export default function DynamicAdd({ config }: dynamicAddProps) {
     setFormData(initial) // Set the initial form data when component is mounted
   }, [config]) // Only run this effect when the config changes (when form changes to location or department)
 
-  // Load related data (locations and departments) for select fields
+
+  // ----------------------  Load related data (locations and departments) for select fields ------------------------
   const loadRelatedData = useCallback(async () => {
     setRelatedError(null) // Reset any previous errors before trying again
     try {
@@ -335,15 +334,15 @@ export default function DynamicAdd({ config }: dynamicAddProps) {
     // or when form changed to another type (asset, location or department)
   }, [formData, config.primaryKey, isAssetForm])
 
-  /**
-   * Handlers for form input changes and submission 
-   */
-  // Handle the input changes
+
+  // ------------------- Handlers for form input changes and submission -------------------
+  // -------------------------- Handle the input changes -----------------------------
   const handleInputChange = (key: string, value: string | number | null) => {
     setFormData((prev) => ({ ...prev, [key]: value })) // Copy everything from previous object, then update the changed field
   }
 
-  // Handle form submission
+
+  // -----------------------------  Handle form submission ----------------------------------
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault() // Prevent the user from submitting empty forms
 
@@ -417,7 +416,8 @@ export default function DynamicAdd({ config }: dynamicAddProps) {
     }
   }
 
-  // Field renderer to render different types of input fields based on the config
+
+  // -----------------------  Field renderer to render different types of input fields based on the config ------------------------
   const renderField = (field: formFieldConfig) => {
     const value = formData[field.key] || ''
     // When duplicateStatus is 'taken', the input field border changes to red to indicate duplicate
@@ -507,7 +507,8 @@ export default function DynamicAdd({ config }: dynamicAddProps) {
     )
   }
 
-  // Disable the submit button
+
+  // ------------------------- Disable the submit button --------------------------
   // loading - POST is being processed, to prevent multiple submissions
   // checking - Duplicate check is being processed
   // taken - Duplicate check found that the record already exists
@@ -531,6 +532,7 @@ export default function DynamicAdd({ config }: dynamicAddProps) {
     return null
   }
 
+  
   // -------------- Render the form with the dynamic fields based on config -------------------
   return (
     <div className="min-h-screen bg-white"> {/* Commented by Desmond @ 14-April-26: Changed bg-gray-50 to bg-white */}

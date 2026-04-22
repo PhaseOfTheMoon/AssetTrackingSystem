@@ -25,7 +25,8 @@
  *  - lib/barcode.ts
  *    Generate the barcode and saving it to the Supabase bucket storage
 */
-import DynamicPage, { dynamicPageConfig } from '@/components/dynamicPage'
+import DynamicPage from '@/components/dynamicPage'
+import type { dynamicPageConfig } from '@/components/dynamicPage'
 import Image from 'next/image'
 import { supabase } from '@/lib/supabase/client'
 
@@ -86,7 +87,7 @@ function BarcodeThumbnail({ tagPath }: { tagPath: string | null }) {
     >
       {/* The barcode image */}
       <Image src={url} alt={`Barcode - ${tagPath}`} width={96} height={40} className="object-contain" unoptimized 
-        onError={(e) => {
+        onError={(_e) => { // _e so that the compiler knows that the developer know this unused variable exists, but ignores it
           console.error('Image failed to load:', {tagPath, url})
         }}
       />

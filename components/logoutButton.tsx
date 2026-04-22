@@ -36,7 +36,7 @@ interface LogoutButtonProps {
 }
 
 // ---------------- Export the main logout button component -----------------
-export default function LogoutButton({className = '', showIcon = true, text = 'Log Out'}: LogoutButtonProps) {
+export default function LogoutButton({className = '', text = 'Log Out'}: LogoutButtonProps) {
   // Whether the confirmation modal is currently visible
   const [showConfirmation, setShowConfirmation] = useState(false)
 

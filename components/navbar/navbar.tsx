@@ -165,15 +165,18 @@ export default function Navbar({ sidebarOpen, setSidebarOpen }: navbarProps) {
   }, []); // Run this on mount and unmount
 
   useEffect(() => {
-    // If profile dropdown menu is active
-    if (isProfileOpen) {
-      // Add the event listener for mousedown
-      document.addEventListener('mousedown', handleClickOutside);
-      // Remove the event listener to prevent memory leaks
-      return () => {
-        document.removeEventListener('mousedown', handleClickOutside);
-      };
+    // If profile dropdown is closed, don't do anything
+    if (!isProfileOpen) {
+      return
     }
+
+    // If profile dropdown menu is active
+    // Add the event listener for mousedown
+    document.addEventListener('mousedown', handleClickOutside);
+    // Remove the event listener to prevent memory leaks
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
   }, [isProfileOpen, handleClickOutside]); // Run this when profile dropdown menu is open and clicking outside
 
 

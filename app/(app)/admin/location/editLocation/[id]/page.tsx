@@ -19,11 +19,11 @@
  */
 import { useParams } from 'next/navigation'
 import DynamicEdit from '@/components/dynamicEdit'
-import type { DynamicEditConfig } from '@/components/dynamicEdit'
+import type { dynamicEditConfig } from '@/components/dynamicEdit'
 
 // ------------------------ Edit form configuration -------------------------
 // TypeScript will now catch config errors before it is rendered in dynamicEdit
-const editLocationConfig: DynamicEditConfig = {
+const editLocationConfig: dynamicEditConfig = {
   entityName: 'location',
   entityDisplayName: 'Locations',
   entityDisplayNameSingular: 'Location',
@@ -61,7 +61,7 @@ const editLocationConfig: DynamicEditConfig = {
       label: 'Description', 
       type: 'textarea' as const 
     },
-    
+
     { key: 'block', label: 'Block', type: 'text' as const },
     { key: 'level', label: 'Level', type: 'number' as const }
   ]

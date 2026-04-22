@@ -19,13 +19,13 @@
  */
 import { useParams } from 'next/navigation'
 import DynamicEdit from '@/components/dynamicEdit'
-import type { DynamicEditConfig } from '@/components/dynamicEdit'
+import type { dynamicEditConfig } from '@/components/dynamicEdit'
 
 // Commented by Desmond @ 22-April-26
 // This is the configuration for the edit asset form
 // Difference from the addAsset/page.tsx is 
 //  - asset_id disabled: true : Prevents the primary key from being changed after creation
-const editAssetConfig: DynamicEditConfig = {
+const editAssetConfig: dynamicEditConfig = {
   entityName: 'asset',
   entityDisplayName: 'Assets',
   entityDisplayNameSingular: 'Asset',

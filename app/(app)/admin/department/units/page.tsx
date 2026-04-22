@@ -22,7 +22,8 @@
  *   - app/api/department.route.ts : GET/POST/DELETE operations are in this file
  *   - app/api/department/[id]/route.ts : GET (read) and PUT (update) for single record
  */
-import DynamicPage, { dynamicPageConfig } from '@/components/dynamicPage'
+import DynamicPage from '@/components/dynamicPage'
+import type { dynamicPageConfig } from '@/components/dynamicPage'
 
 // ----------------- Department listing page configuration for dynamicPage ----------------
 // dynamicPageConfig is added here so that TypeScript can validate the config

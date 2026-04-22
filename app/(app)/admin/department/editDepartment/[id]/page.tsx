@@ -20,12 +20,12 @@
  */
 import { useParams } from 'next/navigation'
 import DynamicEdit from '@/components/dynamicEdit'
-import type { DynamicEditConfig } from '@/components/dynamicEdit'
+import type { dynamicEditConfig } from '@/components/dynamicEdit'
 
 // ----------------- Edit form configurations -------------------------
 // dynamicEditConfig is added here so that TypeScript can validate the config
 // before passing to dynamicEdit
-const editDepartmentConfig: DynamicEditConfig = {
+const editDepartmentConfig: dynamicEditConfig = {
   entityName: 'department',
   entityDisplayName: 'Departments',
   entityDisplayNameSingular: 'Department',

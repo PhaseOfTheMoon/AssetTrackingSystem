@@ -27,7 +27,8 @@
  *   - app/(app)/admin/location/editLocation/[id] : Edit form using dynamicEdit to edit existing location records
  *   - app/api/location/route.ts : GET (read) / POST (create) / DELETE (well, delete)
  */
-import DynamicPage, { dynamicPageConfig } from '@/components/dynamicPage'
+import DynamicPage from '@/components/dynamicPage'
+import type { dynamicPageConfig } from '@/components/dynamicPage'
 
 // -------------------- Dynamic page configuration for location listing ---------------------
 // TypeScript will now catch config errors before it is rendered in dynamicAdd
