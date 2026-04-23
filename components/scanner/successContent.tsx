@@ -1,5 +1,8 @@
 // components/scanner/SuccessContent.tsx
+'use client';
+
 import { Check, CheckCircle } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 
 export default function SuccessContent({ 
   scannedCount, 
@@ -10,6 +13,7 @@ export default function SuccessContent({
   scanType: string;
   item: any; 
 }) {
+  const router = useRouter();
   
   const getTitle = () => {
     if (scanType === 'New Asset Registered') return "Asset Registered!";
@@ -94,13 +98,13 @@ export default function SuccessContent({
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <button
-              onClick={() => window.history.back()}
+              onClick={() => router.push('/user/scanner')}
               className="px-8 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium shadow-md"
             >
               Scan More Items
             </button>
             <button
-              onClick={() => window.history.back()}
+              onClick={() => router.push('/user/dashboard')}
               className="px-8 py-3 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors font-medium shadow-md"
             >
               View All Submissions

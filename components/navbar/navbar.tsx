@@ -247,7 +247,7 @@ export default function Navbar({ sidebarOpen, setSidebarOpen }: navbarProps) {
 
               {/* Swinburne logo */}
               <Link href={dashboardPath} className="flex ms-2 md:me-24" rel="noopener noreferrer">
-                <Image src="/logo-long-full.svg" className="h-12 w-auto me-5" alt="Swinburne Logo" width={180} height={48} priority unoptimized />
+                <Image src="/logo-long-full.svg" className="h-12 w-auto me-5" alt="Swinburne Logo" width={12} height={48} priority unoptimized />
               </Link>
             </div>
 

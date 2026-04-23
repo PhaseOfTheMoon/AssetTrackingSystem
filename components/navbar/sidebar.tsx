@@ -294,7 +294,7 @@ export default function Sidebar({ isOpen, setIsOpen }: { isOpen: boolean; setIsO
           style={{
             // Prevents the sidebar from extending beyond the viewport height
             // 100vh - 4 rem leaves space for navbar at the top
-            maxHeight: isMobile ? 'calc(100vh - 2rem' : 'calc(100vh - 4rem)',
+            maxHeight: isMobile ? 'calc(100vh - 2rem)' : 'calc(100vh - 4rem)',
             overflowY: 'auto' // Scroll if the content is taller than the viewport
           }}
             >
