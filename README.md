@@ -20,7 +20,7 @@ Before you begin, ensure you have:
 1. **Clone the repository**
 ```bash
 git clone <repository-url>
-cd AssetTracking
+cd AssetTrackingSystem
 ```
 
 2. **Install dependencies**
