@@ -1,24 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
-// Import centralized admin client to safely bypass RLS on the server
 import { supabaseAdmin } from '@/lib/supabase/server';
-// Import shared session validator to ensure DRY principles
 import { validateSession } from '@/lib/apiAuth';
-// Import Zod for payload validation and injection protection
 import { z } from 'zod';
 
-// FIX APPLIED: Aligned with VARCHAR(30) from the database schema
 const idSchema = z.string().min(1, 'Location ID is required').max(30, 'Location ID is too long');
 
-// FIX APPLIED: Aligned strictly with the SUPABASE TABLES.txt schema length limits.
+// BUGFIX: Removed .strict() and used coerce.number()
 const putSchema = z.object({
   name: z.string().min(1).max(30).optional(),
   description: z.string().max(30).optional().nullable(),
   block: z.string().max(10).optional().nullable(),
-  level: z.number().int().optional().nullable(),
-}).strict();
+  level: z.coerce.number().int().optional().nullable(),
+});
 
 export async function GET(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  // Check that the user has a valid session before fetching
   const authResult = await validateSession();
   if (!authResult.authorized) return authResult.response;
 
@@ -35,7 +30,6 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
     if (error) throw error;
     return NextResponse.json({ success: true, data });
   } catch (error: any) {
-    // Safe server logging
     console.error('GET /api/location/[id] error:', { message: error?.message });
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: 'Validation failed', details: error.flatten() }, { status: 400 });
@@ -45,7 +39,6 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
 }
 
 export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  // Requires admin privileges to update a location
   const authResult = await validateSession('admin');
   if (!authResult.authorized) return authResult.response;
 
@@ -56,7 +49,6 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     const body = await request.json();
     const validatedData = putSchema.parse(body);
 
-    // Stop early if there is no valid data to update
     if (Object.keys(validatedData).length === 0) {
       return NextResponse.json({ error: 'No valid fields to update' }, { status: 400 });
     }

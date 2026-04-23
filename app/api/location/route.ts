@@ -12,23 +12,20 @@ const getQuerySchema = z.object({
   sortOrder: z.enum(['asc', 'desc']).default('desc'),
 });
 
-// BUGFIX: Added location_id so users can input custom IDs. 
-// Aligned max lengths (name: 30, description: 30, block: 10) to exactly match SUPABASE TABLES.txt
+// BUGFIX: Removed .strict() and used coerce.number()
 const postSchema = z.object({
   location_id: z.string().min(1, 'Location ID is required').max(30),
   name: z.string().min(1, 'Location name is required').max(30),
   description: z.string().max(30).optional().nullable(),
   block: z.string().max(10).optional().nullable(),
-  level: z.number().int().optional().nullable(),
-}).strict();
+  level: z.coerce.number().int().optional().nullable(),
+});
 
-// BUGFIX: Removed .uuid() requirement to support VARCHAR primary keys
 const deleteSchema = z.object({
   location_id: z.string().min(1, 'Invalid Location ID').max(30),
 });
 
 export async function GET(request: NextRequest) {
-  // Check that the user has a valid session to view locations
   const authResult = await validateSession();
   if (!authResult.authorized) return authResult.response;
 
@@ -36,9 +33,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const validatedParams = getQuerySchema.parse(Object.fromEntries(searchParams.entries()));
 
-    let query = supabaseAdmin
-      .from('Location')
-      .select('*', { count: 'exact' })
+    let query = supabaseAdmin.from('Location').select('*', { count: 'exact' });
 
     if (validatedParams.search) {
       query = query.ilike(validatedParams.searchField, `%${validatedParams.search}%`);
@@ -68,7 +63,6 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  // Admin-only action to create a new location
   const authResult = await validateSession('admin');
   if (!authResult.authorized) return authResult.response;
 
@@ -76,11 +70,9 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const validatedData = postSchema.parse(body);
 
-    // BUGFIX: Removed crypto.randomUUID(). The location_id is now retrieved from validatedData.
-
     const { data, error } = await supabaseAdmin.from('Location')
       .insert([{ 
-        ...validatedData, // Safely spreads location_id, name, description, block, and level
+        ...validatedData, 
         created_dt: new Date().toISOString(), 
         updated_dt: new Date().toISOString() 
       }])
@@ -98,7 +90,6 @@ export async function POST(request: NextRequest) {
 }
 
 export async function DELETE(request: NextRequest) {
-  // Admin-only action to delete a location
   const authResult = await validateSession('admin');
   if (!authResult.authorized) return authResult.response;
 
