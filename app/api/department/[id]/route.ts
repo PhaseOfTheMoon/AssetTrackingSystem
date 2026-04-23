@@ -1,3 +1,4 @@
+// Commented on 23/04/2026 Daryl. Removed .strict() 
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/server';
 import { validateSession } from '@/lib/apiAuth';

@@ -1,3 +1,4 @@
+// Commented on 23/04/2026 Daryl. Removed .strict() and changed level to z.coerce.number()
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/server';
 import { validateSession } from '@/lib/apiAuth';
