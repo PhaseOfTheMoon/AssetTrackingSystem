@@ -6,6 +6,7 @@ import { useAdminAccess } from '@/hooks/useAdminAccess'
 import DynamicAdd from '@/components/dynamicAdd'
 import type { dynamicAddConfig } from '@/components/dynamicAdd'
 
+// addStaffConfig defines the form fields shown when an admin manually adds a new staff member
 const addStaffConfig: dynamicAddConfig = {
   entityName: 'staff',
   entityDisplayName: 'Staff',
@@ -23,6 +24,8 @@ const addStaffConfig: dynamicAddConfig = {
   ]
 }
 
+// Renders the add staff form page using DynamicAdd
+// Blocks access if the user is not an admin
 export default function AddStaffPage() {
   const { isLoading, isAdmin } = useAdminAccess()
 

@@ -1,6 +1,7 @@
 import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 import LayoutWrapper from "@/components/layoutWrapper";
+import { authOptions } from "@/lib/auth";
 
 export default async function AppLayout({
   children,
@@ -8,7 +9,7 @@ export default async function AppLayout({
   children: React.ReactNode;
 }) {
   // Server-side auth check
-  const session = await getServerSession();
+  const session = await getServerSession(authOptions);
 
   if (!session) {
     redirect("/login");

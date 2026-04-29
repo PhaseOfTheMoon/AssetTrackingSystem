@@ -1,3 +1,5 @@
+// app/api/staff/rejected/route.ts
+// Returns all staff whose status is 'rejected'. Used by the approvals page to show the rejected tab. Admin only.
 import { NextResponse } from 'next/server'
 // supabaseAdmin uses the service role key and only runs server-side — credentials are never exposed to the browser
 import { supabaseAdmin as supabase } from '@/lib/supabase/server'

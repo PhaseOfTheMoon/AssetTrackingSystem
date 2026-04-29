@@ -1,3 +1,5 @@
+// app/api/staff/update/route.ts
+// Updates an existing staff member's details (name, email, mobile number, department). Staff ID cannot be changed. Admin only.
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin as supabase } from '@/lib/supabase/server'
 // Verifies the request has a valid login session and the required role before allowing access

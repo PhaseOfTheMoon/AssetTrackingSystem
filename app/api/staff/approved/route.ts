@@ -1,3 +1,5 @@
+// app/api/staff/approved/route.ts
+// Returns all staff whose status is 'approved'. Used by the approvals page to show the approved tab. Admin only.
 import { NextResponse } from 'next/server'
 // supabaseAdmin uses the service role key and only runs server-side — credentials are never exposed to the browser
 import { supabaseAdmin as supabase } from '@/lib/supabase/server'

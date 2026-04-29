@@ -3,7 +3,7 @@
 // useAuth - ensures only logged-in users can access this page, redirects others to /login
 import { useAuth } from '@/hooks/useAuth';
 import { useState, useEffect } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 
 // All database operations go through our API route instead of calling Supabase directly
 // This prevents table names, column names and raw queries from showing in the browser Network tab
@@ -105,10 +105,8 @@ export default function ScannerPage() {
   // Block unauthenticated users from accessing this page, redirect to /login
   const { isLoading: isAuthLoading, isAuthenticated } = useAuth();
   const searchParams = useSearchParams();
+  const router = useRouter();
   const type = (searchParams.get('type') || 'asset') as keyof typeof configs;
-
-  // Show nothing while checking session, or if not logged in (useAuth will redirect them)
-  if (isAuthLoading || !isAuthenticated) return null;
 
   // Shared State
   const [pageState, setPageState] = useState('scanning');
@@ -138,6 +136,9 @@ export default function ScannerPage() {
     setCart([]);
     setScannerKey(prev => prev + 1);
   }, [type]);
+
+  // Show nothing while checking session, or if not logged in (useAuth will redirect them)
+  if (isAuthLoading || !isAuthenticated) return null;
 
   // ============================================================
   // MAIN LOGIC: HANDLE SCAN
@@ -367,7 +368,7 @@ export default function ScannerPage() {
           tableName: "Asset"
         } : config)}
         onItemScanned={handleItemScanned}
-        onBack={() => window.location.href = '/user/dashboard'}
+        onBack={() => router.push('/user/dashboard')}
         parentScan={parentScan}
         autoStart={!!staffData}
         shouldStartScanning={shouldStartScanning}
