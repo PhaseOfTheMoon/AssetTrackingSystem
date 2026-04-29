@@ -190,26 +190,45 @@ export default function dynamicEdit({ config, recordId }: dynamicEditProps) {
     }
   }
 
-  // BUGFIX 25-April-26 Daryl: Explicitly escaped hyphen \- and backslash \\
-  const INVALID_CHARS_REGEX = /[@!#%^&*()<>,._{}|~/?;:'"\\-]/;
+  // BUGFIX 29-April Daryl: Strict Regex for IDs, Names, Models, etc. (Bans @, ., -, etc.)
+  const STRICT_INVALID_CHARS_REGEX = /[@!#%^&*()<>_{}|~/?;:'"`=+\\[\].,-]/;
+  // BUGFIX 29-April Daryl: Lenient Regex for Descriptions (Allows spaces, periods, and commas)
+  const DESC_INVALID_CHARS_REGEX = /[@!#%^&*()<>_{}|~/?;:`'"=+-\\[\]]/;
+  // BUGFIX 29-April Daryl: Standard Email Format Validation
+  const EMAIL_FORMAT_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  // BUGFIX 29-April Daryl: Standard Mobile Format (Allows optional + at start, then digits)
+  const MOBILE_FORMAT_REGEX = /^\+?[0-9]{8,15}$/;
 
   const validateField = (value: string | number | null, fieldConfig: formFieldConfig) => {
     if (value === null || value === '') return null;
     
     const strVal = String(value);
 
-    // BUGFIX: Apply Regex to ALL inputs (including numbers, which stops them from entering '-' or 'e')
-    if (INVALID_CHARS_REGEX.test(strVal)) {
-      return 'Invalid: Contains sensitive special characters.';
-    }
-
+    // 1. Number Input Logic (e.g., Level)
     if (fieldConfig.type === 'number') {
       const num = Number(value);
       if (isNaN(num)) return 'Invalid: Must be a number.';
       if (num <= 0) return 'Invalid: Value must be greater than 0.';
       if (num > 9999999) return 'Invalid: Value is too large.';
     } 
+    // 2. Email Logic
+    else if (fieldConfig.key.toLowerCase().includes('email')) {
+      if (!EMAIL_FORMAT_REGEX.test(strVal)) return 'Invalid: Please enter a valid email address (e.g., name@company.com).';
+    }
+    // 3. Mobile/Phone Logic
+    else if (fieldConfig.key.toLowerCase().includes('mobile') || fieldConfig.key.toLowerCase().includes('phone')) {
+      if (!MOBILE_FORMAT_REGEX.test(strVal)) return 'Invalid: Mobile number must contain only numbers (e.g., 0123456789).';
+    }
+    // 4. Description/Textarea Logic (Lenient)
+    else if (fieldConfig.type === 'textarea' || fieldConfig.key.toLowerCase().includes('desc')) {
+      if (DESC_INVALID_CHARS_REGEX.test(strVal)) return 'Invalid: Contains sensitive special characters.';
+    }
+    // 5. Standard Text Input Logic (Strict - No @, ., etc.)
+    else if (fieldConfig.type === 'text') {
+      if (STRICT_INVALID_CHARS_REGEX.test(strVal)) return 'Invalid: Contains sensitive special characters. Symbols like @, ., and - are not allowed here.';
+    }
     
+    // Character Limit Check
     if (fieldConfig.maxLength && strVal.length > fieldConfig.maxLength) {
       return `Exceeds database maximum length of ${fieldConfig.maxLength} characters.`;
     }

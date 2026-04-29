@@ -175,7 +175,7 @@ export default function DynamicAdd({ config }: dynamicAddProps) {
   const isAssetForm = config.primaryKey === 'asset_id'
 
   // Use state hook for 'validationErrors' and 'setValidationErrors' to store 
-  // the zod validation error message for each field
+  // the validation error message for each field
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({})
 
   // Auth guard - redirect to /login if user is not authenticated
@@ -187,7 +187,7 @@ export default function DynamicAdd({ config }: dynamicAddProps) {
 
   // Initialize form data
   useEffect(() => {
-    // Initialize the form for Add Asset form with default values for select fields and empty strings for other fields
+    // Initialize the form with default values for select fields and empty strings for other fields
     const initial: assetFormData = {} // Store the initial form data, keys as database column names and values as form input values
 
     config.formFields.forEach(field => {
@@ -308,27 +308,45 @@ export default function DynamicAdd({ config }: dynamicAddProps) {
     // or when form changed to another type (asset, location or department)
   }, [formData, config.primaryKey, isAssetForm])
 
-  // BUGFIX 25-April-26 Daryl: Explicitly escaped hyphen \- and backslash \\
-  const INVALID_CHARS_REGEX = /[@!#%^&*()<>_{}|~/?;:,.=+`'"\\[\]-]/;
+  // BUGFIX 29-April Daryl: Strict Regex for IDs, Names, Models, etc. (Bans @, ., -, etc.)
+  const STRICT_INVALID_CHARS_REGEX = /[@!#%^&*()<>_{}|~/?;:'"`=+\\[\].,-]/; 
+  // BUGFIX 29-April Daryl: Lenient Regex for Descriptions (Allows spaces, periods, commas)
+  const DESC_INVALID_CHARS_REGEX = /[@!#%^&*()<>_{}|~/?;:`'"=+-\\[\]]/;
+  // BUGFIX 29-April Daryl: Standard Email Format Validation
+  const EMAIL_FORMAT_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  // BUGFIX 29-April Daryl: Standard Mobile Format (Allows optional + at start, then digits)
+  const MOBILE_FORMAT_REGEX = /^\+?[0-9]{8,15}$/;
 
   const validateField = (value: string | number | null, fieldConfig: formFieldConfig) => {
     if (value === null || value === '') return null;
     
-    // Convert to string for regex and length checks
     const strVal = String(value);
 
-    // BUGFIX: Apply Regex to ALL inputs (including numbers, which stops them from entering '-' or 'e')
-    if (INVALID_CHARS_REGEX.test(strVal)) {
-      return 'Invalid: Contains sensitive special characters.';
-    }
-
+    // 1. Number Input Logic (e.g., Level)
     if (fieldConfig.type === 'number') {
       const num = Number(value);
       if (isNaN(num)) return 'Invalid: Must be a number.';
       if (num <= 0) return 'Invalid: Value must be greater than 0.';
       if (num > 9999999) return 'Invalid: Value is too large.';
     } 
+    // 2. Email Logic
+    else if (fieldConfig.key.toLowerCase().includes('email')) {
+      if (!EMAIL_FORMAT_REGEX.test(strVal)) return 'Invalid: Please enter a valid email address (e.g., name@company.com).';
+    }
+    // 3. Mobile/Phone Logic
+    else if (fieldConfig.key.toLowerCase().includes('mobile') || fieldConfig.key.toLowerCase().includes('phone')) {
+      if (!MOBILE_FORMAT_REGEX.test(strVal)) return 'Invalid: Mobile number must contain only numbers (e.g., 0123456789).';
+    }
+    // 4. Description/Textarea Logic (Lenient)
+    else if (fieldConfig.type === 'textarea' || fieldConfig.key.toLowerCase().includes('desc')) {
+      if (DESC_INVALID_CHARS_REGEX.test(strVal)) return 'Invalid: Contains sensitive special characters.';
+    }
+    // 5. Standard Text Input Logic (Strict - No @, ., etc.)
+    else if (fieldConfig.type === 'text') {
+      if (STRICT_INVALID_CHARS_REGEX.test(strVal)) return 'Invalid: Contains sensitive special characters. Symbols like @, ., and - are not allowed here.';
+    }
     
+    // Character Limit Check
     if (fieldConfig.maxLength && strVal.length > fieldConfig.maxLength) {
       return `Exceeds database maximum length of ${fieldConfig.maxLength} characters.`;
     }
@@ -482,8 +500,6 @@ export default function DynamicAdd({ config }: dynamicAddProps) {
       )
     }
 
-    // BUGFIX 25-April: Switch type='number' to type='text' but force numeric input via JS. 
-    // This stops HTML from automatically accepting 'e', '.', or '-' inside number inputs.
     // Number or text input fields
     return (
       <input 
@@ -570,7 +586,7 @@ export default function DynamicAdd({ config }: dynamicAddProps) {
                       )}
                     </div>
 
-                    {/* Zod validation error - shown below the field if client validation fails */}
+                    {/* Validation error message - shown below the field if client validation fails */}
                     {validationErrors[field.key] && (
                       <p className="mb-1 text-sm font-semibold text-red-600" role="alert">
                         {validationErrors[field.key]}
