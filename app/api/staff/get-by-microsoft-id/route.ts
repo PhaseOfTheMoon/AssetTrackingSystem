@@ -1,3 +1,5 @@
+// app/api/staff/get-by-microsoft-id/route.ts
+// Looks up a staff member using their Microsoft Azure AD user ID. Used after Microsoft OAuth login to find the matching staff record.
 import { NextRequest, NextResponse } from 'next/server'
 // supabaseAdmin uses the service role key and only runs server-side — credentials are never exposed to the browser
 import { supabaseAdmin as supabase } from '@/lib/supabase/server'

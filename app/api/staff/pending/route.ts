@@ -1,3 +1,5 @@
+// app/api/staff/pending/route.ts
+// Returns all staff whose status is 'pending'. Used by the approvals page to list new registrations. Admin only.
 import { NextResponse } from 'next/server'
 // supabaseAdmin uses the service role key and only runs server-side — credentials are never exposed to the browser
 import { supabaseAdmin as supabase } from '@/lib/supabase/server'

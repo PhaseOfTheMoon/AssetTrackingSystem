@@ -25,6 +25,9 @@ const editStaffConfig: dynamicEditConfig = {
   ]
 }
 
+// Renders the edit staff form page using DynamicEdit
+// Reads the staff ID from the URL, then loads and updates that staff member's details
+// Blocks access if the user is not an admin
 export default function EditStaffPage() {
   const { isLoading, isAdmin } = useAdminAccess()
   const params = useParams()

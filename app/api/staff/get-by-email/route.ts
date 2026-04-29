@@ -1,3 +1,5 @@
+// app/api/staff/get-by-email/route.ts
+// Looks up a staff member by their email address. Used during login to check if the user is registered and their approval status.
 import { NextRequest, NextResponse } from 'next/server'
 // supabaseAdmin uses the service role key and only runs server-side — credentials are never exposed to the browser
 import { supabaseAdmin as supabase } from '@/lib/supabase/server'

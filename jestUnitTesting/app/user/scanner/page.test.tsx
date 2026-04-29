@@ -1,241 +1,493 @@
-import React from 'react';
-import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
-import ScannerPage from '@/app/(app)/user/scanner/page'; // Import the page component
-import '@testing-library/jest-dom';
+// Commented by Irene
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react'
+import ScannerPage from '@/app/(app)/user/scanner/page'
+import { useAuth } from '@/hooks/useAuth'
 
-// ==================================================================
-// 1. MOCK NEXT.JS NAVIGATION
-// ==================================================================
-const mockGet = jest.fn();
+// ─── MOCKS ───────────────────────────────────────────────────────────────────
+
+// fake out the auth hook so we control login state in each test
+jest.mock('@/hooks/useAuth', () => ({
+  useAuth: jest.fn(),
+}))
+
+const mockPush = jest.fn()
+const mockSearchParamsGet = jest.fn()
+
+// fake out Next.js navigation — useSearchParams lets us pretend to pass ?type=xxx
 jest.mock('next/navigation', () => ({
-  useSearchParams: () => ({
-    get: mockGet,
-  }),
-  useRouter: () => ({
-    push: jest.fn(),
-  }),
-}));
+  useSearchParams: () => ({ get: mockSearchParamsGet }),
+  useRouter: () => ({ push: mockPush }),
+}))
 
-// ==================================================================
-// 2. MOCK SUPABASE (ROBUST VERSION)
-// ==================================================================
-const mockSelect = jest.fn();
-const mockInsert = jest.fn();
-const mockUpdate = jest.fn();
-const mockDelete = jest.fn();
-const mockEq = jest.fn();
-const mockIlike = jest.fn();
-const mockSingle = jest.fn();
-const mockMaybeSingle = jest.fn();
+// replace lucide icons with plain SVGs so we don't need the real icon library
+jest.mock('lucide-react', () => ({
+  Package: () => <svg />,
+  Users: () => <svg />,
+  MapPin: () => <svg />,
+  Building2: () => <svg />,
+  CheckCircle: () => <svg />,
+  AlertCircle: () => <svg />,
+  ShoppingCart: () => <svg />,
+  Trash2: () => <svg data-testid="trash-icon" />,
+  X: () => <svg data-testid="x-icon" />,
+}))
 
-// Define the "Terminator" object that ends the chain
-const queryTerminator = {
-  single: mockSingle,
-  maybeSingle: mockMaybeSingle,
-};
-
-// Define the "Filter" object that returns the terminator
-const queryFilter = {
-  eq: mockEq.mockReturnValue(queryTerminator),
-  ilike: mockIlike.mockReturnValue(queryTerminator),
-  single: mockSingle,       // Direct single() after select()
-  maybeSingle: mockMaybeSingle // Direct maybeSingle() after select()
-};
-
-jest.mock('@/lib/supabase', () => ({
-  supabase: {
-    from: jest.fn(() => ({
-      select: mockSelect.mockReturnValue(queryFilter),
-      insert: mockInsert,
-      update: mockUpdate.mockReturnValue({ eq: mockEq.mockReturnValue(queryTerminator) }),
-      delete: mockDelete.mockReturnValue({ eq: mockEq.mockReturnValue(queryTerminator) }),
-    })),
-  },
-}));
-
-// ==================================================================
-// 3. MOCK CHILD COMPONENTS
-// ==================================================================
-
-// Mock ScannerContext
-jest.mock('@/components/scanner/ScannerContext', () => {
-  return function MockScanner({ onItemScanned, title }: any) {
+// ScannerContent mock — lets tests trigger a scan by clicking a button
+jest.mock('@/components/scanner/scannerContext', () => {
+  return function MockScannerContent({ onItemScanned, title, onBack }: any) {
     return (
-      <div data-testid="scanner-mock">
-        <h1>{title}</h1>
-        <button 
+      <div data-testid="scanner-content">
+        <h1 data-testid="scanner-title">{title}</h1>
+        <button
           data-testid="trigger-scan"
-          onClick={() => onItemScanned({ code: 'TEST-CODE-123' })}
+          onClick={() => onItemScanned({ code: 'TEST-001' })}
         >
           Simulate Scan
         </button>
+        <button data-testid="trigger-back" onClick={onBack}>
+          Back
+        </button>
       </div>
-    );
-  };
-});
+    )
+  }
+})
 
-// Mock ConfirmationContent
-jest.mock('@/components/scanner/ConfirmationContent', () => {
-  return function MockConfirmation({ onSubmit, onCreate }: any) {
+// SuccessContent mock — shows scanType so tests can check which flow completed
+jest.mock('@/components/scanner/successContent', () => {
+  return function MockSuccessContent({ scanType, item }: any) {
     return (
-      <div data-testid="confirmation-mock">
-        <button onClick={() => onSubmit({ status: 'in use' })}>Confirm Edit</button>
-        <button onClick={() => onCreate({ name: 'New Thing', status: 'in use' })}>Confirm Create</button>
+      <div data-testid="success-content">
+        <div data-testid="scan-type">{scanType}</div>
+        <div data-testid="item-name">{item?.name}</div>
       </div>
-    );
-  };
-});
+    )
+  }
+})
 
-// Mock SuccessContent
-jest.mock('@/components/scanner/SuccessContent', () => {
-  return function MockSuccess({ scanType }: any) {
-    return <div data-testid="success-mock">Success: {scanType}</div>;
-  };
-});
+// ConfirmationContent mock — exposes submit and create buttons so tests can click them
+jest.mock('@/components/scanner/confirmationContext', () => {
+  return function MockConfirmationContent({ onSubmit, onCreate, onBack }: any) {
+    return (
+      <div data-testid="confirmation-content">
+        <button
+          data-testid="confirm-submit"
+          onClick={() => onSubmit({ condition: 'In-use', location_id: 'L001', department_id: null })}
+        >
+          Submit Changes
+        </button>
+        <button
+          data-testid="confirm-create"
+          onClick={() => onCreate({ name: 'New Asset', category: 'IT', model: 'X1', description: '', condition: 'In-use', location_id: null, department_id: null })}
+        >
+          Register Asset
+        </button>
+        <button data-testid="confirm-back" onClick={onBack}>
+          Back
+        </button>
+      </div>
+    )
+  }
+})
 
-// ==================================================================
-// 4. TESTS
-// ==================================================================
-describe('ScannerPage Integration', () => {
+// mock fetch and alert so tests can intercept and check them
+global.fetch = jest.fn()
+global.alert = jest.fn()
+
+// ─── HELPERS ─────────────────────────────────────────────────────────────────
+
+// shorthand auth states to reuse across tests
+const authReady = { isLoading: false, isAuthenticated: true }
+const authLoading = { isLoading: true, isAuthenticated: false }
+const authGuest = { isLoading: false, isAuthenticated: false }
+
+// wrap fetch response so tests don't have to repeat the same boilerplate
+function mockFetch(data: any, success = true) {
+  return { json: () => Promise.resolve({ success, data }) }
+}
+
+// ─── TESTS ───────────────────────────────────────────────────────────────────
+
+describe('ScannerPage', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
-    mockGet.mockReturnValue('asset'); // Default to asset scan
-    
-    // Default successful response to prevent "undefined" errors
-    mockSingle.mockResolvedValue({ data: { id: 'default' }, error: null });
-  });
+    jest.clearAllMocks()
+    mockSearchParamsGet.mockReturnValue(null) // defaults to asset scan
+    ;(global.fetch as jest.Mock).mockResolvedValue(mockFetch(null))
+  })
 
-  // --- TEST 1: Basic Asset Scan Flow ---
-  it('navigates to Confirmation when an asset is scanned', async () => {
-    render(<ScannerPage />);
+  // ── Auth guard ─────────────────────────────────────────────────────────────
 
-    expect(screen.getByText('Asset Scanner')).toBeInTheDocument();
-    fireEvent.click(screen.getByTestId('trigger-scan'));
+  // page should show nothing while still checking if user is logged in
+  it('renders nothing while auth is loading', () => {
+    ;(useAuth as jest.Mock).mockReturnValue(authLoading)
+    const { container } = render(<ScannerPage />)
+    expect(container.firstChild).toBeNull()
+  })
 
-    await waitFor(() => {
-      expect(screen.getByTestId('confirmation-mock')).toBeInTheDocument();
-    });
-  });
+  // logged out users shouldn't see the scanner at all
+  it('renders nothing when the user is not authenticated', () => {
+    ;(useAuth as jest.Mock).mockReturnValue(authGuest)
+    const { container } = render(<ScannerPage />)
+    expect(container.firstChild).toBeNull()
+  })
 
-  // --- TEST 2: Updating an Asset ---
-  it('updates asset via Supabase when confirmed', async () => {
-    render(<ScannerPage />);
+  // ── Scan type titles ───────────────────────────────────────────────────────
 
-    // 1. Scan
-    fireEvent.click(screen.getByTestId('trigger-scan'));
-    await waitFor(() => screen.getByTestId('confirmation-mock'));
+  // without any ?type= param, it defaults to the asset scanner
+  it('shows Asset Scanner by default when no type param is set', () => {
+    ;(useAuth as jest.Mock).mockReturnValue(authReady)
+    render(<ScannerPage />)
+    expect(screen.getByTestId('scanner-title')).toHaveTextContent('Asset Scanner')
+  })
 
-    // 2. Setup Supabase Mock for UPDATE
-    // We ensure the update call returns success
-    mockUpdate.mockReturnValue({ 
-      eq: jest.fn().mockResolvedValue({ error: null }) 
-    });
+  // ?type=location should show the location scanner
+  it('shows Location Scanner when type=location', () => {
+    ;(useAuth as jest.Mock).mockReturnValue(authReady)
+    mockSearchParamsGet.mockReturnValue('location')
+    render(<ScannerPage />)
+    expect(screen.getByTestId('scanner-title')).toHaveTextContent('Location Scanner')
+  })
 
-    // 3. Click "Confirm Edit"
-    fireEvent.click(screen.getByText('Confirm Edit'));
+  // ?type=staff should show the staff ID scanner
+  it('shows Staff ID Scanner when type=staff', () => {
+    ;(useAuth as jest.Mock).mockReturnValue(authReady)
+    mockSearchParamsGet.mockReturnValue('staff')
+    render(<ScannerPage />)
+    expect(screen.getByTestId('scanner-title')).toHaveTextContent('Staff ID Scanner')
+  })
 
-    // 4. Expect Supabase to be called
-    await waitFor(() => {
-      expect(mockUpdate).toHaveBeenCalled();
-      expect(screen.getByTestId('success-mock')).toBeInTheDocument();
-    });
-  });
+  // ?type=department should show the department scanner
+  it('shows Department Scanner when type=department', () => {
+    ;(useAuth as jest.Mock).mockReturnValue(authReady)
+    mockSearchParamsGet.mockReturnValue('department')
+    render(<ScannerPage />)
+    expect(screen.getByTestId('scanner-title')).toHaveTextContent('Department Scanner')
+  })
 
-  // --- TEST 3: Creating a New Asset ---
-  it('creates asset via Supabase when registering', async () => {
-    render(<ScannerPage />);
+  // ── Back navigation ────────────────────────────────────────────────────────
 
-    fireEvent.click(screen.getByTestId('trigger-scan'));
-    await waitFor(() => screen.getByTestId('confirmation-mock'));
+  // pressing Back on the scanner should send the user to their dashboard
+  it('navigates to dashboard when Back is clicked on the scanner', () => {
+    ;(useAuth as jest.Mock).mockReturnValue(authReady)
+    render(<ScannerPage />)
+    fireEvent.click(screen.getByTestId('trigger-back'))
+    expect(mockPush).toHaveBeenCalledWith('/user/dashboard')
+  })
 
-    // Setup Supabase Mock for INSERT
-    mockInsert.mockResolvedValue({ error: null });
+  // ── Asset scan flow ────────────────────────────────────────────────────────
 
-    fireEvent.click(screen.getByText('Confirm Create'));
+  // scanning an asset code should bring up the confirmation screen
+  it('moves to confirmation when an asset code is scanned', async () => {
+    ;(useAuth as jest.Mock).mockReturnValue(authReady)
+    render(<ScannerPage />)
 
-    await waitFor(() => {
-      expect(mockInsert).toHaveBeenCalled();
-      expect(screen.getByText('Success: New Asset Registered')).toBeInTheDocument();
-    });
-  });
+    await act(async () => { fireEvent.click(screen.getByTestId('trigger-scan')) })
 
-  // --- TEST 4: Location Tagging Logic (The Parent Scan) ---
-  it('handles the two-step Location Tagging flow', async () => {
-    // 1. Set URL param to 'location'
-    mockGet.mockReturnValue('location');
-    
-    // 2. Setup the Chain of Responses for mockSingle
-    // Call 1 (Location Scan): Return valid Location data
-    // Call 2 (Asset Scan): Return valid Asset data
-    mockSingle
-      .mockResolvedValueOnce({ data: { name: 'Warehouse' }, error: null }) // For .ilike()
-      .mockResolvedValueOnce({ data: { asset_id: 'ASSET-001' }, error: null }); // For .eq()
+    expect(screen.getByTestId('confirmation-content')).toBeInTheDocument()
+  })
 
-    render(<ScannerPage />);
-    expect(screen.getByText('Location Scanner')).toBeInTheDocument();
+  // pressing Back inside confirmation should go back to the scanner
+  it('returns to scanning when Back is clicked inside confirmation', async () => {
+    ;(useAuth as jest.Mock).mockReturnValue(authReady)
+    render(<ScannerPage />)
 
-    // 3. STEP 1: Scan the Location
-    fireEvent.click(screen.getByTestId('trigger-scan')); 
+    await act(async () => { fireEvent.click(screen.getByTestId('trigger-scan')) })
+    await act(async () => { fireEvent.click(screen.getByTestId('confirm-back')) })
 
-    // Wait a tick for state update (React needs a moment to process the async scan)
-    await waitFor(() => {}); 
+    expect(screen.getByTestId('scanner-content')).toBeInTheDocument()
+  })
 
-    // 4. Setup the UPDATE mock for the final step
-    mockUpdate.mockReturnValue({ 
-      eq: jest.fn().mockResolvedValue({ error: null }) 
-    });
+  // submitting an update should POST to /api/scanner and show the success screen
+  it('calls POST /api/scanner and shows success after submitting asset update', async () => {
+    ;(useAuth as jest.Mock).mockReturnValue(authReady)
+    ;(global.fetch as jest.Mock).mockResolvedValue(mockFetch(null, true))
 
-    // 5. STEP 2: Scan the Asset (Simulate clicking scanner again)
-    fireEvent.click(screen.getByTestId('trigger-scan'));
+    render(<ScannerPage />)
 
-    // 6. Expect Supabase to update the asset with location_id
-    await waitFor(() => {
-      expect(mockUpdate).toHaveBeenCalledWith(
-        expect.objectContaining({ location_id: 'TEST-CODE-123' })
-      );
-      expect(screen.getByTestId('success-mock')).toBeInTheDocument();
-    });
-  });
-
-  // --- TEST 5: Staff Cart Logic (Irene's Logic) ---
-  it('handles Staff scanning and Cart submission', async () => {
-    mockGet.mockReturnValue('staff');
-    render(<ScannerPage />);
-
-    // Setup mocks for Staff Logic
-    mockMaybeSingle.mockResolvedValue({ data: { staff_id: 'STAFF-001', name: 'John Doe' }, error: null });
-    
-    // Mock the asset count check
-    mockSelect.mockReturnValue({
-        eq: jest.fn().mockResolvedValue({ count: 5, data: [] }) // data: [] for ownership check later
-    });
-
-    // 1. Scan Staff ID
-    fireEvent.click(screen.getByTestId('trigger-scan'));
+    await act(async () => { fireEvent.click(screen.getByTestId('trigger-scan')) })
+    await act(async () => { fireEvent.click(screen.getByTestId('confirm-submit')) })
 
     await waitFor(() => {
-      expect(screen.getByText('Staff Confirmed')).toBeInTheDocument();
-    });
+      expect(global.fetch).toHaveBeenCalledWith(
+        '/api/scanner',
+        expect.objectContaining({ method: 'POST' })
+      )
+      expect(screen.getByTestId('success-content')).toBeInTheDocument()
+    })
+  })
 
-    fireEvent.click(screen.getByText('Continue Scanning'));
+  // registering a brand new asset should show "New Asset Registered" on success
+  it('shows New Asset Registered scan type after creating a new asset', async () => {
+    ;(useAuth as jest.Mock).mockReturnValue(authReady)
+    ;(global.fetch as jest.Mock).mockResolvedValue(mockFetch(null, true))
 
-    // 2. Scan Asset
-    // Reset asset lookup mock
-    mockMaybeSingle.mockResolvedValue({ data: { asset_id: 'ASSET-X', name: 'Laptop' }, error: null });
-    
-    fireEvent.click(screen.getByTestId('trigger-scan'));
+    render(<ScannerPage />)
+
+    await act(async () => { fireEvent.click(screen.getByTestId('trigger-scan')) })
+    await act(async () => { fireEvent.click(screen.getByTestId('confirm-create')) })
 
     await waitFor(() => {
-      expect(screen.getByText('Cart (1)')).toBeInTheDocument();
-    });
+      expect(screen.getByTestId('success-content')).toBeInTheDocument()
+      expect(screen.getByTestId('scan-type')).toHaveTextContent('New Asset Registered')
+    })
+  })
 
-    // 3. Submit
-    mockInsert.mockResolvedValue({ error: null });
-    fireEvent.click(screen.getByText(/Submit/i));
+  // ── Location scan flow ─────────────────────────────────────────────────────
+
+  // first scan in location mode looks up the location — scanner should stay open for the asset scan
+  it('stays on scanning after the first scan (location step) succeeds', async () => {
+    ;(useAuth as jest.Mock).mockReturnValue(authReady)
+    mockSearchParamsGet.mockReturnValue('location')
+    ;(global.fetch as jest.Mock).mockResolvedValue(
+      mockFetch({ name: 'Warehouse A' }, true)
+    )
+
+    render(<ScannerPage />)
+
+    await act(async () => { fireEvent.click(screen.getByTestId('trigger-scan')) })
 
     await waitFor(() => {
-      expect(mockInsert).toHaveBeenCalled();
-      expect(screen.getByTestId('success-mock')).toBeInTheDocument();
-    });
-  });
-});
+      expect(screen.getByTestId('scanner-content')).toBeInTheDocument()
+    })
+  })
+
+  // if the scanned location code doesn't exist, show an alert
+  it('shows alert when the scanned location ID is not found', async () => {
+    ;(useAuth as jest.Mock).mockReturnValue(authReady)
+    mockSearchParamsGet.mockReturnValue('location')
+    ;(global.fetch as jest.Mock).mockResolvedValue(mockFetch(null, false))
+
+    render(<ScannerPage />)
+
+    await act(async () => { fireEvent.click(screen.getByTestId('trigger-scan')) })
+
+    await waitFor(() => {
+      expect(global.alert).toHaveBeenCalledWith(expect.stringContaining('not found'))
+    })
+  })
+
+  // second scan (asset) in location mode — should tag the asset and show success
+  it('tags asset to location and shows success on the second scan', async () => {
+    ;(useAuth as jest.Mock).mockReturnValue(authReady)
+    mockSearchParamsGet.mockReturnValue('location')
+
+    ;(global.fetch as jest.Mock)
+      .mockResolvedValueOnce(mockFetch({ name: 'Warehouse A' }, true))           // location lookup
+      .mockResolvedValueOnce(mockFetch({ asset_id: 'TEST-001', name: 'Laptop' }, true)) // asset lookup
+      .mockResolvedValueOnce(mockFetch(null, true))                              // tag_asset post
+
+    render(<ScannerPage />)
+
+    await act(async () => { fireEvent.click(screen.getByTestId('trigger-scan')) })
+    await waitFor(() => expect(screen.getByTestId('scanner-content')).toBeInTheDocument())
+    await act(async () => { fireEvent.click(screen.getByTestId('trigger-scan')) })
+
+    await waitFor(() => {
+      expect(screen.getByTestId('success-content')).toBeInTheDocument()
+      expect(screen.getByTestId('scan-type')).toHaveTextContent('Tagged to Warehouse A')
+    })
+  })
+
+  // if the asset isn't found during location tagging, show the registration form instead
+  it('goes to confirmation when asset is not found during location tagging', async () => {
+    ;(useAuth as jest.Mock).mockReturnValue(authReady)
+    mockSearchParamsGet.mockReturnValue('location')
+
+    ;(global.fetch as jest.Mock)
+      .mockResolvedValueOnce(mockFetch({ name: 'Warehouse A' }, true)) // location found
+      .mockResolvedValueOnce(mockFetch(null, false))                    // asset not found
+
+    render(<ScannerPage />)
+
+    await act(async () => { fireEvent.click(screen.getByTestId('trigger-scan')) })
+    await waitFor(() => expect(screen.getByTestId('scanner-content')).toBeInTheDocument())
+    await act(async () => { fireEvent.click(screen.getByTestId('trigger-scan')) })
+
+    await waitFor(() => {
+      expect(screen.getByTestId('confirmation-content')).toBeInTheDocument()
+    })
+  })
+
+  // ── Staff scan flow ────────────────────────────────────────────────────────
+
+  // scanning a valid staff ID should show a modal with the staff's name
+  it('shows StaffConfirmedModal with staff name when a valid staff ID is scanned', async () => {
+    ;(useAuth as jest.Mock).mockReturnValue(authReady)
+    mockSearchParamsGet.mockReturnValue('staff')
+
+    ;(global.fetch as jest.Mock)
+      .mockResolvedValueOnce(mockFetch({ staff_id: 'S001', name: 'John Doe' }, true)) // staff lookup
+      .mockResolvedValueOnce({ json: () => Promise.resolve({ success: true, count: 3 }) }) // asset count
+
+    render(<ScannerPage />)
+
+    await act(async () => { fireEvent.click(screen.getByTestId('trigger-scan')) })
+
+    await waitFor(() => {
+      expect(screen.getByText('Staff Confirmed')).toBeInTheDocument()
+      expect(screen.getByText('John Doe')).toBeInTheDocument()
+    })
+  })
+
+  // the modal should also show how many assets that staff currently has
+  it('shows asset count in StaffConfirmedModal', async () => {
+    ;(useAuth as jest.Mock).mockReturnValue(authReady)
+    mockSearchParamsGet.mockReturnValue('staff')
+
+    ;(global.fetch as jest.Mock)
+      .mockResolvedValueOnce(mockFetch({ staff_id: 'S001', name: 'John Doe' }, true))
+      .mockResolvedValueOnce({ json: () => Promise.resolve({ success: true, count: 5 }) })
+
+    render(<ScannerPage />)
+
+    await act(async () => { fireEvent.click(screen.getByTestId('trigger-scan')) })
+
+    await waitFor(() => {
+      expect(screen.getByText('Currently owns 5 asset(s)')).toBeInTheDocument()
+    })
+  })
+
+  // scanning a staff ID that doesn't exist should open an error modal
+  it('shows error modal when staff ID is not found', async () => {
+    ;(useAuth as jest.Mock).mockReturnValue(authReady)
+    mockSearchParamsGet.mockReturnValue('staff')
+
+    ;(global.fetch as jest.Mock).mockResolvedValueOnce(mockFetch(null, false))
+
+    render(<ScannerPage />)
+
+    await act(async () => { fireEvent.click(screen.getByTestId('trigger-scan')) })
+
+    await waitFor(() => {
+      expect(screen.getByText('Error')).toBeInTheDocument()
+      expect(screen.getByText(/Staff ID not found/i)).toBeInTheDocument()
+    })
+  })
+
+  // pressing Close on the error modal should dismiss it
+  it('closes error modal when Close is clicked', async () => {
+    ;(useAuth as jest.Mock).mockReturnValue(authReady)
+    mockSearchParamsGet.mockReturnValue('staff')
+
+    ;(global.fetch as jest.Mock).mockResolvedValueOnce(mockFetch(null, false))
+
+    render(<ScannerPage />)
+
+    await act(async () => { fireEvent.click(screen.getByTestId('trigger-scan')) })
+    await waitFor(() => expect(screen.getByText('Error')).toBeInTheDocument())
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /Close/i }))
+    })
+
+    expect(screen.queryByText('Error')).not.toBeInTheDocument()
+  })
+
+  // after confirming staff and clicking Continue Scanning, scanning an asset should add it to the cart
+  it('adds an asset to the cart after staff is confirmed and Continue Scanning is clicked', async () => {
+    ;(useAuth as jest.Mock).mockReturnValue(authReady)
+    mockSearchParamsGet.mockReturnValue('staff')
+
+    ;(global.fetch as jest.Mock)
+      .mockResolvedValueOnce(mockFetch({ staff_id: 'S001', name: 'John' }, true))    // staff
+      .mockResolvedValueOnce({ json: () => Promise.resolve({ success: true, count: 0 }) }) // count
+      .mockResolvedValueOnce(mockFetch({ asset_id: 'TEST-001', name: 'Laptop' }, true)) // asset
+      .mockResolvedValueOnce(mockFetch([], true))                                   // assignment check
+
+    render(<ScannerPage />)
+
+    await act(async () => { fireEvent.click(screen.getByTestId('trigger-scan')) })
+    await waitFor(() => expect(screen.getByText('Staff Confirmed')).toBeInTheDocument())
+    await act(async () => { fireEvent.click(screen.getByText('Continue Scanning')) })
+    await act(async () => { fireEvent.click(screen.getByTestId('trigger-scan')) })
+
+    await waitFor(() => {
+      expect(screen.getByText('Cart (1)')).toBeInTheDocument()
+    })
+  })
+
+  // scanning the same asset code twice should show a duplicate error
+  it('shows error when the same asset is scanned twice (duplicate in cart)', async () => {
+    ;(useAuth as jest.Mock).mockReturnValue(authReady)
+    mockSearchParamsGet.mockReturnValue('staff')
+
+    ;(global.fetch as jest.Mock)
+      .mockResolvedValueOnce(mockFetch({ staff_id: 'S001', name: 'John' }, true))
+      .mockResolvedValueOnce({ json: () => Promise.resolve({ success: true, count: 0 }) })
+      .mockResolvedValueOnce(mockFetch({ asset_id: 'TEST-001', name: 'Laptop' }, true))
+      .mockResolvedValueOnce(mockFetch([], true))
+    // Second scan of same code triggers duplicate check before any fetch
+
+    render(<ScannerPage />)
+
+    await act(async () => { fireEvent.click(screen.getByTestId('trigger-scan')) })
+    await waitFor(() => expect(screen.getByText('Staff Confirmed')).toBeInTheDocument())
+    await act(async () => { fireEvent.click(screen.getByText('Continue Scanning')) })
+
+    // First asset scan — adds to cart
+    await act(async () => { fireEvent.click(screen.getByTestId('trigger-scan')) })
+    await waitFor(() => expect(screen.getByText('Cart (1)')).toBeInTheDocument())
+
+    // Second scan of the same code — should show duplicate error
+    await act(async () => { fireEvent.click(screen.getByTestId('trigger-scan')) })
+
+    await waitFor(() => {
+      expect(screen.getByText(/already in cart/i)).toBeInTheDocument()
+    })
+  })
+
+  // clicking Submit Changes should POST the cart and show the success screen
+  it('submits the cart and shows success after staff assignment', async () => {
+    ;(useAuth as jest.Mock).mockReturnValue(authReady)
+    mockSearchParamsGet.mockReturnValue('staff')
+
+    ;(global.fetch as jest.Mock)
+      .mockResolvedValueOnce(mockFetch({ staff_id: 'S001', name: 'John' }, true))
+      .mockResolvedValueOnce({ json: () => Promise.resolve({ success: true, count: 0 }) })
+      .mockResolvedValueOnce(mockFetch({ asset_id: 'TEST-001', name: 'Laptop' }, true))
+      .mockResolvedValueOnce(mockFetch([], true))       // assignment check → action = ASSIGN
+      .mockResolvedValueOnce(mockFetch(null, true))     // assign post
+
+    render(<ScannerPage />)
+
+    await act(async () => { fireEvent.click(screen.getByTestId('trigger-scan')) })
+    await waitFor(() => expect(screen.getByText('Staff Confirmed')).toBeInTheDocument())
+    await act(async () => { fireEvent.click(screen.getByText('Continue Scanning')) })
+    await act(async () => { fireEvent.click(screen.getByTestId('trigger-scan')) })
+    await waitFor(() => expect(screen.getByText('Cart (1)')).toBeInTheDocument())
+
+    await act(async () => { fireEvent.click(screen.getByText('Submit Changes')) })
+
+    await waitFor(() => {
+      expect(screen.getByTestId('success-content')).toBeInTheDocument()
+    })
+  })
+
+  // clicking the X button should empty the entire cart
+  it('clears the entire cart when the X button is clicked', async () => {
+    ;(useAuth as jest.Mock).mockReturnValue(authReady)
+    mockSearchParamsGet.mockReturnValue('staff')
+
+    ;(global.fetch as jest.Mock)
+      .mockResolvedValueOnce(mockFetch({ staff_id: 'S001', name: 'John' }, true))
+      .mockResolvedValueOnce({ json: () => Promise.resolve({ success: true, count: 0 }) })
+      .mockResolvedValueOnce(mockFetch({ asset_id: 'TEST-001', name: 'Laptop' }, true))
+      .mockResolvedValueOnce(mockFetch([], true))
+
+    render(<ScannerPage />)
+
+    await act(async () => { fireEvent.click(screen.getByTestId('trigger-scan')) })
+    await waitFor(() => expect(screen.getByText('Staff Confirmed')).toBeInTheDocument())
+    await act(async () => { fireEvent.click(screen.getByText('Continue Scanning')) })
+    await act(async () => { fireEvent.click(screen.getByTestId('trigger-scan')) })
+    await waitFor(() => expect(screen.getByText('Cart (1)')).toBeInTheDocument())
+
+    // Click the X button that calls setCart([])
+    const allButtons = screen.getAllByRole('button')
+    const clearButton = allButtons.find(btn => btn.querySelector('[data-testid="x-icon"]'))
+    await act(async () => { fireEvent.click(clearButton!) })
+
+    await waitFor(() => {
+      expect(screen.queryByText('Cart (1)')).not.toBeInTheDocument()
+    })
+  })
+})

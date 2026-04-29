@@ -6,6 +6,8 @@ import DynamicPage from '@/components/dynamicPage'
 import type { dynamicPageConfig } from '@/components/dynamicPage'
 import { useAdminAccess } from '@/hooks/useAdminAccess'
 
+// staffConfig tells DynamicPage what columns to display in the table, which fields are searchable,
+// and what form fields to show when adding or editing a staff member
 const staffConfig: dynamicPageConfig = {
   entityName: 'staff',
   entityDisplayName: 'Staff',
@@ -59,6 +61,8 @@ const staffConfig: dynamicPageConfig = {
   ]
 }
 
+// Renders the staff list page using DynamicPage
+// Blocks access if the user is not an admin
 export default function StaffListPage() {
   const { isLoading, isAdmin } = useAdminAccess()
 

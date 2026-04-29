@@ -1,9 +1,10 @@
+// Commented by Irene
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import { useRouter } from 'next/navigation';
 import ApprovalsPage from '@/app/(app)/admin/staff/approvals/page';
 import { useAdminAccess } from '@/hooks/useAdminAccess';
 
-// Mock dependencies
+// fake out dependencies so we control them in tests
 jest.mock('next/navigation', () => ({
   useRouter: jest.fn(),
 }));
@@ -12,7 +13,8 @@ jest.mock('@/hooks/useAdminAccess', () => ({
   useAdminAccess: jest.fn(),
 }));
 
-jest.mock('@/components/ui/Breadcrumb', () => {
+// simple breadcrumb mock — just renders the label text
+jest.mock('@/components/ui/breadcrumb', () => {
   return function MockBreadcrumb({ customItems }: any) {
     return (
       <div data-testid="breadcrumb">
@@ -24,6 +26,7 @@ jest.mock('@/components/ui/Breadcrumb', () => {
   };
 });
 
+// replace heroicons with plain SVGs so we don't need the real icon library
 jest.mock('@heroicons/react/24/outline', () => ({
   CheckCircleIcon: () => <svg data-testid="check-icon">Check</svg>,
   XCircleIcon: () => <svg data-testid="x-icon">X</svg>,
@@ -31,7 +34,7 @@ jest.mock('@heroicons/react/24/outline', () => ({
   ArrowPathIcon: ({ className }: any) => <svg data-testid="refresh-icon" className={className}>Refresh</svg>,
 }));
 
-// Mock fetch, alert, and confirm
+// mock fetch, alert, and confirm so tests can control and spy on them
 global.fetch = jest.fn();
 global.alert = jest.fn();
 global.confirm = jest.fn();
@@ -44,6 +47,7 @@ describe('ApprovalsPage', () => {
     role: 'admin',
   };
 
+  // sample data for the 3 different staff statuses
   const mockPendingStaff = [
     {
       staff_id: 'S001',
@@ -85,6 +89,7 @@ describe('ApprovalsPage', () => {
     (useRouter as jest.Mock).mockReturnValue({ push: mockPush });
   });
 
+  // show "Loading..." while the session is still being fetched
   it('shows loading state when session is loading', () => {
     (useAdminAccess as jest.Mock).mockReturnValue({
       session: null,
@@ -96,6 +101,7 @@ describe('ApprovalsPage', () => {
     expect(screen.getByText('Loading...')).toBeInTheDocument();
   });
 
+  // once loaded, the page should show the 3 tabs (Pending, Approved, Rejected)
   it('renders approvals page with tabs', async () => {
     (useAdminAccess as jest.Mock).mockReturnValue({
       session: mockSession,
@@ -119,6 +125,7 @@ describe('ApprovalsPage', () => {
     });
   });
 
+  // pending tab should show the staff who are waiting for approval
   it('fetches and displays pending staff', async () => {
     (useAdminAccess as jest.Mock).mockReturnValue({
       session: mockSession,
@@ -141,6 +148,7 @@ describe('ApprovalsPage', () => {
     });
   });
 
+  // clicking the Approved tab should show approved staff
   it('switches to approved tab and displays approved staff', async () => {
     (useAdminAccess as jest.Mock).mockReturnValue({
       session: mockSession,
@@ -167,6 +175,7 @@ describe('ApprovalsPage', () => {
     });
   });
 
+  // clicking the Rejected tab should show rejected staff
   it('switches to rejected tab and displays rejected staff', async () => {
     (useAdminAccess as jest.Mock).mockReturnValue({
       session: mockSession,
@@ -193,6 +202,7 @@ describe('ApprovalsPage', () => {
     });
   });
 
+  // the pending tab should have Approve and Reject action buttons per row
   it('shows approve and reject buttons on pending tab', async () => {
     (useAdminAccess as jest.Mock).mockReturnValue({
       session: mockSession,
@@ -214,6 +224,7 @@ describe('ApprovalsPage', () => {
     });
   });
 
+  // clicking Approve should ask for confirmation and then show success alert
   it('handles approve button click with confirmation', async () => {
     (useAdminAccess as jest.Mock).mockReturnValue({
       session: mockSession,
@@ -246,6 +257,7 @@ describe('ApprovalsPage', () => {
     });
   });
 
+  // clicking Reject should ask for confirmation and then show success alert
   it('handles reject button click with confirmation', async () => {
     (useAdminAccess as jest.Mock).mockReturnValue({
       session: mockSession,
@@ -278,6 +290,7 @@ describe('ApprovalsPage', () => {
     });
   });
 
+  // if the user clicks Cancel on the confirm dialog, nothing should happen
   it('cancels approve when user clicks cancel on confirmation', async () => {
     (useAdminAccess as jest.Mock).mockReturnValue({
       session: mockSession,
@@ -304,6 +317,7 @@ describe('ApprovalsPage', () => {
     expect(global.alert).not.toHaveBeenCalled();
   });
 
+  // if the API returns an error, show the error message in an alert
   it('handles API error during approval', async () => {
     (useAdminAccess as jest.Mock).mockReturnValue({
       session: mockSession,
@@ -332,6 +346,7 @@ describe('ApprovalsPage', () => {
     });
   });
 
+  // if the network completely fails, show a generic failure message
   it('handles network error during approval', async () => {
     const consoleError = jest.spyOn(console, 'error').mockImplementation();
 
@@ -365,6 +380,7 @@ describe('ApprovalsPage', () => {
     consoleError.mockRestore();
   });
 
+  // clicking the Refresh button should re-fetch all 3 lists
   it('refreshes all staff lists when refresh button is clicked', async () => {
     (useAdminAccess as jest.Mock).mockReturnValue({
       session: mockSession,
@@ -401,6 +417,7 @@ describe('ApprovalsPage', () => {
     }, { timeout: 15000 });
   }, 20000);
 
+  // each tab should show an empty message when there are no records
   it('shows empty state messages for each tab', async () => {
     (useAdminAccess as jest.Mock).mockReturnValue({
       session: mockSession,
@@ -442,6 +459,7 @@ describe('ApprovalsPage', () => {
     }, { timeout: 15000 });
   }, 20000);
 
+  // dates should be formatted nicely (e.g. "1 Jan 2024")
   it('formats dates correctly', async () => {
     (useAdminAccess as jest.Mock).mockReturnValue({
       session: mockSession,
@@ -464,6 +482,7 @@ describe('ApprovalsPage', () => {
     }, { timeout: 15000 });
   }, 20000);
 
+  // breadcrumb should show the correct navigation path
   it('renders breadcrumb with correct items', async () => {
     (useAdminAccess as jest.Mock).mockReturnValue({
       session: mockSession,
@@ -486,6 +505,7 @@ describe('ApprovalsPage', () => {
     expect(breadcrumb).toHaveTextContent('Approvals');
   });
 
+  // while an approve/reject request is in progress, the action buttons should be disabled
   it('disables buttons while processing', async () => {
     (useAdminAccess as jest.Mock).mockReturnValue({
       session: mockSession,

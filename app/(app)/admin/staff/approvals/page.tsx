@@ -1,3 +1,6 @@
+// app/(app)/admin/staff/approvals/page.tsx
+// Staff registration approvals page. Admins can view, approve, or reject pending staff registrations.
+// Shows three tabs: Pending, Approved, and Rejected.
 'use client'
 
 import { useState, useEffect } from 'react'
@@ -11,6 +14,7 @@ import {
   ArrowPathIcon
 } from '@heroicons/react/24/outline'
 
+// Describes the shape of a staff record returned from the API
 interface PendingStaff {
   staff_id: string
   name: string
@@ -21,6 +25,9 @@ interface PendingStaff {
   created_dt: string
 }
 
+// Main component for the staff approvals page
+// On load, fetches all pending, approved, and rejected staff from the API
+// Admins can approve or reject pending registrations using the buttons in the table
 export default function ApprovalsPage() {
   const { session, isLoading: sessionLoading } = useAdminAccess()
   // const router = useRouter()
@@ -43,6 +50,8 @@ export default function ApprovalsPage() {
     }
   }, [session])
 
+  // Fetches all three staff lists (pending, approved, rejected) from the API at the same time
+  // Updates the matching state variables so the tabs show the correct data
   const fetchAllStaff = async () => {
     try {
       const [pendingRes, approvedRes, rejectedRes] = await Promise.all([
@@ -67,6 +76,9 @@ export default function ApprovalsPage() {
     }
   }
 
+  // Called when admin clicks the Approve button on a pending staff member
+  // Shows a confirmation dialog first, then sends the approval to the API
+  // Refreshes all staff lists after a successful approval
   const handleApprove = async (staff_id: string) => {
     if (!confirm('Are you sure you want to approve this registration?')) {
       return
@@ -97,6 +109,9 @@ export default function ApprovalsPage() {
     }
   }
 
+  // Called when admin clicks the Reject button on a pending staff member
+  // Shows a confirmation dialog first, then sends the rejection to the API
+  // Refreshes all staff lists after a successful rejection
   const handleReject = async (staff_id: string) => {
     if (!confirm('Are you sure you want to reject this registration?')) {
       return
@@ -127,6 +142,8 @@ export default function ApprovalsPage() {
     }
   }
 
+  // Converts an ISO date string (e.g. "2026-04-30T10:00:00Z") into a readable format
+  // Example output: "30 Apr 2026, 10:00 AM"
   const formatDate = (dateString: string) => {
     const date = new Date(dateString)
     return date.toLocaleDateString('en-MY', {

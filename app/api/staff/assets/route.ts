@@ -1,3 +1,5 @@
+// app/api/staff/assets/route.ts
+// Returns all assets currently assigned to a specific staff member. Used by the scanner page to show ownership.
 import { NextRequest, NextResponse } from 'next/server'
 // supabaseAdmin uses the service role key and only runs server-side — credentials are never exposed to the browser
 import { supabaseAdmin as supabase } from '@/lib/supabase/server'

@@ -1,3 +1,5 @@
+// app/api/staff/add/route.ts
+// Creates a new staff member record in the database. Status defaults to 'pending' until an admin approves. Admin only.
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin as supabase } from '@/lib/supabase/server'
 // Verifies the request has a valid login session and the required role before allowing access
