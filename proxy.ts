@@ -1,5 +1,6 @@
 /** Commented by Desmond @ 18-Mar-26
- * middleware.ts
+ * proxy.ts
+ * Previously known as 'middleware.ts'
  * 
  * Auth strategy: next-auth JWT mode.
  *   next-auth manages its own encrypted 'next-auth.session-token' cookie.
@@ -222,7 +223,8 @@ function rateLimitResponse(reset: number): NextResponse {
 }
 
 // Public paths
-const PUBLIC_PATHS = new Set(['/login', '/register', 'unauthorized'])
+// Commented by Desmond @ 29-April-26: /scan/* is added to PUBLIC_PATHS
+const PUBLIC_PATHS = new Set(['/login', '/register', 'unauthorized', '/scan/*'])
 
 // Returns true if the path is always publicly accessible
 // Also covers sub-paths of /unauthorized for nested pages
