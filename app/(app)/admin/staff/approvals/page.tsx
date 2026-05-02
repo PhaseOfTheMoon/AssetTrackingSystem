@@ -4,7 +4,6 @@ import { useAdminAccess } from '@/hooks/useAdminAccess'
 import DynamicPage from '@/components/dynamicPage'
 import type { dynamicPageConfig } from '@/components/dynamicPage'
 import {
-  CheckCircleIcon,
   XCircleIcon,
   ClockIcon,
   CheckIcon,
