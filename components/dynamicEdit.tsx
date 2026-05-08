@@ -190,29 +190,33 @@ export default function dynamicEdit({ config, recordId }: dynamicEditProps) {
     }
   }
 
-  // BUGFIX 29-April Daryl: Strict Regex for IDs, Names, Models, etc. (Bans @, ., -, etc.)
-  // BUGFIX 25-April: Strict Regex (Bans @, ., -, \, etc.) Hyphen is at the very end to work properly.
-  const STRICT_INVALID_CHARS_REGEX = /[@!#%^&*()<>_{}|~/?;:'"\\.,-]/;
-  // BUGFIX 07-May: Daryl: Lenient Regex for Descriptions (Allows uppercase letters)
-  // BUGFIX 29-April Daryl: Lenient Regex for Descriptions (Allows spaces, periods, and commas)
-  // BUGFIX 25-April: Lenient Regex for Descriptions (Allows spaces, periods, commas, and hyphens)
-  const DESC_INVALID_CHARS_REGEX = /[@!#%^&*()<>_{}|~/?;:'"\\]/;
-  // BUGFIX 29-April Daryl: Standard Email Format Validation
-  // BUGFIX 25-April: Standard Email Format Validation
+  // BUGFIX 25-April Daryl: Strict Regex (Bans @, ., -, \, etc.) Hyphen MUST be at the very end to work properly.
+  const STRICT_INVALID_CHARS_REGEX = /[@!#%^&*()<>_{}+=|~/?;:'"\\.,-]/;
+  // BUGFIX 07-May Daryl: Lenient Regex for Descriptions. Allows uppercase letters, periods, and commas. Bans hyphens.
+  const DESC_INVALID_CHARS_REGEX = /[@!#%^&*()<>_{}+=|~/?;:'"\\]/;
+  // BUGFIX 25-April Daryl: Standard Email Format Validation
   const EMAIL_FORMAT_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  // BUGFIX 29-April Daryl: Standard Mobile Format (Allows optional + at start, then digits)
-  // BUGFIX 25-April: Standard Mobile Format (Allows optional + at start, then digits)
+  // BUGFIX 25-April Daryl: Standard Mobile Format (Allows optional + at start, then digits)
   const MOBILE_FORMAT_REGEX = /^\+?[0-9]{8,15}$/;
 
+  // Client-side field validation with regex patterns
   const validateField = (value: string | number | null, fieldConfig: formFieldConfig) => {
     if (value === null || value === '') return null;
     
     const strVal = String(value);
 
-    // 1. Level Logic (Allows letters like 'G', 'LG', and hyphens like '-1')
+    // 1. Level Logic
     if (fieldConfig.key.toLowerCase() === 'level') {
-      const LEVEL_REGEX = /^[-a-zA-Z0-9]+$/;
-      if (!LEVEL_REGEX.test(strVal)) return 'Invalid: Level can only contain letters, numbers, and hyphens (e.g., G, -1).';
+      const LEVEL_REGEX = /^[a-zA-Z0-9]+$/; // Only allows letters and positive numbers. Bans hyphens completely.
+      
+      if (!LEVEL_REGEX.test(strVal)) {
+        return 'Invalid: Level can only contain letters and positive numbers (e.g., G, 1).';
+      }
+
+      // Check if they typed just "0"
+      if (strVal === '0') {
+        return 'Invalid: Level cannot be 0.';
+      }
     }
     // 2. Number Input Logic (Excluding Level)
     else if (fieldConfig.type === 'number') {
@@ -231,7 +235,10 @@ export default function dynamicEdit({ config, recordId }: dynamicEditProps) {
     }
     // 5. Description/Textarea Logic (Lenient)
     else if (fieldConfig.type === 'textarea' || fieldConfig.key.toLowerCase().includes('desc')) {
-      if (DESC_INVALID_CHARS_REGEX.test(strVal)) return 'Invalid: Contains sensitive special characters.';
+      // We manually check for hyphen here since it's tricky in the main regex
+      if (DESC_INVALID_CHARS_REGEX.test(strVal) || strVal.includes('-')) {
+        return 'Invalid: Contains sensitive special characters or hyphens.';
+      }
     }
     // 6. Standard Text Input Logic (Strict)
     else if (fieldConfig.type === 'text') {
@@ -242,7 +249,7 @@ export default function dynamicEdit({ config, recordId }: dynamicEditProps) {
     if (fieldConfig.maxLength && strVal.length > fieldConfig.maxLength) {
       return `Exceeds database maximum length of ${fieldConfig.maxLength} characters.`;
     }
-
+    
     return null;
   }
 
