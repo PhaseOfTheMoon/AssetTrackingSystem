@@ -192,11 +192,11 @@ export default function dynamicEdit({ config, recordId }: dynamicEditProps) {
 
   // BUGFIX 29-April Daryl: Strict Regex for IDs, Names, Models, etc. (Bans @, ., -, etc.)
   // BUGFIX 25-April: Strict Regex (Bans @, ., -, \, etc.) Hyphen is at the very end to work properly.
-  const STRICT_INVALID_CHARS_REGEX = /[@!#%^&*()<>_{}|~/?;:'"\\.,-]/;
+  const STRICT_INVALID_CHARS_REGEX = /[@!#%^&*()<>_{}=+|~/?;:'"\\.,]/;
   // BUGFIX 07-May: Daryl: Lenient Regex for Descriptions (Allows uppercase letters)
   // BUGFIX 29-April Daryl: Lenient Regex for Descriptions (Allows spaces, periods, and commas)
   // BUGFIX 25-April: Lenient Regex for Descriptions (Allows spaces, periods, commas, and hyphens)
-  const DESC_INVALID_CHARS_REGEX = /[@!#%^&*()<>_{}|~/?;:'"\\]/;
+  const DESC_INVALID_CHARS_REGEX = /[@!#%^&*()<>_{}|=+~/?;:'"\\]/;
   // BUGFIX 29-April Daryl: Standard Email Format Validation
   // BUGFIX 25-April: Standard Email Format Validation
   const EMAIL_FORMAT_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
