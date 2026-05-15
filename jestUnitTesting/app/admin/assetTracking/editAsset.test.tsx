@@ -1,6 +1,4 @@
 /**
- * Unit Tests: editAsset/[id]/page.tsx
- *
  * Tests cover:
  *   - Auth guard behaviour (loading, non-admin, admin)
  *   - useParams — string id, array id, undefined id
@@ -14,19 +12,19 @@ import { render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import EditAssetPage from '@/app/(app)/admin/assetTracking/editAsset/[id]/page';
 
-// ── Mock useAdminAccess ───────────────────────────────────────────────────────
+// Mock useAdminAccess (WC)
 const mockUseAdminAccess = jest.fn();
 jest.mock('@/hooks/useAdminAccess', () => ({
   useAdminAccess: () => mockUseAdminAccess(),
 }));
 
-// ── Mock useParams ────────────────────────────────────────────────────────────
+// Mock useParams (WC)
 const mockUseParams = jest.fn();
 jest.mock('next/navigation', () => ({
   useParams: () => mockUseParams(),
 }));
 
-// ── Mock DynamicEdit ──────────────────────────────────────────────────────────
+// Mock DynamicEdit (WC)
 jest.mock('@/components/dynamicEdit', () => ({
   __esModule: true,
   default: ({ config, recordId }: any) => (
@@ -38,15 +36,13 @@ jest.mock('@/components/dynamicEdit', () => ({
   ),
 }));
 
-// ── Helper: parse config from DOM ─────────────────────────────────────────────
+// Helper: parse config from DOM (WC)
 const getConfig = () => {
   const el = screen.getByTestId('config');
   return JSON.parse(el.textContent || '{}');
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
-// SUITE 1 — Auth Guard
-// ─────────────────────────────────────────────────────────────────────────────
+// SUITE 1: Auth Guard (WC)
 describe('EditAssetPage — Auth Guard', () => {
 
   beforeEach(() => {
@@ -87,9 +83,7 @@ describe('EditAssetPage — Auth Guard', () => {
   });
 });
 
-// ─────────────────────────────────────────────────────────────────────────────
-// SUITE 2 — useParams: ID Extraction
-// ─────────────────────────────────────────────────────────────────────────────
+// SUITE 2: 'useParams: ID Extraction' (WC)
 describe('EditAssetPage — useParams ID Extraction', () => {
 
   beforeEach(() => {
@@ -97,7 +91,7 @@ describe('EditAssetPage — useParams ID Extraction', () => {
   });
 
   it('should pass string id directly to DynamicEdit', () => {
-    // Arrange — normal case: id is a string
+    // Arrange: normal case: id is a string
     mockUseParams.mockReturnValue({ id: 'ICT-LAPTOP-001' });
 
     // Act
@@ -108,24 +102,24 @@ describe('EditAssetPage — useParams ID Extraction', () => {
   });
 
   it('should use first element when id is an array', () => {
-    // Arrange — edge case: Next.js can return id as string[]
+    // Arrange: edge case: Next.js can return id as string[]
     mockUseParams.mockReturnValue({ id: ['ICT-LAPTOP-001', 'EXTRA'] });
 
     // Act
     render(<EditAssetPage />);
 
-    // Assert — only first element is used
+    // Assert: only first element is used
     expect(screen.getByTestId('record-id')).toHaveTextContent('ICT-LAPTOP-001');
   });
 
   it('should pass empty string when id is undefined', () => {
-    // Arrange — edge case: no id in URL
+    // Arrange: edge case: no id in URL
     mockUseParams.mockReturnValue({ id: undefined });
 
     // Act
     render(<EditAssetPage />);
 
-    // Assert — ?? '' fallback kicks in
+    // Assert: ?? '' fallback kicks in
     expect(screen.getByTestId('record-id')).toHaveTextContent('');
   });
 
@@ -141,9 +135,7 @@ describe('EditAssetPage — useParams ID Extraction', () => {
   });
 });
 
-// ─────────────────────────────────────────────────────────────────────────────
-// SUITE 3 — Page Config
-// ─────────────────────────────────────────────────────────────────────────────
+// SUITE 3: Page Config (WC)
 describe('EditAssetPage — Page Config', () => {
 
   beforeEach(() => {
@@ -182,9 +174,7 @@ describe('EditAssetPage — Page Config', () => {
   });
 });
 
-// ─────────────────────────────────────────────────────────────────────────────
-// SUITE 4 — Form Fields
-// ─────────────────────────────────────────────────────────────────────────────
+// SUITE 4: Form Fields (WC)
 describe('EditAssetPage — Form Fields', () => {
 
   beforeEach(() => {
@@ -206,7 +196,7 @@ describe('EditAssetPage — Form Fields', () => {
   });
 
   it('should have asset_id disabled and required — prevents PK change', () => {
-    // This is the KEY difference from addAsset — PK cannot be changed after creation
+    // This is the KEY difference from addAsset, PK cannot be changed after creation
     const field = getConfig().formFields.find((f: any) => f.key === 'asset_id');
     expect(field.disabled).toBe(true);
     expect(field.required).toBe(true);
@@ -241,9 +231,9 @@ describe('EditAssetPage — Form Fields', () => {
     expect(field.type).toBe('select');
     expect(field.options).toHaveLength(3);
     expect(field.options).toEqual([
-      { value: 'In-use',   label: 'In-use'   },
-      { value: 'In-store', label: 'In-store' },
-      { value: 'Spoiled',  label: 'Spoiled'  },
+      { value: 'In-use', label: 'In-use'},
+      { value: 'In-store', label: 'In-store'},
+      { value: 'Spoiled', label: 'Spoiled'},
     ]);
   });
 
@@ -251,20 +241,18 @@ describe('EditAssetPage — Form Fields', () => {
     const field = getConfig().formFields.find((f: any) => f.key === 'location_id');
     expect(field.type).toBe('select');
     expect(field.label).toBe('Location (Optional)');
-    expect(field.required).toBeUndefined(); // optional
+    expect(field.required).toBeUndefined(); 
   });
 
   it('should configure department_id as optional select', () => {
     const field = getConfig().formFields.find((f: any) => f.key === 'department_id');
     expect(field.type).toBe('select');
     expect(field.label).toBe('Department (Optional)');
-    expect(field.required).toBeUndefined(); // optional
+    expect(field.required).toBeUndefined(); 
   });
 });
 
-// ─────────────────────────────────────────────────────────────────────────────
-// SUITE 5 — Edit vs Add Difference
-// ─────────────────────────────────────────────────────────────────────────────
+// SUITE 5: Edit vs Add Difference (WC)
 describe('EditAssetPage — Key Difference from AddAssetPage', () => {
 
   beforeEach(() => {

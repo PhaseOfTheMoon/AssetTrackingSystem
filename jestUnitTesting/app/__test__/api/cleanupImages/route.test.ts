@@ -4,19 +4,19 @@
 import { GET } from '@/app/api/cleanupImages/route';
 import { NextRequest } from 'next/server';
 
-// ── Mock Supabase ─────────────────────────────────────────────────────────────
-const mockRemove     = jest.fn();
+// Mock Supabase 
+const mockRemove = jest.fn();
 const mockStorageFrom = jest.fn(() => ({
-  remove:       mockRemove,
+  remove: mockRemove,
   getPublicUrl: jest.fn(),
 }));
 
-const mockIn        = jest.fn();
-const mockUpdate    = jest.fn(() => ({ in: mockIn }));
-const mockLt        = jest.fn();
-const mockInStatus  = jest.fn(() => ({ lt: mockLt }));
-const mockSelect    = jest.fn(() => ({ in: mockInStatus }));
-const mockFrom      = jest.fn((table: string) => {
+const mockIn = jest.fn();
+const mockUpdate = jest.fn(() => ({ in: mockIn }));
+const mockLt = jest.fn();
+const mockInStatus = jest.fn(() => ({ lt: mockLt }));
+const mockSelect = jest.fn(() => ({ in: mockInStatus }));
+const mockFrom = jest.fn((table: string) => {
   if (table === 'Maintenance') return { select: mockSelect, update: mockUpdate };
   return {};
 });
@@ -30,14 +30,14 @@ jest.mock('@/lib/supabase/server', () => ({
   },
 }));
 
-// ── Helper ────────────────────────────────────────────────────────────────────
+// Helper to create NextRequest with optional Authorization header
 const makeRequest = (authHeader?: string) =>
   new NextRequest('http://localhost/api/cleanupImages', {
     method: 'GET',
     headers: authHeader ? { authorization: authHeader } : {},
   });
 
-// ── Tests ─────────────────────────────────────────────────────────────────────
+// Tests 
 describe('GET /api/cleanupImages', () => {
 
   const originalEnv = process.env.CRON_SECRET;
@@ -60,10 +60,10 @@ describe('GET /api/cleanupImages', () => {
     process.env.CRON_SECRET = originalEnv;
   });
 
-  // ── AUTH ────────────────────────────────────────────────────────────────────
+  // AUTHENTICATION 
   it('should return 401 when Authorization header is missing', async () => {
     // Act
-    const res  = await GET(makeRequest());
+    const res = await GET(makeRequest());
     const json = await res.json();
 
     // Assert
@@ -73,7 +73,7 @@ describe('GET /api/cleanupImages', () => {
 
   it('should return 401 when Authorization header has wrong secret', async () => {
     // Act
-    const res  = await GET(makeRequest('Bearer wrong-secret'));
+    const res = await GET(makeRequest('Bearer wrong-secret'));
     const json = await res.json();
 
     // Assert
@@ -81,13 +81,13 @@ describe('GET /api/cleanupImages', () => {
     expect(json.error).toBe('Unauthorized');
   });
 
-  // ── NO RECORDS ──────────────────────────────────────────────────────────────
+  // NO RECORDS 
   it('should return 200 with deleted:0 when no old records exist', async () => {
-    // Arrange — DB returns empty array
+    // Arrange: DB returns empty array
     mockLt.mockResolvedValue({ data: [], error: null });
 
     // Act
-    const res  = await GET(makeRequest('Bearer test-secret'));
+    const res = await GET(makeRequest('Bearer test-secret'));
     const json = await res.json();
 
     // Assert
@@ -98,7 +98,7 @@ describe('GET /api/cleanupImages', () => {
     expect(mockRemove).not.toHaveBeenCalled();
   });
 
-  // ── HAPPY PATH ──────────────────────────────────────────────────────────────
+  // Success test, successful DELETION
   it('should delete images from storage and return deleted count', async () => {
     // Arrange
     mockLt.mockResolvedValue({
@@ -112,7 +112,7 @@ describe('GET /api/cleanupImages', () => {
     mockIn.mockResolvedValue({ error: null });
 
     // Act
-    const res  = await GET(makeRequest('Bearer test-secret'));
+    const res = await GET(makeRequest('Bearer test-secret'));
     const json = await res.json();
 
     // Assert
@@ -134,18 +134,18 @@ describe('GET /api/cleanupImages', () => {
     // Act
     await GET(makeRequest('Bearer test-secret'));
 
-    // Assert — image_url must be nulled out after deletion
+    // Assert: image_url must be nulled out after deletion
     expect(mockUpdate).toHaveBeenCalledWith({ image_url: null });
     expect(mockIn).toHaveBeenCalledWith('id', ['id-1']);
   });
 
-  // ── DB ERROR ────────────────────────────────────────────────────────────────
+  // DB ERROR 
   it('should return 500 when Supabase fetch fails', async () => {
     // Arrange
     mockLt.mockResolvedValue({ data: null, error: { message: 'DB error' } });
 
     // Act
-    const res  = await GET(makeRequest('Bearer test-secret'));
+    const res = await GET(makeRequest('Bearer test-secret'));
     const json = await res.json();
 
     // Assert
@@ -171,9 +171,9 @@ describe('GET /api/cleanupImages', () => {
     expect(json.success).toBe(false);
   });
 
-  // ── EDGE CASE ───────────────────────────────────────────────────────────────
+  // EDGE CASES 
   it('should skip storage deletion for records with null image_url', async () => {
-    // Arrange — records with no image should not crash the route
+    // Arrange: records with no image should not crash the route
     mockLt.mockResolvedValue({
       data: [{ id: 'id-1', image_url: null }],
       error: null,
@@ -181,10 +181,10 @@ describe('GET /api/cleanupImages', () => {
     mockIn.mockResolvedValue({ error: null });
 
     // Act
-    const res  = await GET(makeRequest('Bearer test-secret'));
+    const res = await GET(makeRequest('Bearer test-secret'));
     const json = await res.json();
 
-    // Assert — storage.remove should not be called since filePaths is empty
+    // Assert: storage.remove should not be called since filePaths is empty
     expect(mockRemove).not.toHaveBeenCalled();
     expect(json.deleted).toBe(0);
   });

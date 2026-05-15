@@ -5,21 +5,21 @@ import { POST } from '@/app/api/reopenAssessments/route';
 import { NextRequest } from 'next/server';
 import { validateSession } from '@/lib/apiAuth';
 
-// ── Mock validateSession ──────────────────────────────────────────────────────
+// Mock validateSession 
 jest.mock('@/lib/apiAuth', () => ({
   validateSession: jest.fn(),
 }));
 
-// ── Mock Supabase ─────────────────────────────────────────────────────────────
-const mockEq     = jest.fn();
+// Mock Supabase 
+const mockEq = jest.fn();
 const mockUpdate = jest.fn(() => ({ eq: mockEq }));
-const mockFrom   = jest.fn(() => ({ update: mockUpdate }));
+const mockFrom = jest.fn(() => ({ update: mockUpdate }));
 
 jest.mock('@/lib/supabase/server', () => ({
   get supabaseAdmin() { return { from: mockFrom }; },
 }));
 
-// ── Helper ────────────────────────────────────────────────────────────────────
+// Helper to create NextRequest with JSON body
 const makeRequest = (body: object) =>
   new NextRequest('http://localhost/api/reopenAssessments', {
     method: 'POST',
@@ -29,7 +29,7 @@ const makeRequest = (body: object) =>
 
 const VALID_UUID = 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11';
 
-// ── Tests ─────────────────────────────────────────────────────────────────────
+// Tests 
 describe('POST /api/reopenAssessments', () => {
 
   beforeEach(() => {
@@ -38,7 +38,7 @@ describe('POST /api/reopenAssessments', () => {
     mockUpdate.mockReturnValue({ eq: mockEq });
   });
 
-  // ── HAPPY PATH ──────────────────────────────────────────────────────────────
+  // Success TEST, SUCCESSFUL RESPONSE
   it('should return 200 and success:true when valid', async () => {
     // Arrange
     (validateSession as jest.Mock).mockResolvedValue({ authorized: true });
@@ -61,7 +61,7 @@ describe('POST /api/reopenAssessments', () => {
     // Act
     await POST(makeRequest({ assessmentId: VALID_UUID }));
 
-    // Assert — must reset both fields exactly
+    // Assert: must reset both fields exactly
     expect(mockUpdate).toHaveBeenCalledWith({
       approval_status: 'pending',
       actioned_at:     null,
@@ -69,7 +69,7 @@ describe('POST /api/reopenAssessments', () => {
     expect(mockEq).toHaveBeenCalledWith('id', VALID_UUID);
   });
 
-  // ── AUTH ────────────────────────────────────────────────────────────────────
+  // AUTHORIZATION TESTS
   it('should return 401 when user is not an admin', async () => {
     // Arrange
     (validateSession as jest.Mock).mockResolvedValue({
@@ -85,13 +85,13 @@ describe('POST /api/reopenAssessments', () => {
     expect(mockFrom).not.toHaveBeenCalled();
   });
 
-  // ── VALIDATION ──────────────────────────────────────────────────────────────
+  // VALIDATION TESTS
   it('should return 400 and "Validation failed" for an invalid UUID', async () => {
     // Arrange
     (validateSession as jest.Mock).mockResolvedValue({ authorized: true });
 
     // Act
-    const res  = await POST(makeRequest({ assessmentId: 'bad-id' }));
+    const res = await POST(makeRequest({ assessmentId: 'bad-id' }));
     const json = await res.json();
 
     // Assert
@@ -105,7 +105,7 @@ describe('POST /api/reopenAssessments', () => {
     (validateSession as jest.Mock).mockResolvedValue({ authorized: true });
 
     // Act
-    const res  = await POST(makeRequest({}));
+    const res = await POST(makeRequest({}));
     const json = await res.json();
 
     // Assert
@@ -118,7 +118,7 @@ describe('POST /api/reopenAssessments', () => {
     (validateSession as jest.Mock).mockResolvedValue({ authorized: true });
 
     // Act
-    const res  = await POST(makeRequest({ assessmentId: VALID_UUID, extra: 'field' }));
+    const res = await POST(makeRequest({ assessmentId: VALID_UUID, extra: 'field' }));
     const json = await res.json();
 
     // Assert
@@ -126,14 +126,14 @@ describe('POST /api/reopenAssessments', () => {
     expect(json.error).toBe('Validation failed');
   });
 
-  // ── DB ERROR ────────────────────────────────────────────────────────────────
+  // DB ERROR 
   it('should return 500 and "Failed to reopen" when Supabase errors', async () => {
     // Arrange
     (validateSession as jest.Mock).mockResolvedValue({ authorized: true });
     mockEq.mockResolvedValue({ error: { message: 'DB failed' } });
 
     // Act
-    const res  = await POST(makeRequest({ assessmentId: VALID_UUID }));
+    const res = await POST(makeRequest({ assessmentId: VALID_UUID }));
     const json = await res.json();
 
     // Assert

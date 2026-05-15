@@ -4,7 +4,7 @@
 import { POST } from '@/app/api/assessAsset/route';
 import { NextRequest } from 'next/server';
 
-// ── Mock getAiProvider ────────────────────────────────────────────────────────
+// Mock getAiProvider 
 const mockAssessAssetCondition = jest.fn();
 
 jest.mock('@/lib/ai/aiFactory', () => ({
@@ -13,7 +13,7 @@ jest.mock('@/lib/ai/aiFactory', () => ({
   })),
 }));
 
-// ── Helper ────────────────────────────────────────────────────────────────────
+// Helper to create a NextRequest with JSON body
 const makeRequest = (body: object) =>
   new NextRequest('http://localhost/api/assessAsset', {
     method: 'POST',
@@ -22,43 +22,43 @@ const makeRequest = (body: object) =>
   });
 
 const validBody = {
-  image:      'base64encodedimage',
-  assetId:    'ASSET-001',
+  image: 'base64encodedimage',
+  assetId: 'ASSET-001',
   locationId: 'LOC-001',
-  mimeType:   'image/jpeg',
+  mimeType: 'image/jpeg',
 };
 
 const mockAiResult = {
-  condition:          'Spoiled',
+  condition: 'Spoiled',
   maintenanceNeeded:  true,
-  priority:           'high',
-  issues:             ['Broken leg', 'Cracked surface'],
-  fullResponse:       'ISSUES:\n- Broken leg\n- Cracked surface',
+  priority: 'high',
+  issues: ['Broken leg', 'Cracked surface'],
+  fullResponse: 'ISSUES:\n- Broken leg\n- Cracked surface',
 };
 
-// ── Tests ─────────────────────────────────────────────────────────────────────
+// Tests 
 describe('POST /api/assessAsset', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  // ── HAPPY PATH ──────────────────────────────────────────────────────────────
+  // Success test with valid input
   it('should return 200 with assessment when all fields are valid', async () => {
     // Arrange
     mockAssessAssetCondition.mockResolvedValue(mockAiResult);
 
     // Act
-    const res  = await POST(makeRequest(validBody));
+    const res = await POST(makeRequest(validBody));
     const json = await res.json();
 
     // Assert
     expect(res.status).toBe(200);
     expect(json.success).toBe(true);
     expect(json.assessment).toMatchObject({
-      condition:         'Spoiled',
+      condition: 'Spoiled',
       maintenanceNeeded: true,
-      priority:          'high',
+      priority: 'high',
     });
   });
 
@@ -76,13 +76,13 @@ describe('POST /api/assessAsset', () => {
     );
   });
 
-  // ── MISSING FIELDS ──────────────────────────────────────────────────────────
+  // MISSING FIELDS 
   it('should return 400 when image is missing', async () => {
     // Arrange
     const { image, ...body } = validBody;
 
     // Act
-    const res  = await POST(makeRequest(body));
+    const res = await POST(makeRequest(body));
     const json = await res.json();
 
     // Assert
@@ -95,7 +95,7 @@ describe('POST /api/assessAsset', () => {
     const { assetId, ...body } = validBody;
 
     // Act
-    const res  = await POST(makeRequest(body));
+    const res = await POST(makeRequest(body));
     const json = await res.json();
 
     // Assert
@@ -108,7 +108,7 @@ describe('POST /api/assessAsset', () => {
     const { locationId, ...body } = validBody;
 
     // Act
-    const res  = await POST(makeRequest(body));
+    const res = await POST(makeRequest(body));
     const json = await res.json();
 
     // Assert
@@ -116,15 +116,15 @@ describe('POST /api/assessAsset', () => {
     expect(json.error).toContain('Missing required fields');
   });
 
-  // ── INVALID ASSET ───────────────────────────────────────────────────────────
+  // INVALID ASSET 
   it('should return 422 when AI throws INVALID_ASSET error', async () => {
-    // Arrange — AI rejects the image because it's not a recognised asset type
+    // Arrange: AI rejects the image because it's not a recognised asset type
     mockAssessAssetCondition.mockRejectedValue(
       new Error('INVALID_ASSET: Image does not match any accepted asset'),
     );
 
     // Act
-    const res  = await POST(makeRequest(validBody));
+    const res = await POST(makeRequest(validBody));
     const json = await res.json();
 
     // Assert
@@ -142,7 +142,7 @@ describe('POST /api/assessAsset', () => {
     );
 
     // Act
-    const res  = await POST(makeRequest(validBody));
+    const res = await POST(makeRequest(validBody));
     const json = await res.json();
 
     // Assert — all 9 accepted assets must be present
@@ -154,13 +154,13 @@ describe('POST /api/assessAsset', () => {
     );
   });
 
-  // ── SERVER ERROR ────────────────────────────────────────────────────────────
+  // SERVER ERROR
   it('should return 500 when AI provider throws an unexpected error', async () => {
     // Arrange
     mockAssessAssetCondition.mockRejectedValue(new Error('Network timeout'));
 
     // Act
-    const res  = await POST(makeRequest(validBody));
+    const res = await POST(makeRequest(validBody));
     const json = await res.json();
 
     // Assert
@@ -174,7 +174,7 @@ describe('POST /api/assessAsset', () => {
     mockAssessAssetCondition.mockRejectedValue('string error');
 
     // Act
-    const res  = await POST(makeRequest(validBody));
+    const res = await POST(makeRequest(validBody));
     const json = await res.json();
 
     // Assert

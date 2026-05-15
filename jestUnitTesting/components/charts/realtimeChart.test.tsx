@@ -23,13 +23,13 @@ const MONTH_NAMES = [
   'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
 ];
 
-// Tests cover all 12 months, invalid dates, and ISO datetime strings with time components.
+// Tests cover all 12 months, invalid dates, and ISO datetime strings with time components. (WC)
 const getMonthLabel = (ds: string): string => {
   const d = new Date(ds);
   return isNaN(d.getTime()) ? ds : MONTH_NAMES[d.getMonth()];
 };
 
-// Tests cover single-digit month padding, two-digit months, sort order correctness via localeCompare, and invalid input fallback.
+// Tests cover single-digit month padding, two-digit months, sort order correctness via localeCompare, and invalid input fallback. (WC)
 const getMonthSortKey = (ds: string): string => {
   const d = new Date(ds);
   return isNaN(d.getTime())
@@ -37,7 +37,7 @@ const getMonthSortKey = (ds: string): string => {
     : `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
 };
 
-// Tests cover every quarter's boundary start and end, plus the tricky Q4 year-rollback rule (Jan/Feb belong to the previous year's Q4)
+// Tests cover every quarter's boundary start and end, plus the tricky Q4 year-rollback rule (Jan/Feb belong to the previous year's Q4) (WC)
 const getSeasonalQuarter = (date: Date): { quarter: number; year: number } => {
   const m = date.getMonth();
   const y = date.getFullYear();
@@ -48,7 +48,7 @@ const getSeasonalQuarter = (date: Date): { quarter: number; year: number } => {
 };
 
 // Tests cover single-page responses, multi-page accumulation, correct URL/page number on each call, HTTP error propagation such as 500, 403, 404.
-// Missing data field fallback, and missing totalPages defaulting to 1 (to prevent infinite loops).
+// Missing data field fallback, and missing totalPages defaulting to 1 (to prevent infinite loops).  (WC)
 async function fetchAllAssets(): Promise<any[]> {
   const PAGE_LIMIT = 50;
   let page = 1, totalPages = 1;
@@ -65,7 +65,7 @@ async function fetchAllAssets(): Promise<any[]> {
   } while (page <= totalPages);
   return results;
 }
-
+// Tests cover pagination logic, correct URL construction, data accumulation across pages, and error handling for non-ok responses. (WC)
 async function fetchAllDepartments(): Promise<any[]> {
   let page = 1, totalPages = 1;
   const results: any[] = [];
@@ -80,6 +80,7 @@ async function fetchAllDepartments(): Promise<any[]> {
   return results;
 }
 
+// Tests cover pagination logic, correct URL construction, data accumulation across pages, and error handling for non-ok responses. (WC)
 async function fetchAllLocations(): Promise<any[]> {
   let page = 1, totalPages = 1;
   const results: any[] = [];
@@ -94,15 +95,10 @@ async function fetchAllLocations(): Promise<any[]> {
   return results;
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Test Suites
-// ─────────────────────────────────────────────────────────────────────────────
-
+// Test Suite
 describe('getMonthLabel', () => {
-  /**
-   * Converts a date string to a 3-letter month abbreviation.
-   * Returns the raw input unchanged for invalid dates.
-   */
+  //  Converts a date string to a 3-letter month abbreviation.
+  //  Returns the raw input unchanged for invalid dates.
 
   it.each([
     ['2024-01-15', 'Jan'],
@@ -133,7 +129,7 @@ describe('getMonthLabel', () => {
   });
 
   it('should handle an ISO datetime string with time component', () => {
-    // Arrange — time part must not affect the month
+    // Arrange: time part must not affect the month
     const input = '2024-09-25T14:30:00Z';
 
     // Act & Assert
@@ -141,16 +137,12 @@ describe('getMonthLabel', () => {
   });
 });
 
-// ─────────────────────────────────────────────────────────────────────────────
-
 describe('getMonthSortKey', () => {
-  /**
-   * Produces a zero-padded "YYYY-MM" string suitable for lexicographic sorting.
-   */
+    // Produces a zero-padded "YYYY-MM" string suitable for lexicographic sorting.
 
   it('should return "YYYY-MM" with zero-padded single-digit months', () => {
     // Arrange
-    const input = '2024-03-15'; // March → 03
+    const input = '2024-03-15'; // March: 03
 
     // Act
     const result = getMonthSortKey(input);
@@ -161,7 +153,7 @@ describe('getMonthSortKey', () => {
 
   it('should return "YYYY-MM" with two-digit months without extra padding', () => {
     // Arrange
-    const input = '2024-11-01'; // November → 11
+    const input = '2024-11-01'; // November: 11
 
     // Act
     const result = getMonthSortKey(input);
@@ -190,8 +182,6 @@ describe('getMonthSortKey', () => {
   });
 });
 
-// ─────────────────────────────────────────────────────────────────────────────
-
 describe('getSeasonalQuarter', () => {
   /**
    * Fiscal quarter mapping (custom, not calendar-standard):
@@ -204,7 +194,7 @@ describe('getSeasonalQuarter', () => {
    * while Jan–Feb belong to the PREVIOUS year's Q4.
    */
 
-  // ── Q1 boundary tests ──────────────────────────────────────────────────────
+  // Tests cover boundary months for each quarter, plus the special Q4 year-rollback rule for Jan/Feb. (WC)
   it('should return Q1 for March (month boundary start)', () => {
     expect(getSeasonalQuarter(new Date(2024, 2, 1))).toEqual({ quarter: 1, year: 2024 });
   });
@@ -217,7 +207,7 @@ describe('getSeasonalQuarter', () => {
     expect(getSeasonalQuarter(new Date(2024, 4, 31))).toEqual({ quarter: 1, year: 2024 });
   });
 
-  // ── Q2 boundary tests ──────────────────────────────────────────────────────
+  // Q2 boundary tests 
   it('should return Q2 for June (month boundary start)', () => {
     expect(getSeasonalQuarter(new Date(2024, 5, 1))).toEqual({ quarter: 2, year: 2024 });
   });
@@ -226,7 +216,7 @@ describe('getSeasonalQuarter', () => {
     expect(getSeasonalQuarter(new Date(2024, 7, 31))).toEqual({ quarter: 2, year: 2024 });
   });
 
-  // ── Q3 boundary tests ──────────────────────────────────────────────────────
+  // Q3 boundary tests 
   it('should return Q3 for September (month boundary start)', () => {
     expect(getSeasonalQuarter(new Date(2024, 8, 1))).toEqual({ quarter: 3, year: 2024 });
   });
@@ -235,7 +225,7 @@ describe('getSeasonalQuarter', () => {
     expect(getSeasonalQuarter(new Date(2024, 10, 30))).toEqual({ quarter: 3, year: 2024 });
   });
 
-  // ── Q4 boundary tests ──────────────────────────────────────────────────────
+  // Q4 boundary tests
   it('should return Q4 for December with the CURRENT year', () => {
     // December belongs to the same year's Q4 (e.g. Dec 2024 → 2024-Q4)
     expect(getSeasonalQuarter(new Date(2024, 11, 1))).toEqual({ quarter: 4, year: 2024 });
@@ -252,7 +242,6 @@ describe('getSeasonalQuarter', () => {
   });
 });
 
-// ─────────────────────────────────────────────────────────────────────────────
 
 describe('fetchAllAssets', () => {
   /**
@@ -304,7 +293,7 @@ describe('fetchAllAssets', () => {
   });
 
   it('should accumulate assets across multiple pages', async () => {
-    // Arrange — 2-page response
+    // Arrange: 2-page response
     const page1 = [{ asset_id: 'A1' }, { asset_id: 'A2' }];
     const page2 = [{ asset_id: 'A3' }];
     global.fetch = jest
@@ -342,7 +331,7 @@ describe('fetchAllAssets', () => {
     // Act
     await fetchAllAssets();
 
-    // Assert — second call should have page=2
+    // Assert: second call should have page=2
     expect(global.fetch).toHaveBeenNthCalledWith(
       2,
       '/api/assets?page=2&limit=50&sortBy=created_dt&sortOrder=asc'
@@ -361,7 +350,7 @@ describe('fetchAllAssets', () => {
   });
 
   it('should handle a response with missing data field by returning empty array', async () => {
-    // Arrange — API omits the "data" key entirely
+    // Arrange: API omits the "data" key entirely
     global.fetch = jest.fn().mockResolvedValueOnce({
       ok: true,
       json: async () => ({ totalPages: 1 }),
@@ -375,7 +364,7 @@ describe('fetchAllAssets', () => {
   });
 
   it('should default totalPages to 1 when it is missing from the response', async () => {
-    // Arrange — no totalPages field; loop must not run infinitely
+    // Arrange: no totalPages field; loop must not run infinitely
     global.fetch = jest.fn().mockResolvedValueOnce({
       ok: true,
       json: async () => ({ data: [{ asset_id: 'A1' }] }), // totalPages missing
@@ -384,14 +373,14 @@ describe('fetchAllAssets', () => {
     // Act
     const result = await fetchAllAssets();
 
-    // Assert — only one page fetched
+    // Assert: only one page fetched
     expect(global.fetch).toHaveBeenCalledTimes(1);
     expect(result).toEqual([{ asset_id: 'A1' }]);
   });
 });
 
-// ─────────────────────────────────────────────────────────────────────────────
-
+// Tests for fetchAllDepartments and fetchAllLocations would be similar in structure to fetchAllAssets, 
+// covering pagination, URL correctness, data accumulation, and error handling. (WC)
 describe('fetchAllDepartments', () => {
   let originalFetch: typeof global.fetch;
 
@@ -472,8 +461,7 @@ describe('fetchAllDepartments', () => {
   });
 });
 
-// ─────────────────────────────────────────────────────────────────────────────
-
+// Tests for fetchAllLocations would be nearly identical to fetchAllDepartments, just with the URL and mock data structure changed. (WC)
 describe('fetchAllLocations', () => {
   let originalFetch: typeof global.fetch;
 

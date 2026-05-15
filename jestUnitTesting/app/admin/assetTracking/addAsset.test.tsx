@@ -1,6 +1,4 @@
 /**
- * Unit Tests: addAsset/page.tsx
- *
  * Tests cover:
  *   - Auth guard behaviour (loading, non-admin, admin)
  *   - DynamicAdd receives correct config
@@ -11,15 +9,15 @@ import { render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import AddAssetPage from '@/app/(app)/admin/assetTracking/addAsset/page';
 
-// ── Mock useAdminAccess ───────────────────────────────────────────────────────
-// REQUIRED: without this the component always returns null
+// Mock useAdminAccess 
+// without this the component always returns null (WC)
 const mockUseAdminAccess = jest.fn();
 jest.mock('@/hooks/useAdminAccess', () => ({
   useAdminAccess: () => mockUseAdminAccess(),
 }));
 
 //  Mock DynamicAdd 
-// Renders the config as JSON so we can assert on it
+// Renders the config as JSON so we can assert on it (WC)
 jest.mock('@/components/dynamicAdd', () => ({
   __esModule: true,
   default: ({ config }: any) => (
@@ -30,13 +28,13 @@ jest.mock('@/components/dynamicAdd', () => ({
   ),
 }));
 
-// Helper: parse config from DOM 
+// Helper: parse config from DOM (WC)
 const getConfig = () => {
   const el = screen.getByTestId('config');
   return JSON.parse(el.textContent || '{}');
 };
 
-// SUITE 1 — Auth Guard
+// SUITE 1: Auth Guard
 describe('AddAssetPage — Auth Guard', () => {
 
   it('should render nothing when isLoading is true', () => {
@@ -73,7 +71,7 @@ describe('AddAssetPage — Auth Guard', () => {
   });
 });
 
-// SUITE 2 — Page Config
+// SUITE 2: Page Config (WC)
 describe('AddAssetPage — Page Config', () => {
 
   beforeEach(() => {
@@ -110,10 +108,8 @@ describe('AddAssetPage — Page Config', () => {
     expect(getConfig().backUrl).toBe('/admin/assetTracking/assets');
   });
 });
-
-// ─────────────────────────────────────────────────────────────────────────────
-// SUITE 3 — Form Fields
-// ─────────────────────────────────────────────────────────────────────────────
+ 
+// SUITE 3: Form Fields (WC)
 describe('AddAssetPage — Form Fields', () => {
 
   beforeEach(() => {
@@ -161,7 +157,7 @@ describe('AddAssetPage — Form Fields', () => {
   it('should configure description as optional textarea', () => {
     const field = getConfig().formFields.find((f: any) => f.key === 'description');
     expect(field.type).toBe('textarea');
-    expect(field.required).toBeFalsy(); // optional — no required key
+    expect(field.required).toBeFalsy(); 
   });
 
   it('should configure condition as select with 3 options', () => {
@@ -169,9 +165,9 @@ describe('AddAssetPage — Form Fields', () => {
     expect(field.type).toBe('select');
     expect(field.options).toHaveLength(3);
     expect(field.options).toEqual([
-      { value: 'In-use',    label: 'In-use'    },
-      { value: 'In-store',  label: 'In-store'  },
-      { value: 'Spoiled',   label: 'Spoiled'   },
+      { value: 'In-use', label: 'In-use' },
+      { value: 'In-store', label: 'In-store' },
+      { value: 'Spoiled', label: 'Spoiled' },
     ]);
   });
 
@@ -179,13 +175,13 @@ describe('AddAssetPage — Form Fields', () => {
     const field = getConfig().formFields.find((f: any) => f.key === 'location_id');
     expect(field.type).toBe('select');
     expect(field.label).toBe('Location (Optional)');
-    expect(field.required).toBeUndefined(); // no required key = optional
+    expect(field.required).toBeUndefined(); 
   });
 
   it('should configure department_id as optional select', () => {
     const field = getConfig().formFields.find((f: any) => f.key === 'department_id');
     expect(field.type).toBe('select');
     expect(field.label).toBe('Department (Optional)');
-    expect(field.required).toBeUndefined(); // no required key = optional
+    expect(field.required).toBeUndefined();
   });
 });

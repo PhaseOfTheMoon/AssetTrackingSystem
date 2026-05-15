@@ -4,42 +4,42 @@
 import { POST } from '@/app/api/saveMaintenance/route';
 import { NextRequest } from 'next/server';
 
-// ── Mock Supabase ─────────────────────────────────────────────────────────────
-const mockSingle       = jest.fn();
+// Mock Supabase 
+const mockSingle = jest.fn();
 const mockSelectSingle = jest.fn(() => ({ single: mockSingle }));
-const mockEqLocation   = jest.fn(() => ({ single: mockSingle }));
+const mockEqLocation = jest.fn(() => ({ single: mockSingle }));
 
 const mockInsertSingle = jest.fn();
 const mockInsertSelect = jest.fn(() => ({ single: mockInsertSingle }));
-const mockInsert       = jest.fn(() => ({ select: mockInsertSelect }));
+const mockInsert = jest.fn(() => ({ select: mockInsertSelect }));
 
-const mockEqAsset  = jest.fn();
-const mockUpdate   = jest.fn(() => ({ eq: mockEqAsset }));
+const mockEqAsset = jest.fn();
+const mockUpdate = jest.fn(() => ({ eq: mockEqAsset }));
 
 // Storage mocks
 const mockGetPublicUrl = jest.fn(() => ({ data: { publicUrl: 'https://example.com/storage/v1/object/public/AssetImage/file.jpg' } }));
-const mockUpload       = jest.fn();
-const mockStorageFrom  = jest.fn(() => ({
-  upload:       mockUpload,
+const mockUpload = jest.fn();
+const mockStorageFrom = jest.fn(() => ({
+  upload: mockUpload,
   getPublicUrl: mockGetPublicUrl,
 }));
 
 // imageUrl update chain after upload
 const mockEqImageUpdate = jest.fn();
-const mockUpdateImage   = jest.fn(() => ({ eq: mockEqImageUpdate }));
+const mockUpdateImage = jest.fn(() => ({ eq: mockEqImageUpdate }));
 
 const mockFrom = jest.fn();
 
 jest.mock('@/lib/supabase/server', () => ({
   get supabaseAdmin() {
     return {
-      from:    mockFrom,
+      from: mockFrom,
       storage: { from: mockStorageFrom },
     };
   },
 }));
 
-// ── Helper ────────────────────────────────────────────────────────────────────
+// Helper to create NextRequest with JSON body
 const makeRequest = (body: object) =>
   new NextRequest('http://localhost/api/saveMaintenance', {
     method: 'POST',
@@ -48,38 +48,38 @@ const makeRequest = (body: object) =>
   });
 
 const validBody = {
-  asset_id:          'ASSET-001',
-  location_id:       'LOC-001',
-  condition_status:  'Spoiled',
-  department_id:     'DEPT-001',
+  asset_id: 'ASSET-001',
+  location_id: 'LOC-001',
+  condition_status: 'Spoiled',
+  department_id: 'DEPT-001',
   maintenance_needed: true,
-  priority:          'high',
-  feedback:          null,
-  ai_response:       'ISSUES:\n- Broken leg',
-  image_base64:      'base64string',
-  image_mime:        'image/jpeg',
-  assessed_by:       'user-123',
+  priority: 'high',
+  feedback: null,
+  ai_response: 'ISSUES:\n- Broken leg',
+  image_base64: 'base64string',
+  image_mime: 'image/jpeg',
+  assessed_by: 'user-123',
 };
 
 const mockAssessment = {
-  id:                'assess-uuid-001',
-  asset_id:          'ASSET-001',
-  location_id:       'LOC-001',
-  condition_status:  'Spoiled',
-  department_id:     'DEPT-001',
+  id: 'assess-uuid-001',
+  asset_id: 'ASSET-001',
+  location_id: 'LOC-001',
+  condition_status: 'Spoiled',
+  department_id: 'DEPT-001',
   maintenance_needed: true,
-  priority:          'high',
-  feedback:          null,
-  ai_response:       'ISSUES:\n- Broken leg',
-  image_url:         null,
-  approval_status:   'pending',
-  assessed_dt:       '2025-01-01T00:00:00Z',
-  assessed_by:       'user-123',
-  created_dt:        '2025-01-01T00:00:00Z',
-  updated_dt:        '2025-01-01T00:00:00Z',
+  priority: 'high',
+  feedback: null,
+  ai_response: 'ISSUES:\n- Broken leg',
+  image_url: null,
+  approval_status: 'pending',
+  assessed_dt: '2025-01-01T00:00:00Z',
+  assessed_by: 'user-123',
+  created_dt: '2025-01-01T00:00:00Z',
+  updated_dt: '2025-01-01T00:00:00Z',
 };
 
-// ── Tests ─────────────────────────────────────────────────────────────────────
+// Tests 
 describe('POST /api/saveMaintenance', () => {
 
   beforeEach(() => {
@@ -114,20 +114,20 @@ describe('POST /api/saveMaintenance', () => {
     mockEqLocation.mockReturnValue({ single: mockSingle });
   });
 
-  // ── HAPPY PATH ──────────────────────────────────────────────────────────────
+  // SUCCESS TESTS
   it('should return 200 with assessment data on success', async () => {
-    // Arrange — all mocks set to success in beforeEach
+    // Arrange: all mocks set to success in beforeEach
 
     // Act
-    const res  = await POST(makeRequest(validBody));
+    const res = await POST(makeRequest(validBody));
     const json = await res.json();
 
     // Assert
     expect(res.status).toBe(200);
     expect(json.success).toBe(true);
     expect(json.assessment).toMatchObject({
-      id:              'assess-uuid-001',
-      asset_id:        'ASSET-001',
+      id: 'assess-uuid-001',
+      asset_id: 'ASSET-001',
       approval_status: 'pending',
     });
   });
@@ -180,13 +180,13 @@ describe('POST /api/saveMaintenance', () => {
     expect(mockEqAsset).toHaveBeenCalledWith('asset_id', 'ASSET-001');
   });
 
-  // ── INVALID LOCATION ────────────────────────────────────────────────────────
+  // INVALID LOCATION 
   it('should return error when location_id does not exist', async () => {
-    // Arrange — location lookup returns nothing
+    // Arrange: location lookup returns nothing
     mockSingle.mockResolvedValue({ data: null, error: { message: 'Not found' } });
 
     // Act
-    const res  = await POST(makeRequest(validBody));
+    const res = await POST(makeRequest(validBody));
     const json = await res.json();
 
     // Assert
@@ -196,7 +196,7 @@ describe('POST /api/saveMaintenance', () => {
     expect(mockInsert).not.toHaveBeenCalled();
   });
 
-  // ── DB INSERT ERROR ─────────────────────────────────────────────────────────
+  // DB INSERT ERROR 
   it('should return error when DB insert fails', async () => {
     // Arrange
     mockInsertSingle.mockResolvedValue({
@@ -205,7 +205,7 @@ describe('POST /api/saveMaintenance', () => {
     });
 
     // Act
-    const res  = await POST(makeRequest(validBody));
+    const res = await POST(makeRequest(validBody));
     const json = await res.json();
 
     // Assert
@@ -215,21 +215,21 @@ describe('POST /api/saveMaintenance', () => {
     expect(mockUpload).not.toHaveBeenCalled();
   });
 
-  // ── IMAGE UPLOAD FAILURE ────────────────────────────────────────────────────
+  // IMAGE UPLOAD FAILURE 
   it('should still return 200 even when image upload fails (non-critical)', async () => {
     // Arrange — DB insert succeeds, but image upload fails
     mockUpload.mockResolvedValue({ error: { message: 'Upload failed' } });
 
     // Act
-    const res  = await POST(makeRequest(validBody));
+    const res = await POST(makeRequest(validBody));
     const json = await res.json();
 
-    // Assert — assessment is saved regardless of image upload failure
+    // Assert: assessment is saved regardless of image upload failure
     expect(res.status).toBe(200);
     expect(json.success).toBe(true);
   });
 
-  // ── FILE EXTENSION ──────────────────────────────────────────────────────────
+  // FILE EXTENSION 
   it('should use .png extension for image/png mime type', async () => {
     // Arrange
     const body = { ...validBody, image_mime: 'image/png' };
@@ -237,7 +237,7 @@ describe('POST /api/saveMaintenance', () => {
     // Act
     await POST(makeRequest(body));
 
-    // Assert — filename should end with .png
+    // Assert: filename should end with .png
     const uploadCall = mockUpload.mock.calls[0];
     expect(uploadCall[0]).toMatch(/\.png$/);
   });
@@ -266,13 +266,13 @@ describe('POST /api/saveMaintenance', () => {
     expect(uploadCall[0]).toMatch(/\.jpg$/);
   });
 
-  // ── SERVER ERROR ────────────────────────────────────────────────────────────
+  // SERVER ERROR 
   it('should return success:false when an unexpected error is thrown', async () => {
-    // Arrange — simulate a crash before any DB calls
+    // Arrange: simulate a crash before any DB calls
     mockFrom.mockImplementation(() => { throw new Error('Unexpected crash'); });
 
     // Act
-    const res  = await POST(makeRequest(validBody));
+    const res = await POST(makeRequest(validBody));
     const json = await res.json();
 
     // Assert

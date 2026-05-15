@@ -3,10 +3,11 @@ jest.mock('@/lib/ai/providers/geminiProvider', () => ({
   GeminiProvider: class GeminiProvider {},
 }));
 
+// We only import getAiProvider after the mock is set up, so it gets the mocked GeminiProvider (WC)
 describe('getAiProvider', () => {
 
   beforeEach(() => {
-    jest.resetModules(); // clears require() cache so env changes take effect
+    jest.resetModules(); // clears require() cache so env changes take effect (WC)
   });
 
   it('should return GeminiProvider when AI_PROVIDER is gemini', () => {

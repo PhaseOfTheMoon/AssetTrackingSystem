@@ -1,6 +1,5 @@
 /**
- * Unit Tests: page.tsx — Maintenance Review Page
- *
+
  * Test suite covers all pure/extractable logic functions:
  *   - formatDate
  *   - parseAiPoints
@@ -20,7 +19,7 @@
 // Converts an ISO date string into a human-readable Malaysian locale format (en-MY).
 const formatDate = (dateString: string): string =>
 // Valid ISO date: '2024-09-25T14:30:00Z' → Returns a non-empty string containing "2024" and 
-// Invalid date string → Returns a string that includes "Invalid Date".
+// Invalid date string → Returns a string that includes "Invalid Date".  (WC)
   new Date(dateString).toLocaleDateString('en-MY', {
     year: 'numeric',
     month: 'short',
@@ -30,11 +29,11 @@ const formatDate = (dateString: string): string =>
   });
 
 // Extracts up to 3 bullet points from an AI-generated maintenance assessment text. 
-// It looks for an ISSUES: section first, then falls back to line-by-line parsing.
+// It looks for an ISSUES: section first, then falls back to line-by-line parsing. (WC)
 const parseAiPoints = (text: string): string[] => {
-// Empty string → Returns [], null input returns []
+// Empty string: Returns [], null input returns []
   if (!text) return [];
-// Case-insensitive header: issues: (lowercase) works same as ISSUES:
+// Case-insensitive header: issues: (lowercase) works same as ISSUES: (WC)
   const issuesSection = text.split(/ISSUES:/i)[1];
   if (issuesSection) {
     // ISSUES: section: Correctly extracts 3 named issues
@@ -49,14 +48,12 @@ const parseAiPoints = (text: string): string[] => {
   return text
     .split(/[\n\r]+/)
     .map((l: string) => l.replace(/^[\s\-•*\d.]+/, '').trim())
-    // Long lines filtered: Lines 120+ chars are excluded
+    // Long lines filtered: Lines 120+ chars are excluded (WC)
     .filter((l: string) => l.length > 10 && l.length < 120)
     .slice(0, 3);
 };
 
-// Action handler replicas 
-// Mirrors the exact logic from page.tsx so we can unit-test the fetch calls.
-
+// Handle functions for approving, rejecting, and reopening maintenance assessments (WC).
 const handleApprove = async (
   row: Record<string, unknown>,
   refresh: () => void
@@ -74,6 +71,7 @@ const handleApprove = async (
   else alert('Failed to approve');
 };
 
+// handleReject and handleReopen have the same structure as handleApprove. (WC)
 const handleReject = async (
   row: Record<string, unknown>,
   refresh: () => void
@@ -85,12 +83,14 @@ const handleReject = async (
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ assessmentId: row.id }),
   });
-    // Success path: Calls refresh() to update the UI
+    // Success path: Calls refresh() to update the UI 
   if (res.ok) refresh();
     // Failure path: Does NOT call refresh(), shows "Failed to reject" alert
   else alert('Failed to reject');
 };
 
+// handleReopen tests mirror the structure of handleApprove and handleReject, 
+// but target the /api/reopenAssessments endpoint and show a different alert message on failure. (WC)
 const handleReopen = async (
   row: Record<string, unknown>,
   refresh: () => void
@@ -108,14 +108,12 @@ const handleReopen = async (
   else alert('Failed to reopen');
 };
 
-// Test Suite
+// Test Suite  (WC)
 describe('formatDate', () => {
-  /**
-   * formatDate wraps the native Intl API with a fixed locale/format.
-   * We verify the structural shape of the output rather than an exact string
-   * because the Intl implementation can produce locale-specific punctuation
-   * that differs between Node versions and CI environments.
-   */
+    // formatDate wraps the native Intl API with a fixed locale/format.
+    // We verify the structural shape of the output rather than an exact string
+    // because the Intl implementation can produce locale-specific punctuation
+    // that differs between Node versions and CI environments.
 
   it('should return a non-empty string for a valid ISO date', () => {
     // Arrange
@@ -175,12 +173,11 @@ describe('formatDate', () => {
   });
 });
 
-
+// The following tests cover parseAiPoints and the three handle functions. (WC)
+// They verify correct parsing logic, API call structure, refresh behavior, and alerting on failure, following the AAA pattern and covering edge cases.
 describe('parseAiPoints', () => {
-  /**
-   * parseAiPoints extracts up to 3 bullet/line items from an AI response string.
-   * It prioritises a dedicated ISSUES: section, then falls back to line-based parsing.
-   */
+    // parseAiPoints extracts up to 3 bullet/line items from an AI response string.
+    // It prioritises a dedicated ISSUES: section, then falls back to line-based parsing.
 
   it('should return an empty array for an empty string', () => {
     // Arrange & Act
@@ -237,7 +234,7 @@ describe('parseAiPoints', () => {
   });
 
   it('should filter out lines shorter than 10 characters in fallback mode', () => {
-    // Arrange — short lines like "OK" or "N/A" should be excluded
+    // Arrange: short lines like "OK" or "N/A" should be excluded
     const input = `OK\nN/A\nThe compressor belt shows signs of wear and must be replaced`;
 
     // Act
@@ -249,7 +246,7 @@ describe('parseAiPoints', () => {
   });
 
   it('should filter out lines longer than 119 characters in fallback mode', () => {
-    // Arrange — 120 characters is the exclusive upper boundary
+    // Arrange: 120 characters is the exclusive upper boundary
     const longLine = 'A'.repeat(120); // exactly 120 chars → excluded
     const goodLine = 'Motor bearing requires immediate attention';
     const input = `${longLine}\n${goodLine}`;
@@ -288,14 +285,11 @@ describe('parseAiPoints', () => {
   });
 });
 
-// ─────────────────────────────────────────────────────────────────────────────
-
+// The following three functions handle approval, rejection, and reopening (WC)
 describe('handleApprove', () => {
-  /**
-   * handleApprove POSTs to /api/approveAssessments.
-   * It calls refresh() on success and alerts on failure.
-   * confirm() is mocked to avoid interactive dialogs in the test runner.
-   */
+  // handleApprove POSTs to /api/approveAssessments.
+  // It calls refresh() on success and alerts on failure.
+  // confirm() is mocked to avoid interactive dialogs in the test runner.
 
   let originalConfirm: typeof global.confirm;
   let originalAlert: typeof global.alert;
@@ -303,23 +297,23 @@ describe('handleApprove', () => {
 
   beforeEach(() => {
     originalConfirm = global.confirm;
-    originalAlert   = global.alert;
-    originalFetch   = global.fetch;
+    originalAlert = global.alert;
+    originalFetch = global.fetch;
   });
 
   afterEach(() => {
     global.confirm = originalConfirm;
-    global.alert   = originalAlert;
-    global.fetch   = originalFetch;
+    global.alert = originalAlert;
+    global.fetch = originalFetch;
     jest.resetAllMocks();
   });
 
   it('should POST to /api/approveAssessments with the correct assessmentId', async () => {
     // Arrange
     global.confirm = jest.fn().mockReturnValue(true);
-    global.fetch   = jest.fn().mockResolvedValue({ ok: true } as Response);
-    const refresh  = jest.fn();
-    const row      = { id: 'ASSESS-001' };
+    global.fetch = jest.fn().mockResolvedValue({ ok: true } as Response);
+    const refresh = jest.fn();
+    const row = { id: 'ASSESS-001' };
 
     // Act
     await handleApprove(row, refresh);
@@ -335,8 +329,8 @@ describe('handleApprove', () => {
   it('should call refresh() when the API responds with ok: true', async () => {
     // Arrange
     global.confirm = jest.fn().mockReturnValue(true);
-    global.fetch   = jest.fn().mockResolvedValue({ ok: true } as Response);
-    const refresh  = jest.fn();
+    global.fetch = jest.fn().mockResolvedValue({ ok: true } as Response);
+    const refresh = jest.fn();
 
     // Act
     await handleApprove({ id: 'ASSESS-001' }, refresh);
@@ -348,9 +342,9 @@ describe('handleApprove', () => {
   it('should NOT call refresh() when the API responds with ok: false', async () => {
     // Arrange
     global.confirm = jest.fn().mockReturnValue(true);
-    global.alert   = jest.fn();
-    global.fetch   = jest.fn().mockResolvedValue({ ok: false } as Response);
-    const refresh  = jest.fn();
+    global.alert = jest.fn();
+    global.fetch = jest.fn().mockResolvedValue({ ok: false } as Response);
+    const refresh = jest.fn();
 
     // Act
     await handleApprove({ id: 'ASSESS-001' }, refresh);
@@ -375,8 +369,9 @@ describe('handleApprove', () => {
   });
 });
 
-// ─────────────────────────────────────────────────────────────────────────────
-
+// handleReject and handleReopen have the same structure as handleApprove, 
+// but call different endpoints and show different alert messages on failure. (WC)
+// The tests follow the same pattern for each function, verifying correct API calls, refresh behavior, and alerting on failure.
 describe('handleReject', () => {
   let originalConfirm: typeof global.confirm;
   let originalAlert: typeof global.alert;
@@ -384,22 +379,22 @@ describe('handleReject', () => {
 
   beforeEach(() => {
     originalConfirm = global.confirm;
-    originalAlert   = global.alert;
-    originalFetch   = global.fetch;
+    originalAlert = global.alert;
+    originalFetch = global.fetch;
   });
 
   afterEach(() => {
     global.confirm = originalConfirm;
-    global.alert   = originalAlert;
-    global.fetch   = originalFetch;
+    global.alert = originalAlert;
+    global.fetch = originalFetch;
     jest.resetAllMocks();
   });
 
   it('should POST to /api/rejectAssessments with the correct assessmentId', async () => {
     // Arrange
     global.confirm = jest.fn().mockReturnValue(true);
-    global.fetch   = jest.fn().mockResolvedValue({ ok: true } as Response);
-    const refresh  = jest.fn();
+    global.fetch = jest.fn().mockResolvedValue({ ok: true } as Response);
+    const refresh = jest.fn();
 
     // Act
     await handleReject({ id: 'ASSESS-002' }, refresh);
@@ -415,8 +410,8 @@ describe('handleReject', () => {
   it('should call refresh() on a successful rejection response', async () => {
     // Arrange
     global.confirm = jest.fn().mockReturnValue(true);
-    global.fetch   = jest.fn().mockResolvedValue({ ok: true } as Response);
-    const refresh  = jest.fn();
+    global.fetch = jest.fn().mockResolvedValue({ ok: true } as Response);
+    const refresh = jest.fn();
 
     // Act
     await handleReject({ id: 'ASSESS-002' }, refresh);
@@ -428,9 +423,9 @@ describe('handleReject', () => {
   it('should alert and NOT call refresh() when the API fails', async () => {
     // Arrange
     global.confirm = jest.fn().mockReturnValue(true);
-    global.alert   = jest.fn();
-    global.fetch   = jest.fn().mockResolvedValue({ ok: false } as Response);
-    const refresh  = jest.fn();
+    global.alert = jest.fn();
+    global.fetch = jest.fn().mockResolvedValue({ ok: false } as Response);
+    const refresh = jest.fn();
 
     // Act
     await handleReject({ id: 'ASSESS-002' }, refresh);
@@ -454,8 +449,8 @@ describe('handleReject', () => {
   });
 });
 
-// ─────────────────────────────────────────────────────────────────────────────
-
+// handleReopen tests mirror the structure of handleApprove and handleReject, 
+// but target the /api/reopenAssessments endpoint and show a different alert message on failure.
 describe('handleReopen', () => {
   let originalConfirm: typeof global.confirm;
   let originalAlert: typeof global.alert;
@@ -463,22 +458,22 @@ describe('handleReopen', () => {
 
   beforeEach(() => {
     originalConfirm = global.confirm;
-    originalAlert   = global.alert;
-    originalFetch   = global.fetch;
+    originalAlert = global.alert;
+    originalFetch = global.fetch;
   });
 
   afterEach(() => {
     global.confirm = originalConfirm;
-    global.alert   = originalAlert;
-    global.fetch   = originalFetch;
+    global.alert = originalAlert;
+    global.fetch = originalFetch;
     jest.resetAllMocks();
   });
 
   it('should POST to /api/reopenAssessments with the correct assessmentId', async () => {
     // Arrange
     global.confirm = jest.fn().mockReturnValue(true);
-    global.fetch   = jest.fn().mockResolvedValue({ ok: true } as Response);
-    const refresh  = jest.fn();
+    global.fetch = jest.fn().mockResolvedValue({ ok: true } as Response);
+    const refresh = jest.fn();
 
     // Act
     await handleReopen({ id: 'ASSESS-003' }, refresh);
@@ -494,8 +489,8 @@ describe('handleReopen', () => {
   it('should call refresh() when reopening succeeds', async () => {
     // Arrange
     global.confirm = jest.fn().mockReturnValue(true);
-    global.fetch   = jest.fn().mockResolvedValue({ ok: true } as Response);
-    const refresh  = jest.fn();
+    global.fetch = jest.fn().mockResolvedValue({ ok: true } as Response);
+    const refresh = jest.fn();
 
     // Act
     await handleReopen({ id: 'ASSESS-003' }, refresh);
@@ -507,9 +502,9 @@ describe('handleReopen', () => {
   it('should alert "Failed to reopen" when the API call fails', async () => {
     // Arrange
     global.confirm = jest.fn().mockReturnValue(true);
-    global.alert   = jest.fn();
-    global.fetch   = jest.fn().mockResolvedValue({ ok: false } as Response);
-    const refresh  = jest.fn();
+    global.alert = jest.fn();
+    global.fetch = jest.fn().mockResolvedValue({ ok: false } as Response);
+    const refresh = jest.fn();
 
     // Act
     await handleReopen({ id: 'ASSESS-003' }, refresh);
@@ -522,8 +517,8 @@ describe('handleReopen', () => {
   it('should not fetch when the user cancels the reopen confirmation', async () => {
     // Arrange
     global.confirm = jest.fn().mockReturnValue(false);
-    global.fetch   = jest.fn();
-    const refresh  = jest.fn();
+    global.fetch = jest.fn();
+    const refresh = jest.fn();
 
     // Act
     await handleReopen({ id: 'ASSESS-003' }, refresh);

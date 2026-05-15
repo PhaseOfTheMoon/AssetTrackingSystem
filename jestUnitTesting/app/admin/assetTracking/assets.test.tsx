@@ -1,6 +1,4 @@
 /**
- * Unit Tests: assets/page.tsx
- *
  * Tests cover:
  *   - Auth guard behaviour (loading, non-admin, admin)
  *   - DynamicPage receives correct config
@@ -14,14 +12,14 @@ import { render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import AssetsPage from '@/app/(app)/admin/assetTracking/assets/page';
 
-// ── Mock useAdminAccess ───────────────────────────────────────────────────────
+// Mock useAdminAccess (WC)
 const mockUseAdminAccess = jest.fn();
 jest.mock('@/hooks/useAdminAccess', () => ({
   useAdminAccess: () => mockUseAdminAccess(),
 }));
 
-// ── Mock Supabase client ──────────────────────────────────────────────────────
-// REQUIRED: assets/page.tsx imports supabase at the top for getStorageUrl
+// Mock Supabase client 
+// assets/page.tsx imports supabase at the top for getStorageUrl (WC)
 const mockGetPublicUrl = jest.fn();
 jest.mock('@/lib/supabase/client', () => ({
   supabase: {
@@ -33,13 +31,13 @@ jest.mock('@/lib/supabase/client', () => ({
   },
 }));
 
-// ── Mock Next.js Image ────────────────────────────────────────────────────────
+// Mock Next.js Image (WC)
 jest.mock('next/image', () => ({
   __esModule: true,
   default: ({ src, alt }: any) => <img src={src} alt={alt} />,
 }));
 
-// ── Mock DynamicPage ──────────────────────────────────────────────────────────
+// Mock DynamicPage (WC)
 jest.mock('@/components/dynamicPage', () => ({
   __esModule: true,
   default: ({ config }: any) => (
@@ -51,15 +49,13 @@ jest.mock('@/components/dynamicPage', () => ({
   ),
 }));
 
-// ── Helper: parse config from DOM ─────────────────────────────────────────────
+// Helper: parse config from DOM (WC)
 const getConfig = () => {
   const el = screen.getByTestId('config');
   return JSON.parse(el.textContent || '{}');
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
-// SUITE 1 — Auth Guard
-// ─────────────────────────────────────────────────────────────────────────────
+// SUITE 1: Auth Guard (WC)
 describe('AssetsPage — Auth Guard', () => {
 
   it('should render nothing when isLoading is true', () => {
@@ -96,9 +92,7 @@ describe('AssetsPage — Auth Guard', () => {
   });
 });
 
-// ─────────────────────────────────────────────────────────────────────────────
-// SUITE 2 — Page Config
-// ─────────────────────────────────────────────────────────────────────────────
+// SUITE 2: Page Config (WC)
 describe('AssetsPage — Page Config', () => {
 
   beforeEach(() => {
@@ -152,9 +146,7 @@ describe('AssetsPage — Page Config', () => {
   });
 });
 
-// ─────────────────────────────────────────────────────────────────────────────
-// SUITE 3 — Search Fields
-// ─────────────────────────────────────────────────────────────────────────────
+// SUITE 3: Search Fields (WC)
 describe('AssetsPage — Search Fields', () => {
 
   beforeEach(() => {
@@ -175,9 +167,7 @@ describe('AssetsPage — Search Fields', () => {
   });
 });
 
-// ─────────────────────────────────────────────────────────────────────────────
-// SUITE 4 — Table Columns
-// ─────────────────────────────────────────────────────────────────────────────
+// SUITE 4: Table Columns (WC)
 describe('AssetsPage — Table Columns', () => {
 
   beforeEach(() => {
@@ -223,9 +213,7 @@ describe('AssetsPage — Table Columns', () => {
   });
 });
 
-// ─────────────────────────────────────────────────────────────────────────────
-// SUITE 5 — Form Fields
-// ─────────────────────────────────────────────────────────────────────────────
+// SUITE 5: Form Fields (WC)
 describe('AssetsPage — Form Fields', () => {
 
   beforeEach(() => {
@@ -248,17 +236,16 @@ describe('AssetsPage — Form Fields', () => {
     expect(field.type).toBe('select');
     expect(field.options).toHaveLength(3);
     expect(field.options).toEqual([
-      { value: 'In-use',   label: 'In-use'   },
-      { value: 'In-store', label: 'In-store' },
-      { value: 'Spoiled',  label: 'Spoiled'  },
+      { value: 'In-use', label: 'In-use'},
+      { value: 'In-store', label: 'In-store'},
+      { value: 'Spoiled', label: 'Spoiled'},
     ]);
   });
 
   it('should configure location_id and department_id as optional selects', () => {
     // In assets/page.tsx the formFields for location and department
-    // have NO required property — they are optional
     const locationField = getConfig().formFields.find((f: any) => f.key === 'location_id');
-    const deptField     = getConfig().formFields.find((f: any) => f.key === 'department_id');
+    const deptField = getConfig().formFields.find((f: any) => f.key === 'department_id');
 
     expect(locationField.type).toBe('select');
     expect(deptField.type).toBe('select');
@@ -269,9 +256,7 @@ describe('AssetsPage — Form Fields', () => {
   });
 });
 
-// ─────────────────────────────────────────────────────────────────────────────
-// SUITE 6 — getStorageUrl (tested via BarcodeThumbnail render)
-// ─────────────────────────────────────────────────────────────────────────────
+// SUITE 6: getStorageUrl (tested via BarcodeThumbnail render) (WC)
 describe('getStorageUrl / BarcodeThumbnail', () => {
 
   beforeEach(() => {
@@ -304,7 +289,7 @@ describe('getStorageUrl / BarcodeThumbnail', () => {
     const { supabase } = require('@/lib/supabase/client');
     mockGetPublicUrl.mockReturnValue({ data: { publicUrl: 'https://fake.com/barcode.png' } });
 
-    // Act — trigger a render that calls getStorageUrl
+    // Act: trigger a render that calls getStorageUrl
     supabase.storage.from('IdCodes').getPublicUrl('assets/test.png');
 
     // Assert
@@ -325,7 +310,7 @@ describe('getStorageUrl / BarcodeThumbnail', () => {
   });
 
   it('should handle empty string tagPath gracefully', () => {
-    // Arrange — empty string should be treated same as null
+    // Arrange: empty string should be treated same as null
     mockGetPublicUrl.mockReturnValue({ data: { publicUrl: null } });
 
     const { supabase } = require('@/lib/supabase/client');

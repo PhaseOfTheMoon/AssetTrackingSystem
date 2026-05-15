@@ -3,24 +3,24 @@ import { useRouter } from 'next/navigation';
 import DashboardPage from '@/app/(app)/admin/dashboard/page';
 import { useAdminAccess } from '@/hooks/useAdminAccess';
 
-// ── Mocks ─────────────────────────────────────────────────────────────────────
-
+// Mock next/navigation's useRouter (WC)
 jest.mock('next/navigation', () => ({
   useRouter: jest.fn(),
 }));
 
-// page.tsx uses useAdminAccess, NOT useSession directly
+// page.tsx uses useAdminAccess, NOT useSession directly (WC)
 jest.mock('@/hooks/useAdminAccess', () => ({
   useAdminAccess: jest.fn(),
 }));
 
-// lowercase 'breadcrumb' to match the actual import in page.tsx
+// lowercase 'breadcrumb' to match the actual import in page.tsx (WC)
 jest.mock('@/components/ui/breadcrumb', () => {
   return function MockBreadcrumb() {
     return <div data-testid="breadcrumb">Breadcrumb</div>;
   };
 });
 
+// Mock RealtimeChart to render its config and entityView props for assertion (WC)
 jest.mock('@/components/charts/realtimeChart', () => {
   return function MockRealtimeChart({ config, entityView }: any) {
     return (
@@ -31,63 +31,60 @@ jest.mock('@/components/charts/realtimeChart', () => {
   };
 });
 
-// Mock heroicons so they don't break jsdom
+// Mock Heroicons used in the dashboard, rendering simple SVGs with test IDs for assertion (WC)
 jest.mock('@heroicons/react/24/outline', () => ({
   ComputerDesktopIcon: () => <svg data-testid="icon-computer" />,
   BuildingOfficeIcon:  () => <svg data-testid="icon-building" />,
-  UsersIcon:           () => <svg data-testid="icon-users" />,
-  MapPinIcon:          () => <svg data-testid="icon-mappin" />,
-  ArrowPathIcon:       ({ className }: any) => <svg data-testid="icon-arrowpath" className={className} />,
+  UsersIcon: () => <svg data-testid="icon-users" />,
+  MapPinIcon: () => <svg data-testid="icon-mappin" />,
+  ArrowPathIcon: ({ className }: any) => <svg data-testid="icon-arrowpath" className={className} />,
 }));
 
+// Mock global fetch for API calls made by the dashboard (WC)
 global.fetch = jest.fn();
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-/** Default session shape returned by useAdminAccess */
+// A mock session object to simulate an authenticated admin user (WC)
 const mockSession = {
   user: { name: 'Test User', email: 'test@example.com' },
 };
 
-/** Mount the page with session + fetch already resolved */
+// Helper to render the DashboardPage with necessary context and wait for initial data load (WC)
 const renderDashboard = async () => {
   await act(async () => {
     render(<DashboardPage />);
   });
 };
 
-// ── Setup ─────────────────────────────────────────────────────────────────────
-
+// Helper to extract stat card values from the DOM (WC)
 describe('DashboardPage', () => {
-  const mockPush    = jest.fn();
+  const mockPush = jest.fn();
   const mockReplace = jest.fn();
 
   beforeEach(() => {
     jest.clearAllMocks();
 
     (useRouter as jest.Mock).mockReturnValue({
-      push:    mockPush,
+      push: mockPush,
       replace: mockReplace,
     });
 
     // Simulate a fully-loaded admin session
     (useAdminAccess as jest.Mock).mockReturnValue({
-      session:   mockSession,
+      session: mockSession,
       isLoading: false,
     });
 
-    // Default fetch mock — returns realistic data for each endpoint
+    // Mock fetch responses for the four stats cards (WC)
     (global.fetch as jest.Mock).mockImplementation((url: string) => {
-      if (url.includes('/api/assets'))     return Promise.resolve({ json: () => Promise.resolve({ totalItems: 150 }) });
+      if (url.includes('/api/assets')) return Promise.resolve({ json: () => Promise.resolve({ totalItems: 150 }) });
       if (url.includes('/api/department')) return Promise.resolve({ json: () => Promise.resolve({ data: [{ id: 1 }, { id: 2 }] }) });
-      if (url.includes('/api/staff'))      return Promise.resolve({ json: () => Promise.resolve({ staff: [{ id: 1 }, { id: 2 }, { id: 3 }] }) });
-      if (url.includes('/api/location'))   return Promise.resolve({ json: () => Promise.resolve({ data: [{ id: 1 }] }) });
+      if (url.includes('/api/staff')) return Promise.resolve({ json: () => Promise.resolve({ staff: [{ id: 1 }, { id: 2 }, { id: 3 }] }) });
+      if (url.includes('/api/location')) return Promise.resolve({ json: () => Promise.resolve({ data: [{ id: 1 }] }) });
       return Promise.resolve({ json: () => Promise.resolve({}) });
     });
   });
 
-  // ── SESSION / AUTH ──────────────────────────────────────────────────────────
-
+  // Test to verify loading state when session is loading or absent (WC)
   it('shows loading screen while session is loading', async () => {
     (useAdminAccess as jest.Mock).mockReturnValue({
       session:   null,
@@ -107,8 +104,7 @@ describe('DashboardPage', () => {
     expect(screen.getByText('Loading...')).toBeInTheDocument();
   });
 
-  // ── HEADER ──────────────────────────────────────────────────────────────────
-
+  // Tests for rendering and functionality of the dashboard components (WC)
   it('renders the Dashboard heading', async () => {
     await renderDashboard();
     await waitFor(() => {
@@ -125,7 +121,7 @@ describe('DashboardPage', () => {
 
   it('falls back to "User" in welcome message when name is absent', async () => {
     (useAdminAccess as jest.Mock).mockReturnValue({
-      session:   { user: {} },   // name is undefined
+      session: { user: {} },   
       isLoading: false,
     });
     await renderDashboard();
@@ -139,12 +135,11 @@ describe('DashboardPage', () => {
     expect(screen.getByTestId('breadcrumb')).toBeInTheDocument();
   });
 
-  // ── STAT CARDS ──────────────────────────────────────────────────────────────
-
+  // Tests for the four stat cards, verifying titles, values, loading states, and navigation on click (WC)
   it('renders all four stat card titles', async () => {
     await renderDashboard();
     await waitFor(() => {
-      // getAllByText used for titles that also appear elsewhere in the page
+      // getAllByText used for titles that also appear elsewhere in the page (WC)
       expect(screen.getAllByText('Total Assets').length).toBeGreaterThan(0);
       expect(screen.getAllByText('Departments').length).toBeGreaterThan(0);
       expect(screen.getByText('Staff Members')).toBeInTheDocument();
@@ -152,18 +147,20 @@ describe('DashboardPage', () => {
     });
   });
 
+  // The following test verifies that the stat values fetched from the API are displayed correctly in the stat cards. 
+  // It waits for the asynchronous fetch calls to resolve and checks that the expected values are rendered in the document. (WC)
   it('displays fetched stat values after data loads', async () => {
     await renderDashboard();
     await waitFor(() => {
       expect(screen.getByText('150')).toBeInTheDocument(); // totalAssets
-      expect(screen.getByText('2')).toBeInTheDocument();   // totalDepartments
-      expect(screen.getByText('3')).toBeInTheDocument();   // totalStaff
-      expect(screen.getByText('1')).toBeInTheDocument();   // totalLocations
+      expect(screen.getByText('2')).toBeInTheDocument(); // totalDepartments
+      expect(screen.getByText('3')).toBeInTheDocument(); // totalStaff
+      expect(screen.getByText('1')).toBeInTheDocument(); // totalLocations
     });
   });
 
   it('shows animate-pulse skeleton while data is loading', async () => {
-    // Keep fetch pending so loading stays true
+    // Keep fetch pending so loading stays true (WC)
     (global.fetch as jest.Mock).mockImplementation(() => new Promise(() => {}));
     await act(async () => { render(<DashboardPage />); });
     const skeletons = document.querySelectorAll('.animate-pulse');
@@ -211,8 +208,7 @@ describe('DashboardPage', () => {
     });
   });
 
-  // ── QUICK ACTIONS ───────────────────────────────────────────────────────────
-
+  // Tests for the Quick Actions section, verifying the presence of buttons and correct navigation on click (WC)
   it('renders all three quick action buttons', async () => {
     await renderDashboard();
     await waitFor(() => {
@@ -246,8 +242,7 @@ describe('DashboardPage', () => {
     });
   });
 
-  // ── REFRESH ─────────────────────────────────────────────────────────────────
-
+  // Tests for the Refresh button, verifying that it triggers data re-fetching and shows loading state (WC)
   it('renders the Refresh button', async () => {
     await renderDashboard();
     await waitFor(() => {
@@ -285,8 +280,7 @@ describe('DashboardPage', () => {
     expect(icon.getAttribute('class')).toContain('animate-spin');
   });
 
-  // ── ANALYTICS / CHART ───────────────────────────────────────────────────────
-
+  // Tests for the Analytics / Chart section, verifying the correct rendering and behavior (WC)
   it('renders the Analytics heading', async () => {
     await renderDashboard();
     await waitFor(() => {
@@ -329,8 +323,8 @@ describe('DashboardPage', () => {
     });
   });
 
-  // ── RECENT ACTIVITY ─────────────────────────────────────────────────────────
-
+  // The following test verifies that changing the dropdown selection updates the entityView prop passed to the RealtimeChart component, 
+  // which would trigger the chart to fetch and display data for the selected entity. (WC)
   it('renders the Recent Activity section heading', async () => {
     await renderDashboard();
     await waitFor(() => {
@@ -350,8 +344,7 @@ describe('DashboardPage', () => {
     });
   });
 
-  // ── ERROR HANDLING ──────────────────────────────────────────────────────────
-
+  // Tests for error handling, verifying that errors are logged and the app doesn't crash (WC)
   it('logs an error and does not crash when fetch throws', async () => {
     (global.fetch as jest.Mock).mockRejectedValueOnce(new Error('Network error'));
     const consoleError = jest.spyOn(console, 'error').mockImplementation(() => {});

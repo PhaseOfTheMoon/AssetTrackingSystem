@@ -5,19 +5,19 @@ import { GET } from '@/app/api/pendingAssessments/route';
 import { NextRequest } from 'next/server';
 import { validateSession } from '@/lib/apiAuth';
 
-// ── Mock validateSession ──────────────────────────────────────────────────────
+// Mock validateSession 
 jest.mock('@/lib/apiAuth', () => ({
   validateSession: jest.fn(),
 }));
 
-// ── Mock Supabase ─────────────────────────────────────────────────────────────
+// Mock Supabase
 // The route builds a complex chained query — mock each method in the chain
-const mockRange   = jest.fn();
-const mockOrder   = jest.fn(() => ({ range: mockRange }));
-const mockEqCond  = jest.fn(() => ({ order: mockOrder }));
-const mockIlike   = jest.fn();
-const mockEqStat  = jest.fn();
-const mockSelect  = jest.fn();
+const mockRange = jest.fn();
+const mockOrder = jest.fn(() => ({ range: mockRange }));
+const mockEqCond = jest.fn(() => ({ order: mockOrder }));
+const mockIlike = jest.fn();
+const mockEqStat = jest.fn();
+const mockSelect = jest.fn();
 
 // Count queries (head: true) return a simpler chain
 const mockHeadEq  = jest.fn();
@@ -29,7 +29,7 @@ jest.mock('@/lib/supabase/server', () => ({
   get supabaseAdmin() { return { from: mockFrom }; },
 }));
 
-// ── Helper ────────────────────────────────────────────────────────────────────
+// Helper to create NextRequest with query params
 const makeRequest = (params: Record<string, string> = {}) => {
   const url = new URL('http://localhost/api/pendingAssessments');
   Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
@@ -42,7 +42,7 @@ const mockPageResult = {
   error: null,
 };
 
-// ── Tests ─────────────────────────────────────────────────────────────────────
+// Tests 
 describe('GET /api/pendingAssessments', () => {
 
   beforeEach(() => {
@@ -68,7 +68,7 @@ describe('GET /api/pendingAssessments', () => {
     }));
   });
 
-  // ── AUTH ────────────────────────────────────────────────────────────────────
+  // AUTHORIZATION 
   it('should return 401 when user is not an admin', async () => {
     // Arrange
     (validateSession as jest.Mock).mockResolvedValue({
@@ -95,13 +95,13 @@ describe('GET /api/pendingAssessments', () => {
     expect(validateSession).toHaveBeenCalledWith('admin');
   });
 
-  // ── HAPPY PATH ──────────────────────────────────────────────────────────────
+  // Success TEST, SUCCESSFUL RESPONSE
   it('should return 200 with assessments and pagination info', async () => {
     // Arrange
     mockRange.mockResolvedValue({ data: [{ id: 'id-1' }], count: 1, error: null });
 
     // Act
-    const res  = await GET(makeRequest({ status: 'pending' }));
+    const res = await GET(makeRequest({ status: 'pending' }));
     const json = await res.json();
 
     // Assert
@@ -127,7 +127,7 @@ describe('GET /api/pendingAssessments', () => {
     expect(json.tabCounts).toHaveProperty('rejected');
   });
 
-  // ── PAGINATION ──────────────────────────────────────────────────────────────
+  // Test pagination logic: the route calculates range based on page and limit query params
   it('should default to page 1 and limit 10 when not specified', async () => {
     // Arrange
     mockRange.mockResolvedValue({ data: [], count: 0, error: null });
@@ -135,7 +135,7 @@ describe('GET /api/pendingAssessments', () => {
     // Act
     await GET(makeRequest());
 
-    // Assert — range(0, 9) = page 1, limit 10
+    // Assert: range(0, 9) = page 1, limit 10
     expect(mockRange).toHaveBeenCalledWith(0, 9);
   });
 
@@ -146,7 +146,7 @@ describe('GET /api/pendingAssessments', () => {
     // Act
     await GET(makeRequest({ page: '2', limit: '10' }));
 
-    // Assert — range(10, 19)
+    // Assert: range(10, 19)
     expect(mockRange).toHaveBeenCalledWith(10, 19);
   });
 
@@ -157,24 +157,24 @@ describe('GET /api/pendingAssessments', () => {
     // Act
     await GET(makeRequest({ limit: '999' }));
 
-    // Assert — range(0, 99) = page 1, limit capped at 100
+    // Assert: range(0, 99) = page 1, limit capped at 100
     expect(mockRange).toHaveBeenCalledWith(0, 99);
   });
 
-  // ── STATUS FILTER ───────────────────────────────────────────────────────────
+  // Test status filtering: the route allows filtering by approval_status, but defaults to "pending" if an invalid status is passed
   it('should default to "pending" status when an invalid status is passed', async () => {
     // Arrange — the route whitelists allowed statuses
     mockRange.mockResolvedValue({ data: [], count: 0, error: null });
 
     // Act
-    const res  = await GET(makeRequest({ status: 'invalid-status' }));
+    const res = await GET(makeRequest({ status: 'invalid-status' }));
     const json = await res.json();
 
     // Assert
     expect(res.status).toBe(200);
   });
 
-  // ── DATABASE ERROR ──────────────────────────────────────────────────────────
+  // DATABASE ERROR 
   it('should return 500 when Supabase query fails', async () => {
     // Arrange
     mockRange.mockResolvedValue({ data: null, count: null, error: { message: 'DB error' } });

@@ -1,6 +1,6 @@
 import { GeminiProvider } from '@/lib/ai/providers/geminiProvider';
 
-// ── Mock the Gemini SDK ───────────────────────────────
+// Mock the Gemini API client and its generateContent method (WC)
 const mockGenerateContent = jest.fn();
 
 jest.mock('@google/generative-ai', () => ({
@@ -11,12 +11,12 @@ jest.mock('@google/generative-ai', () => ({
   })),
 }));
 
-// ── Helper: fake a Gemini text response ──────────────
+// Helper to create Gemini-like response objects for testing (WC)
 const makeGeminiResponse = (text: string) => ({
   response: { text: () => text },
 });
 
-// ── Setup ─────────────────────────────────────────────
+// Tests for GeminiProvider.assessAssetCondition (WC)
 beforeEach(() => {
   process.env.GEMINI_API_KEY = 'fake-key';
   jest.clearAllMocks();
@@ -25,7 +25,7 @@ beforeEach(() => {
 describe('assessAssetCondition', () => {
 
   it('should return correct result for a valid In-use asset', async () => {
-    // Arrange — first call = identification, second call = assessment
+    // Arrange — first call = identification, second call = assessment (WC)
     mockGenerateContent
       .mockResolvedValueOnce(makeGeminiResponse(
         'IS_VALID_ASSET: Yes\nDETECTED_ASSET: Laptop\nREASON: Clearly a laptop'
@@ -105,12 +105,12 @@ describe('assessAssetCondition', () => {
     const provider = new GeminiProvider();
     const result = await provider.assessAssetCondition('base64imagedata', 'image/jpeg');
 
-    // Assert — defaults to In-store when STATUS missing
+    // Assert: defaults to In-store when STATUS missing
     expect(result.condition).toBe('In-store');
   });
 
   it('should retry on 503 and succeed on second attempt', async () => {
-    // Arrange — first call fails with 503, second call succeeds
+    // Arrange: first call fails with 503, second call succeeds
     mockGenerateContent
       .mockRejectedValueOnce({ status: 503, message: 'Service Unavailable' })
       .mockResolvedValueOnce(makeGeminiResponse(
@@ -123,13 +123,13 @@ describe('assessAssetCondition', () => {
     const provider = new GeminiProvider();
     const result = await provider.assessAssetCondition('base64imagedata', 'image/jpeg');
 
-    // Assert — eventually succeeds after retry
+    // Assert: eventually succeeds after retry
     expect(result.condition).toBe('In-use');
     expect(mockGenerateContent).toHaveBeenCalledTimes(3); // 1 retry + 2 real calls
   });
 
   it('should throw after exhausting all retries on persistent 503', async () => {
-    // Arrange — all attempts fail
+    // Arrange: all attempts fail
     mockGenerateContent.mockRejectedValue({ status: 503, message: '503 Service Unavailable' });
 
     const provider = new GeminiProvider();
