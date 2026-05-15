@@ -133,6 +133,10 @@ async function rateLimitCrashHandler (limiter: Ratelimit, key: string): Promise<
 function applySecurityHeaders(response: NextResponse): NextResponse {
   const isProd = process.env.NODE_ENV === 'production'
 
+  response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate')
+  response.headers.set('Pragma', 'no-cache')
+  response.headers.set('Expires', '0')
+
   /** Click-jacking protection
    * X-Frame-Options: DENY
    * Blocks this page from being embedded inside an <iframe> on any other origin.

@@ -5,6 +5,16 @@
  * @description Modal popup for viewing, printing and saving barcode and QR code
  * images
  * 
+ * LATEST CHANGES
+ * --------------
+ *  - The image stored in Supabase is now the full composite PNG (header + code + text embedded in by
+ *    idCodeImage.ts). So, fetching it from the bucket is enough and no canvas re-draw is needed
+ *    in this modal
+ *  - The Save button downloads the PNG directly from the bucket URL (blob fetch). Meaning, same file 
+ *    as what is stored, is what the Print button will render
+ *  - The Print button now uses the blob URL in an iframe. Therefore, it should not have layout differences
+ *    from the preview
+ * 
  * This file replaces the previous behavior of opening the Supabase bucket URL in a new tab
  * which
  *  (a) exposed Supabase bucket credentials and path in the browser URL, and
@@ -93,12 +103,16 @@ const BUCKET_NAME = 'IdCodes'
  * @param entityId - Primary key shown in the header of the modal
  * @param entityLabel - Label shown below the label to indicate what ID code is this
  */
-export default function idCodeModal({ isOpen, onClose, tagPath, entityType, entityId, entityLabel }: idCodeModalProps) {
+export default function IdCodeModal({ isOpen, onClose, tagPath, entityType, entityId, entityLabel }: idCodeModalProps) {
     const [imageUrl, setImageUrl] = useState<string | null>(null)
+
+    const [blobUrl, setBlobUrl] = useState<string | null>(null)
 
     const [loading, setLoading] = useState(false)
 
-    const imgRef = useRef<HTMLImageElement>(null)
+    // const imgRef = useRef<HTMLImageElement>(null)
+
+    const blobRef = useRef<string | null>(null)
 
     const title = ENTITY_NAMES[entityType]
 
@@ -109,6 +123,10 @@ export default function idCodeModal({ isOpen, onClose, tagPath, entityType, enti
     useEffect(() => {
         // When the modal is not open or tag_path does not exist
         if (!isOpen || !tagPath) {
+            setImageUrl(null)
+
+            setBlobUrl(null)
+
             // Exit early
             return
         }
@@ -123,11 +141,47 @@ export default function idCodeModal({ isOpen, onClose, tagPath, entityType, enti
             .from(BUCKET_NAME)
             .getPublicUrl(tagPath)
         
+        const url = data?.publicUrl ?? null
         // Set the image URL to the one fetched using publicUrl, else set to null
-        setImageUrl(data?.publicUrl ?? null)
+        setImageUrl(url)
 
         // Set the loading to false once the image URL is fetched
-        setLoading(false)
+        if (!url) {
+            setLoading(false)
+
+            return 
+        }
+
+        // Pre-fetch the image using the URL as blob so Save and Print won't 
+        // need a separate fetch
+        fetch(url)
+            .then(r => r.blob())
+            .then(blob => {
+                const objUrl = URL.createObjectURL(blob)
+
+                blobRef.current = objUrl
+
+                setBlobUrl(objUrl)
+            })
+
+            .catch(() => {
+                // Set fallback to use imageUrl directly
+                setBlobUrl(url)
+            })
+
+            .finally(() => {
+                setLoading(false)
+            })
+
+        return () => {
+            // Revoke the previous blob URL on cleanup
+            if (blobRef.current) {
+                URL.revokeObjectURL(blobRef.current)
+
+                blobRef.current = null
+            }
+        }
+
     }, [isOpen, tagPath]) // Dependencies: Change when modal isOpen and tagPath fetched
 
 
@@ -196,7 +250,7 @@ export default function idCodeModal({ isOpen, onClose, tagPath, entityType, enti
     // Without useCallback(), <Button onClick={handleSave} /> would re-render every time
     const handleSave = useCallback(async () => {
         // If the image does not exist
-        if (!imageUrl) {
+        if (!imageUrl || !blobUrl) {
             // Exit early
             return
         }
@@ -208,23 +262,23 @@ export default function idCodeModal({ isOpen, onClose, tagPath, entityType, enti
             // fetch(url, options?)
             // await pauses execution until Promise is resolved, and only works in async() functions
             // res stands for response, req for request. It is a writing convention
-            const res = await fetch(imageUrl)
+            // const res = await fetch(imageUrl)
 
             // If the response is not ok, or imageUrl failed to be fetched
-            if (!res.ok) {
-                // Throw the image to be caught by the catch statement when this block fails
-                // to prevent allocating more resources to this function
-                throw new Error('Failed to fetch image using its URL')
-            }
+            // if (!res.ok) {
+            //     // Throw the image to be caught by the catch statement when this block fails
+            //     // to prevent allocating more resources to this function
+            //     throw new Error('Failed to fetch image using its URL')
+            // }
 
             // Reads the response body's binary large object (image), converts into binary format
             // Then store inside the variable named blob
-            const blob = await res.blob()
+            // const blob = await res.blob()
 
             // Create an object URL - a temporary in-memory URL
             // Stores blob in browser memory
             // Return a pointer (URL string)
-            const blobUrl = URL.createObjectURL(blob)
+            // const blobUrl = URL.createObjectURL(blob)
 
             // Dynamically create an HTML anchor element in memory
             const link = document.createElement('a')
@@ -243,7 +297,7 @@ export default function idCodeModal({ isOpen, onClose, tagPath, entityType, enti
                                                     :  `qr-${entityType}-.${ext}`
 
             // Sets a temporary in-memory image URL (blob URL) as the download source
-            link.href = blobUrl
+            link.href = blobUrl ?? imageUrl
 
             // Define the download filename and tells the browser to download this file
             link.download = filename
@@ -255,7 +309,7 @@ export default function idCodeModal({ isOpen, onClose, tagPath, entityType, enti
             // Clean up memory - frees browser memory used by the temporary blob URL
             // Best practice - always pair 
             // URL.createObjectURL() with URL.revokeObjectURL()
-            URL.revokeObjectURL(blobUrl)
+            // URL.revokeObjectURL(blobUrl)
 
         // Catch the errors thrown
         } catch (err) {
@@ -267,7 +321,7 @@ export default function idCodeModal({ isOpen, onClose, tagPath, entityType, enti
 
         // useCallback() does not require a cleanup function because it does not allocate resources
         // and only stores a function reference
-    }, [imageUrl, tagPath, entityType, entityId]) // Dependencies: Only update function when these change
+    }, [blobUrl, imageUrl, tagPath, entityType, entityId]) // Dependencies: Only update function when these change
 
 
     // ------------------------------------------------------------- 
@@ -275,7 +329,7 @@ export default function idCodeModal({ isOpen, onClose, tagPath, entityType, enti
     // -------------------------------------------------------------
     const handlePrint = useCallback(async () => {
         // If image is not ready, does not exist or error
-        if (!imageUrl) {
+        if (!imageUrl || !blobUrl) {
             // Early exit
             return
         }
@@ -287,19 +341,19 @@ export default function idCodeModal({ isOpen, onClose, tagPath, entityType, enti
             // fetch(url, options?)
             // await pauses execution until Promise is resolved, and only works in async() functions
             // res stands for response, req for request. It is a writing convention
-            const res = await fetch(imageUrl)
+            // const res = await fetch(imageUrl)
 
             // Reads the response body's binary large object (image), converts into binary format
             // Then store inside the variable named blob
-            const blob = await res.blob()
+            // const blob = await res.blob()
 
             // Create an object URL - a temporary in-memory URL
             // Stores blob in browser memory
             // Return a pointer (URL string)
-            const blobUrl = URL.createObjectURL(blob)
+            // const blobUrl = URL.createObjectURL(blob)
 
             // Print size hint - barcode print narrow whereas QR codes square
-            const printWidth = entityType === 'asset' ? '80mm' : '60mm'
+            const printWidth = entityType === 'asset' ? '90mm' : '80mm'
 
             // Create an isolated browser document, acts as a sandbox print container
             // iframe - prevents modifying the main UI and avoid CSS conflicts
@@ -320,7 +374,7 @@ export default function idCodeModal({ isOpen, onClose, tagPath, entityType, enti
             // Ensures iframe document is accessible, if not
             if (!doc) {
                 // Cleanup the resource allocated to blobUrl
-                URL.revokeObjectURL(blobUrl)
+                // URL.revokeObjectURL(blobUrl)
                 // Exit early
                 return
             }
@@ -344,39 +398,15 @@ export default function idCodeModal({ isOpen, onClose, tagPath, entityType, enti
                                 font-family: sans-serif;
                             }
 
-                            .header {
-                                font-size: 10pt;
-                                font-weight: bold;
-                                text-align: center;
-                                margin-bottom: 4mm;
-                                text-transform: uppercase;
-                                letter-spacing: 0.05em;
-                            }
-
                             img { 
                                 width: ${printWidth};
                                 display: block;
-                            }
-                                
-                            .label {
-                                font-size: 8pt;
-                                text-align: center;
-                                margin-top: 3mm;
-                                color: #374151;
                             }
                         </style>
                     </head>
 
                     <body>
-                        <div class="header">
-                            Swinburne University of Technology
-                        </div>
-
-                        <img src=${blobUrl} alt="${title} for ${entityId}" />
-
-                        <div class="label">
-                            ${entityId}${entityLabel ? `-${entityLabel}` : ''}
-                        </div>
+                        <img src=${blobUrl || imageUrl} alt="${title} for ${entityId}" />
                     </body>
                 </html>    
             `)
@@ -407,7 +437,7 @@ export default function idCodeModal({ isOpen, onClose, tagPath, entityType, enti
             alert('Failed to print. Please try again.')
         }
 
-    }, [imageUrl, entityType, entityId, entityLabel, title])
+    }, [blobUrl, imageUrl, entityType, entityId, entityLabel, title])
 
 
     // If the modal is not open
@@ -426,7 +456,13 @@ export default function idCodeModal({ isOpen, onClose, tagPath, entityType, enti
         >
 
             {/* Modal card - click inside prevents the backdrop being closed */}
-            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-wd overflow-hidden"
+            <div className="bg-white rounded-2xl shadow-2xl
+                            w-full max-w-sm
+                            sm:max-w-md 
+                            md:max-w-lg 
+                            lg:max-w-xl
+                            mx-4 sm:mx-auto
+                            p-4 sm:p-6"
                  onClick={(e) => e.stopPropagation()}
             >
                 {/* ------------------- Header ----------------------- */}
@@ -456,13 +492,13 @@ export default function idCodeModal({ isOpen, onClose, tagPath, entityType, enti
                 {/* ------------------- Image area -------------------------- */}
                 <div className="px-5 oy-6 flex items-center justify-center bg-gray-50 min-h-[220px]">
                     {/* Display loading spinner when loading */}
-                    {loading && (
+                    {/* {loading && (
                         <div className="flex flex-col items-center gap-3">
                             <div className="h-8 w-8 animate-spin rounded-full border-2 border-gray-200 border-t-red-600">
                                 <p className="text-sm text-gray-500">Loading...</p>
                             </div>
                         </div>
-                    )}
+                    )} */}
 
                     {/* Not loading and no image URL is available */}
                     {!loading && !imageUrl && (
@@ -471,7 +507,7 @@ export default function idCodeModal({ isOpen, onClose, tagPath, entityType, enti
 
                     {/* Not loading and image is available */}
                     {!loading && imageUrl && (
-                        <img ref={imgRef} src={imageUrl} alt={`${title} for ${entityId}`}
+                        <img src={imageUrl} alt={`${title} for ${entityId}`}
                              className="rounded-lg object-contain shadow-sm"
                              style={{
                                 // Barcode requires width; QR codes need square dimensions
@@ -504,8 +540,8 @@ export default function idCodeModal({ isOpen, onClose, tagPath, entityType, enti
 
                     {/* Save image button */}
                     <button type="button" onClick={handleSave} disabled={!imageUrl}
-                            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white
-                                       border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2
+                            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-red-600
+                                       border border-transparent rounded-lg hover:bg-red-700 focus:outline-none focus:ring-2
                                        focus:ring-offset-2 focus:ring-red-500 disabled:opacity-40 disabled:cursor-not-allowed
                                        transition-colors"
                     >

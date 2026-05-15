@@ -10,6 +10,16 @@
  * @file components/ui/qrPreview.tsx
  * @description Client-side QR code preview component for the Add Location and Add Department forms.
  * 
+ * LATEST CHANGES:
+ * ---------------
+ *  - Now uses buildQrDataUrl from lib/idCode/idCodeImage.ts (the same function path used by the server)
+ *    so what you see in the preview is exactly what gets saved to Supabase storage
+ *  - Removed the colored HTML header strip (blue/green box around the card)
+ *    The university name, entity type label, url and name are now embedded into the PNG by drawQrCanvas.
+ *    Thus, removing the need for extra HTML wrappers.
+ *  - Print and Save uses the same composite data URL so there is no more layout mismatch
+ *  - QR code color is now #000000 pure black for maximum scan clarity
+ * 
  * Mirrors the barcodePreview component for assets, but renders a QR code instead of a barcode.
  * Shows a live preview as the user types the ID, indicates whether the ID is available or already
  * taken and provides Print and Save buttons - without ever exposing the Supabase bucket URLs to the
@@ -37,6 +47,8 @@ import {
     PrinterIcon,
     ArrowDownTrayIcon
 } from '@heroicons/react/24/outline'
+import { buildQrDataUrl, buildScanUrl } from '@/lib/idCode/idCodeImage'
+import type { qrFolder } from '@/lib/idCode/idCodeImage'
 
 // -------------------------------------------------------------
 //                          Types
@@ -70,50 +82,51 @@ interface qrPreviewProps {
 // -------------------------------------------------------------
 // Base URL for the static scan redirect - same value as the server utility.
 // Uses NEXT_PUBLIC_env var so it's available in the browser.
-const BASE_URL =
-    (typeof window !== 'undefined'
-        ? process.env.NEXT_PUBLIC_APP_URL
-        : undefined) ?? 'https://swinburne-assets.vercel.app'
+// const BASE_URL =
+//     (typeof window !== 'undefined'
+//         ? process.env.NEXT_PUBLIC_APP_URL
+//         : undefined) ?? 'https://swinburne-assets.vercel.app'
 
-/**
+
+// -------------------------------------------------------------
+//                       Helper function
+// -------------------------------------------------------------
+// Helps to determine Supabase folder based on the entity type
+function entityToFolder(entityType: qrEntityType): qrFolder {
+    return entityType === 'location' ? 'locations' : 'departments'
+}
+
+/** Commented by Desmond @ 15-May-26: Removed entirely
  * Color scheme per entity type - distinguish between location QRs (blue accent)
  * from department QRs (green accent) at a glance, which is the industry convention
  * for color-coded tags
  * 
  * Map the color to the corresponding entity and create centralized styling
  */
-const ENTITY_STYLES: Record<qrEntityType, { accent: string; badgeBg: string; badgeText: string; headerBg: string}>
-= {
-    location: {
-        accent: '#1d4ed8', // Blue-700
-        badgeBg: '#eff6ff', // Blue-50
-        badgeText: '#1d4ed8', // Blue-700
-        headerBg: '#1e40af' // Blue-800
-    },
+// const ENTITY_STYLES: Record<qrEntityType, { accent: string; badgeBg: string; badgeText: string; headerBg: string}>
+// = {
+//     location: {
+//         accent: '#1d4ed8', // Blue-700
+//         badgeBg: '#eff6ff', // Blue-50
+//         badgeText: '#1d4ed8', // Blue-700
+//         headerBg: '#1e40af' // Blue-800
+//     },
 
-    department: {
-        accent: '#15803d', // Green-700
-        badgeBg: '#f0fdf4', // Green-50
-        badgeText: '#15803d', // Green-700
-        headerBg: '#166534' // Green-800
-    }
-}
+//     department: {
+//         accent: '#15803d', // Green-700
+//         badgeBg: '#f0fdf4', // Green-50
+//         badgeText: '#15803d', // Green-700
+//         headerBg: '#166534' // Green-800
+//     }
+// }
 
-// Decouple the UI text from the logic
-// Only the location and department module uses QR codes
-const ENTITY_LABELS: Record<qrEntityType, string> = {
-    location: 'Location',
-    department: 'Department'
-}
+// // Decouple the UI text from the logic
+// // Only the location and department module uses QR codes
+// const ENTITY_LABELS: Record<qrEntityType, string> = {
+//     location: 'Location',
+//     department: 'Department'
+// }
 
-// -------------------------------------------------------------
-//                          Helper
-// -------------------------------------------------------------
-// Builds the static scan URL that gets encoded into the QR sticker
-// e.g. /scan/location/G001
-function buildScanUrl(entityType: qrEntityType, id: string): string {
-    return `${BASE_URL}/scan/${entityType}/${encodeURIComponent(id)}`
-}
 
 // -------------------------------------------------------------
 //                         Component
@@ -127,7 +140,7 @@ function buildScanUrl(entityType: qrEntityType, id: string): string {
  * @param isDuplicate - Whether the current ID is already taken
  * @param showControls - Show Print + Save buttons
  */
-const qrPreview =({ value, entityType, label, isDuplicate = false, showControls = true, className = '' }: qrPreviewProps) => {
+const QrPreview =({ value, entityType, label, isDuplicate = false, showControls = true, className = '' }: qrPreviewProps) => {
     // Base64 data URL of the QR code rendered by the browser
     const [qrDataUrl, setQrDataUrl] = useState<string>('')
 
@@ -137,9 +150,12 @@ const qrPreview =({ value, entityType, label, isDuplicate = false, showControls 
     // Copy-to-clipboard feedback
     const [copied, setCopied] = useState(false)
 
+    // Used to cancel stale async updates when value changes quickly
+    const abortRef = useRef(false)
+
     // References to the hidden canvas used for saving and printing
     // Avoids re-rendering and DOM querying
-    const canvasRef = useRef<HTMLCanvasElement>(null)
+    // const canvasRef = useRef<HTMLCanvasElement>(null)
 
     // ID is valid when length is not empty
     const isValid = value.trim().length > 0
@@ -149,13 +165,15 @@ const qrPreview =({ value, entityType, label, isDuplicate = false, showControls 
     // entityType is a key
     // Access using the bracket notation like ENTITY_STYLES[entityType], entityType is location for example
     // Result - { accent: '', badgeBg: '', ... }
-    const styles = ENTITY_STYLES[entityType]
-    const entityLabel = ENTITY_LABELS[entityType]
+    // const styles = ENTITY_STYLES[entityType]
+    // const entityLabel = ENTITY_LABELS[entityType]
 
     // Check if the user has typed something, if valid then build the scan URL.
     // e.g. URL = https://.../scan/location/G001
     // .trim() removes whitespaces or blanks
-    const scanUrl = isValid ? buildScanUrl(entityType, value.trim()) : ''
+    const folder = entityToFolder(entityType)
+    const scanUrl = isValid ? buildScanUrl(folder, value.trim()) : ''
+    const entityLabel = entityType === 'location' ? 'Location' : 'Department'
 
     // -------------------------------------------------------------
     //        Generate QR code whenever the value changes
@@ -170,52 +188,69 @@ const qrPreview =({ value, entityType, label, isDuplicate = false, showControls 
         }
 
         // Cancellation flag - Prevents state updates after component unmount or re-render
-        let cancelled = false
+        abortRef.current = false
         // Indicate that QR generation is in progress
         setGenerating(true)
 
         // Dynamically import 'qrcode' so it only loads in the browser and only
         // when the user actually types an ID 
         // This is lazy loading where package is only imported when needed
-        import('qrcode').then((QRCode) => {
-            // QR code generation - generate a QR code as a Base64 image string
-            // Format: QRCode.toDataURL(scanUrl, options)
-            QRCode.toDataURL(scanUrl, {
-                errorCorrectionLevel: 'M', // QR still scannable up to 15% damage
-                margin: 3, // White space padding around QR
-                width: 400, // Output size in pixels (400 x 400) 
-                color: {
-                    dark: '#111827', // Foreground color
-                    light: '#ffffff' // Background color
-                }
-            })
-            // Success handler - store the generated QR image in state
-            .then((url) => {
-                if (!cancelled) {
-                    // Store the image string in state
+        // import('qrcode').then((QRCode) => {
+        //     // QR code generation - generate a QR code as a Base64 image string
+        //     // Format: QRCode.toDataURL(scanUrl, options)
+        //     QRCode.toDataURL(scanUrl, {
+        //         errorCorrectionLevel: 'M', // QR still scannable up to 15% damage
+        //         margin: 3, // White space padding around QR
+        //         width: 400, // Output size in pixels (400 x 400) 
+        //         color: {
+        //             dark: '#000000', // Foreground color
+        //             light: '#ffffff' // Background color
+        //         }
+        //     })
+        //     // Success handler - store the generated QR image in state
+        //     .then((url) => {
+        //         if (!cancelled) {
+        //             // Store the image string in state
+        //             setQrDataUrl(url)
+        //         }
+        //     })
+        //     // Catch errors
+        //     .catch((err: unknown) => {
+        //         // Log error to console
+        //         console.error('[QrPreview] QR generation error:', err)
+        //     })
+        //     // Stops loading state regardless of success or failure
+        //     .finally(() => {
+        //         if (!cancelled) {
+        //             // Indicate the QR generating process has stopped
+        //             setGenerating(false)
+        //         }
+        //     })
+        // })
+
+        buildQrDataUrl({ id: value.trim(), folder, name: label })
+            .then(url => {
+                if (!abortRef.current) {
                     setQrDataUrl(url)
                 }
             })
-            // Catch errors
-            .catch((err: unknown) => {
-                // Log error to console
+
+            .catch(err => {
                 console.error('[QrPreview] QR generation error:', err)
             })
-            // Stops loading state regardless of success or failure
+
             .finally(() => {
-                if (!cancelled) {
-                    // Indicate the QR generating process has stopped
+                if (!abortRef.current) {
                     setGenerating(false)
                 }
             })
-        })
 
         // Cleanup function
         return () => {
-            cancelled = true
+            abortRef.current = true
         }
 
-    }, [scanUrl, isValid]) // Generate QR code every time input value (scanUrl) changes
+    }, [value, folder, label, isValid]) // Generate QR code every time input value changes
 
     // -------------------------------------------------------------
     //              Copy scan URL to clipboard
@@ -267,123 +302,124 @@ const qrPreview =({ value, entityType, label, isDuplicate = false, showControls 
     //          Draw QR onto canvas (for print/save)
     // -------------------------------------------------------------
     // canvas: HTMLCanvasElement - Target canvas to draw on
-    const drawToCanvas = useCallback( (canvas: HTMLCanvasElement): Promise<void> => {
-        // Canvas drawing can take time loading
-        // Promise ensures the caller know when the drawing is done
-        return new Promise((resolve, reject) => {
-            // Get canvas context
-            // ctx: drawing API for canvas
-            const ctx = canvas.getContext('2d')
+    // const drawToCanvas = useCallback( (canvas: HTMLCanvasElement): Promise<void> => {
+    //     // Canvas drawing can take time loading
+    //     // Promise ensures the caller know when the drawing is done
+    //     return new Promise((resolve, reject) => {
+    //         // Get canvas context
+    //         // ctx: drawing API for canvas
+    //         const ctx = canvas.getContext('2d')
 
-            // If failure or QR image not available
-            if (!ctx || !qrDataUrl) {
-                reject(new Error('Canvas context or QR data not available'))
-                return
-            }
+    //         // If failure or QR image not available
+    //         if (!ctx || !qrDataUrl) {
+    //             reject(new Error('Canvas context or QR data not available'))
+    //             return
+    //         }
 
-            // Canvas dimensions
-            const W = 500
-            const QR_SIZE = 340
-            const PADDING = 20
-            const HEADER_H = 56
-            const FOOTER_H = 72
-            const H = HEADER_H + QR_SIZE + FOOTER_H + PADDING * 2
+    //         // Canvas dimensions
+    //         const W = 500
+    //         const QR_SIZE = 340
+    //         const PADDING = 20
+    //         const HEADER_H = 56
+    //         const FOOTER_H = 72
+    //         const H = HEADER_H + QR_SIZE + FOOTER_H + PADDING * 2
 
-            // Apply the dimensions
-            canvas.width = W
-            canvas.height = H
+    //         // Apply the dimensions
+    //         canvas.width = W
+    //         canvas.height = H
 
-            // Drawing operations
-            // Background
-            ctx.fillStyle = '#ffffff'
-            ctx.fillRect(0, 0, W, H)
+    //         // Drawing operations
+    //         // Background
+    //         ctx.fillStyle = '#ffffff'
+    //         ctx.fillRect(0, 0, W, H)
 
-            // Header strip
-            // Draw colored header (blue/green) depending on the entity
-            ctx.fillStyle = styles.headerBg
-            ctx.fillRect(0, 0, W, HEADER_H)
+    //         // Header strip
+    //         // Draw colored header (blue/green) depending on the entity
+    //         ctx.fillStyle = styles.headerBg
+    //         ctx.fillRect(0, 0, W, HEADER_H)
 
-            // Header text: "SWINBURNE UNIVERSITY OF TECHNOLOGY"
-            ctx.fillStyle = '#ffffff'
-            ctx.font = 'bold 13px sans-serif'
-            ctx.textAlign = 'center'
-            // W / 2 to center the alignment
-            ctx.fillText('SWINBURNE UNIVERSITY OF TECHNOLOGY', W / 2, 42)
+    //         // Header text: "SWINBURNE UNIVERSITY OF TECHNOLOGY"
+    //         ctx.fillStyle = '#ffffff'
+    //         ctx.font = 'bold 13px sans-serif'
+    //         ctx.textAlign = 'center'
+    //         // W / 2 to center the alignment
+    //         ctx.fillText('SWINBURNE UNIVERSITY OF TECHNOLOGY', W / 2, 42)
 
-            // Entity label in header: "Location: G001"
-            ctx.font = '11px sans-serif'
-            ctx.fillText(`${entityLabel}: ${value.trim()}`, W / 2, 42)
+    //         // Entity label in header: "Location: G001"
+    //         ctx.font = '11px sans-serif'
+    //         ctx.fillText(`${entityLabel}: ${value.trim()}`, W / 2, 42)
 
-            // Create the image object for QR code and draw it on the canvas once loaded
-            const img = new Image()
-            // Load the image
-            img.onload = () => {
-                // xOffset is the center alignment
-                const xOffset = (W - QR_SIZE) / 2
-                // Draw the QR code image to the canvas
-                // drawImage(img, dx, dy, dWidth, dHeight)
-                ctx.drawImage(img, xOffset, HEADER_H + PADDING, QR_SIZE, QR_SIZE)
+    //         // Create the image object for QR code and draw it on the canvas once loaded
+    //         const img = new Image()
+    //         // Load the image
+    //         img.onload = () => {
+    //             // xOffset is the center alignment
+    //             const xOffset = (W - QR_SIZE) / 2
+    //             // Draw the QR code image to the canvas
+    //             // drawImage(img, dx, dy, dWidth, dHeight)
+    //             ctx.drawImage(img, xOffset, HEADER_H + PADDING, QR_SIZE, QR_SIZE)
 
-                // Footer: friendly label
-                // Draws a label below the QR code on the canvas, e.g. (Room G-001), if it exists
-                if (label) {
-                    // Set the text color
-                    ctx.fillStyle = '#111827'
-                    // Weight, size and font family
-                    ctx.font = 'bold 14px sans-serif'
-                    // Align text to the center
-                    ctx.textAlign = 'center'
-                    // Draw the text
-                    // fillText(text, x, y)
-                    ctx.fillText(label, W / 2, HEADER_H + PADDING + QR_SIZE + 24)
-                }
+    //             // Footer: friendly label
+    //             // Draws a label below the QR code on the canvas, e.g. (Room G-001), if it exists
+    //             if (label) {
+    //                 // Set the text color
+    //                 ctx.fillStyle = '#111827'
+    //                 // Weight, size and font family
+    //                 ctx.font = 'bold 14px sans-serif'
+    //                 // Align text to the center
+    //                 ctx.textAlign = 'center'
+    //                 // Draw the text
+    //                 // fillText(text, x, y)
+    //                 ctx.fillText(label, W / 2, HEADER_H + PADDING + QR_SIZE + 24)
+    //             }
 
-                // Footer: scan URL hint
-                // Set the text color
-                ctx.fillStyle = '#6b7280'
-                // Font size and font family
-                ctx.font = '9px monospace'
-                // Draw the text
-                // fillText(text, x, y)
-                ctx.fillText(scanUrl, W / 2, HEADER_H + PADDING + QR_SIZE + 46)
+    //             // Footer: scan URL hint
+    //             // Set the text color
+    //             ctx.fillStyle = '#6b7280'
+    //             // Font size and font family
+    //             ctx.font = '9px monospace'
+    //             // Draw the text
+    //             // fillText(text, x, y)
+    //             ctx.fillText(scanUrl, W / 2, HEADER_H + PADDING + QR_SIZE + 46)
 
-                // Marks a Promise as resolved when the drawing is done
-                // resolve( 'empty' ) because Promise<void> does not return any value
-                // SUCCESS
-                resolve()
-            }
-            // Assign the Promise's reject function as the error handler for the image
-            // Mark the Promise as failed if image fails to load
-            // FAILURE
-            img.onerror = reject
-            // Trigger the image loading by assigning the QR data URL to the src attribute
-            // Browser begins to load the image
-            img.src = qrDataUrl
-        })
-    }, [qrDataUrl, entityLabel, value, label, scanUrl, styles.headerBg])
+    //             // Marks a Promise as resolved when the drawing is done
+    //             // resolve( 'empty' ) because Promise<void> does not return any value
+    //             // SUCCESS
+    //             resolve()
+    //         }
+    //         // Assign the Promise's reject function as the error handler for the image
+    //         // Mark the Promise as failed if image fails to load
+    //         // FAILURE
+    //         img.onerror = reject
+    //         // Trigger the image loading by assigning the QR data URL to the src attribute
+    //         // Browser begins to load the image
+    //         img.src = qrDataUrl
+    //     })
+    // }, [qrDataUrl, entityLabel, value, label, scanUrl, styles.headerBg])
 
     // -------------------------------------------------------------
     //                     Save QR code as PNG
     // -------------------------------------------------------------
     const handleSave = useCallback(async () => {
         // useRef to give access to the DOM element
-        const canvas = canvasRef.current
+        // const canvas = canvasRef.current
         
         // If canvas is not mounted OR QR image is not generated yet
-        if (!canvas || !qrDataUrl) {
+        // if (!canvas || !qrDataUrl) {
+        if (!qrDataUrl) {
             // Exit early
             return
         }
 
         try {
             // Draw the QR and the layout onto the canvas and wait until it finishes drawing
-            await drawToCanvas(canvas)
+            // await drawToCanvas(canvas)
             // Create a temporary anchor element and use it to trigger download of the canvas content
             const link = document.createElement('a')
             // Set the file name
             link.download = `qr-${entityType}-${value.trim()}.png`
             // Convert the canvas content to an image (data URL) and set it as the href of the anchor
-            link.href = canvas.toDataURL('image/png')
+            link.href = qrDataUrl
             // Simulate a click on the anchor to trigger the browser to download the file
             link.click()
             // Catch the errors
@@ -393,7 +429,7 @@ const qrPreview =({ value, entityType, label, isDuplicate = false, showControls 
             // Alert the user that saving failed
             alert('Failed to save QR code image.')
         }
-    }, [drawToCanvas, qrDataUrl, entityType, value])
+    }, [qrDataUrl, entityType, value])
 
     // -------------------------------------------------------------
     //                       Print QR code
@@ -401,19 +437,20 @@ const qrPreview =({ value, entityType, label, isDuplicate = false, showControls 
     // Promise<void> because it's async
     const handlePrint = useCallback(async () => {
         // Retrieve the canvas element from the ref
-        const canvas = canvasRef.current
+        // const canvas = canvasRef.current
 
         // If canvas is not mounted OR QR image is not generated yet
-        if (!canvas || !qrDataUrl) {
+        // if (!canvas || !qrDataUrl) {
+        if (!qrDataUrl) {
             // Exit early
             return
         }
 
         try {
-            // Draw the QR and the layout onto the canvas and wait until it finishes drawing
-            await drawToCanvas(canvas)
-            // Convert the canvas content to a data URL (base64-encoded image)
-            const dataUrl = canvas.toDataURL('image/png')
+            // // Draw the QR and the layout onto the canvas and wait until it finishes drawing
+            // await drawToCanvas(canvas)
+            // // Convert the canvas content to a data URL (base64-encoded image)
+            // const dataUrl = canvas.toDataURL('image/png')
 
             // Open an invisible iframe and print only the QR image
             const iframe = document.createElement('iframe')
@@ -448,7 +485,7 @@ const qrPreview =({ value, entityType, label, isDuplicate = false, showControls 
                     </head>
 
                     <body>
-                        <img src="${dataUrl}" alt="QR code for ${entityLabel} ${value.trim()}" />
+                        <img src="${qrDataUrl}" alt="QR code for ${entityLabel} ${value.trim()}" />
                     </body>
                 </html>
             `)
@@ -469,7 +506,7 @@ const qrPreview =({ value, entityType, label, isDuplicate = false, showControls 
             // Alert the user that printing failed
             alert('Failed to print QR code.')
         }
-    }, [drawToCanvas, qrDataUrl, entityLabel, value])
+    }, [qrDataUrl, entityLabel, value])
 
     // -------------------------------------------------------------
     //              Empty state (no QR code generated)
@@ -505,8 +542,6 @@ const qrPreview =({ value, entityType, label, isDuplicate = false, showControls 
             role="region"
             aria-label={`QR code preview for ${entityLabel} ${value}`}
         >
-            {/* Hidden canvas used for save and print operations */}
-            <canvas ref={canvasRef} className="hidden" aria-hidden="true" />
 
             {/* Warning about duplicate ID */}
             {isDuplicate && (
@@ -522,30 +557,12 @@ const qrPreview =({ value, entityType, label, isDuplicate = false, showControls 
                 </div>
             )}
 
-            {/* ------------------ Color-coded header strip ----------------------- */}
-            <div className="px-4 py-3 text-white" style={{ backgroundColor: styles.headerBg }} >
-                {/* Swinburne University of Technology - printed on every QR sticker */}
-                <p className="text-[10px] font-semibold uppercase tracking-widest opacity-80 text-center">
-                    Swinburne University of Technology
-                </p>
-
-                {/* Entity label: "Location: G001" - helps the staff to identify QR codes at a glance */}
-                <p className="text-sm font-bold text-center mt-0.5">
-                    {entityLabel}: {value.trim()}
-                </p>
-            </div>
 
             {/* -------------------- Utility toolbar --------------------------- */}
             <div className="flex items-center justify-between px-4 pt-3 pb-1">
                 <div className="flex items-center gap-2">
                     {/* Color-coded badges: Blue = location, green = department */}
-                    <span className="inline-flex items-center rounded-md px-2 py-1 text-xs font-bold uppercase tracking-wider ring-1 ring-inset"
-                        style={{
-                            backgroundColor: styles.badgeBg,
-                            color: styles.badgeText, 
-                            borderColor: styles.accent
-                        }}
-                    >
+                    <span className="inline-flex items-center rounded-md px-2 py-1 text-xs font-bold uppercase tracking-wider ring-1 ring-inset">
                         {entityLabel} QR
                     </span>
 
@@ -609,8 +626,7 @@ const qrPreview =({ value, entityType, label, isDuplicate = false, showControls 
                 {generating && (
                     <div className="flex flex-col items-center gap-2 py-8">
                         {/* Generating the QR image */}
-                        <div className="h-5 w-5 animate-spin rounded-full border-2 border-gray-200"
-                             style={{ borderTopColor: styles.accent }} />
+                        <div className="h-5 w-5 animate-spin rounded-full border-2 border-gray-200" />
                         <p className="text-xs text-gray-400">Generating QR image</p>
                     </div>
                 )}
@@ -618,13 +634,13 @@ const qrPreview =({ value, entityType, label, isDuplicate = false, showControls 
                 {/* Display the generated QR code image */}
                 {!generating && qrDataUrl && (
                     <img src={qrDataUrl} alt={`QR code for ${entityLabel} ${value}`} 
-                         className="rounded-md" style={{ width: 220, height: 220 }}
+                         className="rounded-md" style={{ width: 240, height: 240 }}
                     />
                 )}
             </div>
 
             {/* --------------------- Footer metadata ---------------------- */}
-            <div className="border-t border-gray-100 px-4 pt-3 pb-4">
+            {/* <div className="border-t border-gray-100 px-4 pt-3 pb-4">
                 {label && (
                     <p className="truncate text-center text-xs font-semibold text-gray-700" title={label}>
                         {label}
@@ -638,7 +654,7 @@ const qrPreview =({ value, entityType, label, isDuplicate = false, showControls 
                 <p className="mt-1 text-center text-[10px] text-gray-400">
                     Static scan URL - permanent even if the destination page route changes
                 </p>
-            </div>
+            </div> */}
 
         </div>
     )
@@ -647,4 +663,4 @@ const qrPreview =({ value, entityType, label, isDuplicate = false, showControls 
 // Memoize the component to prevent unnecessary re-renders and improve performance, 
 // especially when used in forms with multiple inputs
 // And export it so it can be imported in the Add Location and Add Department forms
-export default memo(qrPreview)
+export default memo(QrPreview)

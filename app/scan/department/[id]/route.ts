@@ -4,7 +4,7 @@
  * @file app/scan/department/[id]/route.ts
  * @description Public redirect handler for department QR code scans.
  * 
- * QR stickers encode: https://swinburne-assets.vercel.aoo/scan/department/IT
+ * QR stickers encode: https://swinburne-assets.vercel.app/scan/department/IT
  * This route validates the department_id, then redirects to the scanner page.
  * 
  * See app/scan/location/[id]/route.ts for full design rationale.

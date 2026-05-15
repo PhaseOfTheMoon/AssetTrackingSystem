@@ -57,7 +57,7 @@ export async function GET (request: NextRequest, { params }: { params: Promise<{
         // Handles invalid data such as DB errors or missing records
         if (error || !data) {
             // Location not found or deleted - redirect to the not found page
-            return NextResponse.redirect(new URL('/not-found', request.url))
+            return NextResponse.redirect(new URL('/notFound', request.url))
         }
 
         /**
@@ -83,6 +83,6 @@ export async function GET (request: NextRequest, { params }: { params: Promise<{
         // Log the error to console for developers
         console.error('[scan/location] Unexpected error:', err)
         // Redirect the user to the not found page
-        return NextResponse.redirect(new URL('/not-found', request.url))
+        return NextResponse.redirect(new URL('/notFound', request.url))
     }
 }

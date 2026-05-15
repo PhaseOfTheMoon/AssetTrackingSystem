@@ -4,6 +4,18 @@
  * @description This file is a server-only utility for generating QR codes for location and department
  * records.
  * 
+ * LATEST CHANGES
+ * --------------
+ *  - Delegates the PNG generation to lib/idCode/idCodeImage.ts (buildQrBuffer)
+ *    so the stored PNG is identical to the client-side qrPreview.
+ *  - Accepts optional 'name' parameter embedded into the composite PNG.
+ *  - BASE_URL correctly uses NEXT_PUBLIC_APP_URL (not NEXTAUTH_URL which is localhost:3000 in dev
+ *    , which was causing bucket-stored QRs to encode localhost URLs instead of https://swinnburne-assets
+ *    .vercel.app).
+ * 
+ * 
+ * Old comments
+ * ------------
  * Design factor: Using static QR (it is inconvenient to reprint a QR code many times) + dynamic 
  * redirect pattern (industry standard, meaning only the application logic changes but the QR code 
  * never changes).
@@ -19,33 +31,41 @@
  *   locations/G001.png
  *   departments/IT.png
  * 
+ * 
+ * IMPORTANT NOTES
+ * ---------------
  * DO NOT import this file in client components - it uses the service role key via supabaseAdmin
  * 
  * Need to npm install before using this component
  *   npm install qrcode @types/qrcode
  */
 
-import QRCode from 'qrcode'
+// import QRCode from 'qrcode'
 import { supabaseAdmin } from '../supabase/server'
+import { buildQrBuffer, buildScanUrl } from '../idCode/idCodeImage'
+import type { qrFolder } from '../idCode/idCodeImage'
+
+
+// -------------------------------------------------------------
+//                          Types
+// -------------------------------------------------------------
+// The only folders allowed inside the IdCodes bucket for QR codes
+// export type qrFolder = 'locations' | 'departments'
+export type { qrFolder }
 
 // -------------------------------------------------------------
 //                       Constants
 // -------------------------------------------------------------
 // Supabase storage name - same bucket used by barcode.ts
 const BUCKET = 'IdCodes'
+const MAX_QR_ID_LENGTH = 30
 
 // Base URL for hte static scan redirect. Falls back to localhost in development.
-const BASE_URL = process.env.NEXTAUTH_URL?.replace(/\/&/, '') ??
-    'https://swinburne-assets.vercel.app'
+// const BASE_URL = process.env.NEXTAUTH_URL?.replace(/\/&/, '') ??
+//     'https://swinburne-assets.vercel.app'
 
-// Maximum allowed length for location_id or department_id
-const MAX_ID_LENGTH = 30
-
-// -------------------------------------------------------------
-//                          Types
-// -------------------------------------------------------------
-// The only folders allowed inside the IdCodes bucket for QR codes
-export type qrFolder = 'locations' | 'departments'
+// // Maximum allowed length for location_id or department_id
+// const MAX_ID_LENGTH = 30
 
 // Returned after a QR code is generated and uploaded to bucket
 export interface uploadQrResult {
@@ -67,31 +87,31 @@ export interface uploadQrResult {
 /** @param id - The location_id or department_id to validate */
 // unknown - the value can be a string or null
 // asserts id is string - if function finish running without error, the id is string
-function validateId(id: unknown): asserts id is string {
-    // If the ID is not a string OR an empty string
-    // trim() removes whitespaces from both ends
-    // If the string is empty, trim() = false, !(false) = true
-    if (typeof id !== 'string' || !id.trim()) {
-        throw new Error('ID must be a non-empty string')
-    }
+// function validateId(id: unknown): asserts id is string {
+//     // If the ID is not a string OR an empty string
+//     // trim() removes whitespaces from both ends
+//     // If the string is empty, trim() = false, !(false) = true
+//     if (typeof id !== 'string' || !id.trim()) {
+//         throw new Error('ID must be a non-empty string')
+//     }
 
-    // If the ID length is over the pre-established threshold
-    if (id.length > MAX_ID_LENGTH) {
-        throw new Error(`ID exceeds maximum length (${MAX_ID_LENGTH} characters)`)
-    }
+//     // If the ID length is over the pre-established threshold
+//     if (id.length > MAX_ID_LENGTH) {
+//         throw new Error(`ID exceeds maximum length (${MAX_ID_LENGTH} characters)`)
+//     }
 
-    // Prevent directory traversal or URL injection
-    // Acts as a deny-list to check if a string contains special characters
-    // / and \\ (slashes) - Prevents directory traversal
-    // ? and # (URL meta-characters) - Prevents URL injection as it can change how a URL is parsed
-    // & and = (Inject extra arguments to db query) - Prevents parameter pollution
-    // < and > (Angle brackets) - Prevents cross-site scripting (XSS) and inject HTML tags or <script> tags
-    // ' and " (Quotes) - Prevents SQL injection and ensure ID cannot break out of its string container
-    // % and ; (Double encoding and query chaining) - Semicolon is often used in SQL to start a second malicious command
-    if (/[/\\?#&=<>'"%;]/.test(id)) { // .test(id) - true if id contains any of the listed characters
-        throw new Error('ID contains invalid characters')
-    }
-}
+//     // Prevent directory traversal or URL injection
+//     // Acts as a deny-list to check if a string contains special characters
+//     // / and \\ (slashes) - Prevents directory traversal
+//     // ? and # (URL meta-characters) - Prevents URL injection as it can change how a URL is parsed
+//     // & and = (Inject extra arguments to db query) - Prevents parameter pollution
+//     // < and > (Angle brackets) - Prevents cross-site scripting (XSS) and inject HTML tags or <script> tags
+//     // ' and " (Quotes) - Prevents SQL injection and ensure ID cannot break out of its string container
+//     // % and ; (Double encoding and query chaining) - Semicolon is often used in SQL to start a second malicious command
+//     if (/[/\\?#&=<>'"%;]/.test(id)) { // .test(id) - true if id contains any of the listed characters
+//         throw new Error('ID contains invalid characters')
+//     }
+// }
 
 // -------------------------------------------------------------
 //                        Public API
@@ -104,6 +124,7 @@ function validateId(id: unknown): asserts id is string {
  * 
  * @param id - The location_id or department_id (e.g. "G001", "IT")
  * @param folder - 'locations' or 'departments'
+ * @param name - Location or department name embedded onto this image
  * @returns - tagPath, publicUrl and the scanUrl encoded in the QR
  * 
  * @example
@@ -113,24 +134,24 @@ function validateId(id: unknown): asserts id is string {
  *   // result.publicUrl - "https://…supabase.co/storage/…/locations/G001.png"
  */
 // Promise<uploadQrResult> - specifies what the function will return
-export async function generateAndUploadQr(id: string, folder: qrFolder): Promise<uploadQrResult> {
-    // Validate ID is a string and safe to use as QR payload
-    validateId(id)
+export async function generateAndUploadQr(id: string, folder: qrFolder, name?: string): Promise<uploadQrResult> {
+    if (!id?.trim()) {
+        throw new Error('QR generation: ID must be non-empty')
+    }
+
+    if (id.length > MAX_QR_ID_LENGTH) {
+        throw new Error(`QR generation: ID exceeds ${MAX_QR_ID_LENGTH} character limit`)
+    }
+
+    if (/[/\\?#&=<>'"%;]/.test(id)) {
+        throw new Error('QR generation: ID contains invalid characters')
+    }
 
     // Build the static scan URL that is permanently encoded to the QR sticker
-    const entitySegment = folder === 'locations' ? 'location' : 'department'
-    const scanUrl = `${BASE_URL}/scan/${entitySegment}/${encodeURIComponent(id)}`
+    const scanUrl = buildScanUrl(folder, id)
 
     // Generate the QR code as a PNG buffer using the 'qrcode' npm package
-    const pngBuffer = await QRCode.toBuffer(scanUrl, {
-        errorCorrectionLevel: 'M', // Medium (15%) - allow the QR code to be scanned if 15% is damaged
-        margin: 3, // Quiet zone (white border around the code to distinguish pattern from background)
-        width: 400, // 400 x 400 px - large enough to be scanned reliably
-        color: {
-            dark: '#111827', // Near-black bars - high contrast for scanning
-            light: '#ffffff' // White background behind the QR code
-        }
-    })
+    const pngBuffer = await buildQrBuffer({ id, folder, name })
 
     const tagPath = `${folder}/${id}.png`
 
@@ -179,6 +200,15 @@ export async function deleteQr(tagPath: string): Promise<void> {
         // Log the error but do not throw - the cleanup failure should not crash the caller (again)
         console.error(`[qrcode] Failed to delete QR file "${tagPath}":`, error.message)
     }
+}
+
+// Function to return the public URL for QR code images
+export function getQrPublicUrl(tagPath: string): string {
+    const { data } = supabaseAdmin.storage
+        .from(BUCKET)
+        .getPublicUrl(tagPath)
+
+    return data.publicUrl
 }
 
 /** Commented by Desmond @ 27-April-26
