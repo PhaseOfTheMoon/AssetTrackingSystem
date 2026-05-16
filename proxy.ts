@@ -1,5 +1,6 @@
 /** Commented by Desmond @ 18-Mar-26
- * middleware.ts
+ * proxy.ts
+ * Previously known as 'middleware.ts'
  * 
  * Auth strategy: next-auth JWT mode.
  *   next-auth manages its own encrypted 'next-auth.session-token' cookie.
@@ -132,6 +133,10 @@ async function rateLimitCrashHandler (limiter: Ratelimit, key: string): Promise<
 function applySecurityHeaders(response: NextResponse): NextResponse {
   const isProd = process.env.NODE_ENV === 'production'
 
+  response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate')
+  response.headers.set('Pragma', 'no-cache')
+  response.headers.set('Expires', '0')
+
   /** Click-jacking protection
    * X-Frame-Options: DENY
    * Blocks this page from being embedded inside an <iframe> on any other origin.
@@ -222,16 +227,16 @@ function rateLimitResponse(reset: number): NextResponse {
 }
 
 // Public paths
-const PUBLIC_PATHS = new Set(['/login', '/register', 'unauthorized'])
+// Commented by Desmond @ 29-April-26: /scan/* is added to PUBLIC_PATHS
+const PUBLIC_PATHS = new Set(['/login', '/register', 'unauthorized', '/scan/*'])
 
 // Returns true if the path is always publicly accessible
-// Also covers sub-paths of /unauthorized for nested pages
 function isPublicPath(pathname: string): boolean {
   if (PUBLIC_PATHS.has(pathname)) {
     return true
   }
 
-  if (pathname.startsWith('unauthorized')) {
+  if (pathname.startsWith('/unauthorized')) {
     return true
   }
   return false
@@ -271,9 +276,17 @@ export default withAuth(
 
     // ------------------------------------------------------------------
     // /dashboard — redirect to the correct role-based dashboard
+    // Pending/rejected users go to login instead
     // ------------------------------------------------------------------
     if (pathname === '/dashboard') {
-      const destination = token?.role === 'admin' ? '/admin/dashboard' : '/user/dashboard'
+      let destination = '/login'
+      
+      if (token?.role === 'admin') {
+        destination = '/admin/dashboard'
+      } else if (token?.role === 'staff') {
+        destination = '/user/dashboard'
+      }
+
       return applySecurityHeaders(
         NextResponse.redirect(new URL(destination, request.url))
       )
@@ -292,8 +305,18 @@ export default withAuth(
     }
 
     // ------------------------------------------------------------------
-    // /user/* — any authenticated user passes through
+    // /user/* and /profile/* — only approved users can access
+    // Pending and rejected accounts are redirected to login
+    // Only applies to protected routes to avoid redirect loops on /login
     // ------------------------------------------------------------------
+    const approvedRoles = ['admin', 'staff']
+    const isProtectedRoute = pathname.startsWith('/user') || pathname.startsWith('/profile')
+    if (isProtectedRoute && !approvedRoles.includes(token?.role as string)) {
+      return applySecurityHeaders(
+        NextResponse.redirect(new URL('/login', request.url))
+      )
+    }
+
     return applySecurityHeaders(NextResponse.next())
   },
 
