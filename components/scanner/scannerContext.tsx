@@ -176,7 +176,7 @@ export default function ScannerContent({
   return (
     <div className="p-4 lg:p-8">
       <div className="max-w-4xl mx-auto">
-        {/* --- THIS IS THE UPDATED HEADER --- */}
+        {/* THIS IS THE UPDATED HEADER */}
         <div className="bg-white rounded-lg shadow-md mb-6 overflow-hidden">
           <div className="px-6 py-4 bg-gradient-to-r from-red-700 to-red-500 text-white">
             <div className="flex items-center justify-between">
@@ -211,7 +211,7 @@ export default function ScannerContent({
           </div>
         </div>
 
-        {/* --- THIS IS THE UPDATED SCANNER AREA --- */}
+        {/* THIS IS THE UPDATED SCANNER AREA */}
         <div className="bg-white rounded-lg shadow-md mb-6">
           <div className="p-6 lg:p-8">
             {!isScanning ? (
@@ -262,7 +262,8 @@ export default function ScannerContent({
           </div>
         </div>
 
-        {/* --- THIS IS THE UPDATED FOOTER --- */}
+        {children}
+        {/* THIS IS THE UPDATED FOOTER */}
         <div className="bg-white rounded-lg shadow-md">
           <div className="px-4 lg:px-6 py-4 bg-gray-50">
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
