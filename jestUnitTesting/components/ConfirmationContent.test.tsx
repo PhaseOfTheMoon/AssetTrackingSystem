@@ -3,35 +3,30 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import ConfirmationContent from '@/components/scanner/confirmationContext'
 import '@testing-library/jest-dom'
 
-// ─── MOCKS ───────────────────────────────────────────────────────────────────
-
-// mock all lucide icons used in ConfirmationContent
+// mock lucide icons — component uses many of them
 jest.mock('lucide-react', () => ({
-  ChevronLeft:  () => <svg />,
-  CheckCircle:  () => <svg />,
-  Edit:         () => <svg />,
-  AlertCircle:  () => <svg />,
-  Save:         () => <svg />,
-  PackagePlus:  () => <svg />,
-  MapPin:       () => <svg />,
-  Building2:    () => <svg />,
-  Upload:       () => <svg />,
-  Sparkles:     () => <svg />,
-  PenLine:      () => <svg />,
-  RefreshCw:    () => <svg />,
+  ChevronLeft: () => <svg />,
+  CheckCircle: () => <svg />,
+  Edit: () => <svg />,
+  AlertCircle: () => <svg />,
+  Save: () => <svg />,
+  PackagePlus: () => <svg />,
+  MapPin: () => <svg />,
+  Building2: () => <svg />,
+  Upload: () => <svg />,
+  Sparkles: () => <svg />,
+  PenLine: () => <svg />,
+  RefreshCw: () => <svg />,
 }))
 
-// component now calls fetch for /api/location, /api/department, and /api/scanner
-// — we replace global.fetch so no real HTTP requests are made
+// intercept all fetch calls — component hits /api/location, /api/department, /api/scanner
 const mockFetch = jest.fn()
 global.fetch = mockFetch
 
-// window.alert is called for validation errors in register mode
+// alert fires when register form validation fails
 window.alert = jest.fn()
 
-// ─── HELPERS ─────────────────────────────────────────────────────────────────
-
-// sets up fetch to return the given scanner result plus empty location/dept lists
+// returns empty location/dept lists and whatever scanner result is passed in
 const setupFetchMocks = (scannerResult: { success: boolean; data: any | null }) => {
   mockFetch.mockImplementation((url: string) => {
     if (url.includes('/api/location')) {
@@ -47,35 +42,29 @@ const setupFetchMocks = (scannerResult: { success: boolean; data: any | null }) 
   })
 }
 
-// base props reused across tests — individual tests can override specific fields
+// shared props for most tests; individual tests override what they need
 const defaultProps = {
-  item:      { code: 'ASSET-001' },
+  item: { code: 'ASSET-001' },
   tableName: 'Asset',
-  onBack:    jest.fn(),
-  onSubmit:  jest.fn(),
-  onCreate:  jest.fn().mockResolvedValue(undefined),
+  onBack: jest.fn(),
+  onSubmit: jest.fn(),
+  onCreate: jest.fn().mockResolvedValue(undefined),
   parentScan: null,
 }
-
-// ─── TESTS ───────────────────────────────────────────────────────────────────
 
 describe('ConfirmationContent Component', () => {
   beforeEach(() => {
     jest.clearAllMocks()
   })
 
-  // ── LOADING STATE ────────────────────────────────────────────────────────
-
-  // component should show a loading message while the API calls are in-flight
+  // loading state
   it('shows loading state while fetching asset data', () => {
     mockFetch.mockReturnValue(new Promise(() => {})) // never resolves
     render(<ConfirmationContent {...defaultProps} />)
     expect(screen.getByText('Searching for asset...')).toBeInTheDocument()
   })
 
-  // ── ERROR STATE ──────────────────────────────────────────────────────────
-
-  // missing item code should immediately switch to error mode
+  // no item code means bad data — show error right away
   it('shows an error message when the item code is missing', async () => {
     mockFetch.mockResolvedValue({ json: () => Promise.resolve({ data: [] }) })
     render(<ConfirmationContent {...defaultProps} item={{ code: null }} />)
@@ -84,9 +73,7 @@ describe('ConfirmationContent Component', () => {
     })
   })
 
-  // ── REGISTER MODE (asset not found) ──────────────────────────────────────
-
-  // when scanner returns no data, the user should see the register form
+  // register mode — asset not found in the system
   it('shows the register form when the asset is not found', async () => {
     setupFetchMocks({ success: false, data: null })
     render(<ConfirmationContent {...defaultProps} />)
@@ -95,7 +82,7 @@ describe('ConfirmationContent Component', () => {
     })
   })
 
-  // the scanned asset code should be displayed on the register form
+  // scanned code must appear on the form so the user knows what they scanned
   it('shows the scanned asset code on the register form', async () => {
     setupFetchMocks({ success: false, data: null })
     render(<ConfirmationContent {...defaultProps} item={{ code: 'NEW-XYZ-999' }} />)
@@ -103,17 +90,16 @@ describe('ConfirmationContent Component', () => {
     expect(screen.getByText('NEW-XYZ-999')).toBeInTheDocument()
   })
 
-  // submitting without filling in required fields must not call onCreate
-  it('does not call onCreate when required fields are empty', async () => {
+  it('does not call onCreate and shows alert when required fields are empty', async () => {
     setupFetchMocks({ success: false, data: null })
     const mockOnCreate = jest.fn().mockResolvedValue(undefined)
     render(<ConfirmationContent {...defaultProps} onCreate={mockOnCreate} />)
     await waitFor(() => screen.getByRole('button', { name: /Register New Asset/i }))
     fireEvent.click(screen.getByRole('button', { name: /Register New Asset/i }))
     expect(mockOnCreate).not.toHaveBeenCalled()
+    expect(window.alert).toHaveBeenCalled()
   })
 
-  // filling all required fields and submitting should call onCreate with the entered data
   it('calls onCreate with correct data when the form is fully filled and submitted', async () => {
     setupFetchMocks({ success: false, data: null })
     const mockOnCreate = jest.fn().mockResolvedValue(undefined)
@@ -122,23 +108,22 @@ describe('ConfirmationContent Component', () => {
     await waitFor(() => screen.getByRole('heading', { name: /Register New Asset/i }))
 
     fireEvent.change(screen.getByPlaceholderText('e.g., Dell Latitude 5420'), { target: { value: 'My Test Laptop' } })
-    fireEvent.change(screen.getByPlaceholderText('e.g., Laptop'),             { target: { value: 'IT Equipment' } })
-    fireEvent.change(screen.getByPlaceholderText('e.g., Latitude 5420'),      { target: { value: 'XPS 15' } })
+    fireEvent.change(screen.getByPlaceholderText('e.g., Laptop'), { target: { value: 'IT Equipment' } })
+    fireEvent.change(screen.getByPlaceholderText('e.g., Latitude 5420'), { target: { value: 'XPS 15' } })
 
     fireEvent.click(screen.getByRole('button', { name: /Register New Asset/i }))
 
     expect(mockOnCreate).toHaveBeenCalledWith({
-      name:          'My Test Laptop',
-      category:      'IT Equipment',
-      model:         'XPS 15',
-      description:   '',
-      condition:     'In-use',
-      location_id:   null,
+      name: 'My Test Laptop',
+      category: 'IT Equipment',
+      model: 'XPS 15',
+      description: '',
+      condition: 'In-use',
+      location_id: null,
       department_id: null,
     })
   })
 
-  // "Back to Scan" in register mode should call onBack
   it('calls onBack when "Back to Scan" is clicked in register mode', async () => {
     setupFetchMocks({ success: false, data: null })
     const mockOnBack = jest.fn()
@@ -148,21 +133,19 @@ describe('ConfirmationContent Component', () => {
     expect(mockOnBack).toHaveBeenCalled()
   })
 
-  // ── EDITING MODE (asset found) ───────────────────────────────────────────
-
-  // when the scanner returns existing asset data, show the confirm step
+  // editing mode — asset already exists in the system
   it('shows "Confirm Asset" heading when the asset is found', async () => {
     setupFetchMocks({
       success: true,
       data: {
-        asset_id:      'ASSET-001',
-        name:          'Old Laptop',
-        category:      'Tech',
-        model:         'V1',
-        condition:     'In-use',
-        location_id:   null,
+        asset_id: 'ASSET-001',
+        name: 'Old Laptop',
+        category: 'Tech',
+        model: 'V1',
+        condition: 'In-use',
+        location_id: null,
         department_id: null,
-        description:   '',
+        description: '',
       },
     })
     render(<ConfirmationContent {...defaultProps} />)
@@ -171,19 +154,18 @@ describe('ConfirmationContent Component', () => {
     })
   })
 
-  // existing asset name should be displayed in the confirm step
   it('displays the existing asset name in editing mode', async () => {
     setupFetchMocks({
       success: true,
       data: {
-        asset_id:      'ASSET-001',
-        name:          'Old Laptop',
-        category:      'Tech',
-        model:         'V1',
-        condition:     'In-use',
-        location_id:   null,
+        asset_id: 'ASSET-001',
+        name: 'Old Laptop',
+        category: 'Tech',
+        model: 'V1',
+        condition: 'In-use',
+        location_id: null,
         department_id: null,
-        description:   '',
+        description: '',
       },
     })
     render(<ConfirmationContent {...defaultProps} />)
@@ -191,19 +173,18 @@ describe('ConfirmationContent Component', () => {
     expect(screen.getByText('Old Laptop')).toBeInTheDocument()
   })
 
-  // existing asset ID and category should appear in the confirm step
   it('displays the existing asset ID and category in editing mode', async () => {
     setupFetchMocks({
       success: true,
       data: {
-        asset_id:      'ASSET-001',
-        name:          'Old Laptop',
-        category:      'Tech',
-        model:         'V1',
-        condition:     'In-use',
-        location_id:   null,
+        asset_id: 'ASSET-001',
+        name: 'Old Laptop',
+        category: 'Tech',
+        model: 'V1',
+        condition: 'In-use',
+        location_id: null,
         department_id: null,
-        description:   '',
+        description: '',
       },
     })
     render(<ConfirmationContent {...defaultProps} />)
@@ -212,49 +193,50 @@ describe('ConfirmationContent Component', () => {
     expect(screen.getByText('Tech')).toBeInTheDocument()
   })
 
-  // clicking "Update Asset" in the confirm step should advance to the update form
   it('advances to the update step when "Update Asset" is clicked', async () => {
     setupFetchMocks({
       success: true,
       data: {
-        asset_id:      'ASSET-001',
-        name:          'Old Laptop',
-        category:      'Tech',
-        model:         'V1',
-        condition:     'In-use',
-        location_id:   null,
+        asset_id: 'ASSET-001',
+        name: 'Old Laptop',
+        category: 'Tech',
+        model: 'V1',
+        condition: 'In-use',
+        location_id: null,
         department_id: null,
-        description:   '',
+        description: '',
       },
     })
     render(<ConfirmationContent {...defaultProps} />)
     await waitFor(() => screen.getByRole('button', { name: /Update Asset/i }))
     fireEvent.click(screen.getByRole('button', { name: /Update Asset/i }))
-    // heading changes to "Update Asset" after advancing
-    expect(screen.getByText('Update Asset')).toBeInTheDocument()
+    // "Confirm Asset" heading from the previous step should be gone
+    expect(screen.queryByText('Confirm Asset')).not.toBeInTheDocument()
+    // "Update Asset" is now a heading, not the button that was clicked
+    expect(screen.queryByRole('button', { name: /^Update Asset$/i })).not.toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /Update Asset/i })).toBeInTheDocument()
   })
 
-  // "Back" in the confirm step should call onBack
   it('calls onBack when "Back" is clicked in the confirm step', async () => {
     setupFetchMocks({
       success: true,
       data: {
-        asset_id:      'ASSET-001',
-        name:          'Old Laptop',
-        category:      'Tech',
-        model:         'V1',
-        condition:     'In-use',
-        location_id:   null,
+        asset_id: 'ASSET-001',
+        name: 'Old Laptop',
+        category: 'Tech',
+        model: 'V1',
+        condition: 'In-use',
+        location_id: null,
         department_id: null,
-        description:   '',
+        description: '',
       },
     })
     const mockOnBack = jest.fn()
     render(<ConfirmationContent {...defaultProps} onBack={mockOnBack} />)
     // wait for editing mode — "Update Asset" button only appears once the asset loads
     await waitFor(() => screen.getByRole('button', { name: /Update Asset/i }))
-    // in editing confirm mode the back button reads "Back" (not "Back to Scan")
-    fireEvent.click(screen.getByRole('button', { name: /Back/i }))
+    // in editing confirm mode the back button reads exactly "Back" (not "Back to Scan")
+    fireEvent.click(screen.getByRole('button', { name: /^Back$/i }))
     expect(mockOnBack).toHaveBeenCalled()
   })
 })

@@ -1,32 +1,3 @@
-/**
- * Unit tests for the Profile page
- *
- * The page uses two hooks together:
- *   - useAuth (hooks/useAuth.ts): checks session, redirects unauthenticated users
- *   - useSession (next-auth/react): provides session data for displaying user info
- *
- * Both are mocked so tests run without a real auth server.
- *
- * What we cover:
- *   - Returns null while auth is still loading
- *   - Returns null and redirects when user is not authenticated
- *   - Renders the full profile UI when authenticated
- *   - Displays each session field (name, email, staffId, mobileNo, departmentId)
- *   - Shows N/A for any missing optional fields
- *   - Shows 'Loading...' in each field while NextAuth session status is 'loading'
- *   - Fetches assigned assets via POST /api/staff/assets using staffId from session
- *   - Shows "Loading assets..." while the fetch is in progress
- *   - Shows "No assets assigned yet" when the API returns an empty list
- *   - Renders up to 3 assets, hides the rest
- *   - Shows the "View All Assets (n)" button only when there are more than 3 assets
- *   - Clicking "View All Assets" fires the placeholder alert
- *   - Displays asset name and falls back to "Unknown Asset" when asset data is null
- *   - Displays asset category, falls back to "N/A" when missing
- *   - Logs console.error and stops loading on fetch failure
- *   - Does NOT fetch assets when staffId is absent from the session
- *   - Renders breadcrumb with Home and Profile items
- */
-
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
@@ -65,7 +36,7 @@ jest.mock('@/components/ui/Breadcrumb', () => {
 global.fetch = jest.fn();
 global.alert = jest.fn();
 
-// helper: a fully-populated session user object matching what the page reads
+// fully-populated session user matching what the page reads from session?.user
 const mockSessionUser = {
   name: 'Jun Zhen Wong',
   email: 'junzhen@swin.edu.my',
@@ -83,12 +54,6 @@ describe('ProfilePage', () => {
     (useRouter as jest.Mock).mockReturnValue({ push: mockPush, replace: mockReplace });
   });
 
-  // ─── Auth gate ─────────────────────────────────────────────────────────────
-
-  /**
-   * While useAuth is still checking the session it sets isLoading=true.
-   * The page should render nothing (return null) so the user sees no flash.
-   */
   it('renders nothing while auth is loading', () => {
     (useAuth as jest.Mock).mockReturnValue({ isLoading: true, isAuthenticated: false });
     (useSession as jest.Mock).mockReturnValue({ data: null, status: 'loading' });
@@ -100,10 +65,7 @@ describe('ProfilePage', () => {
     expect(container).toBeEmptyDOMElement();
   });
 
-  /**
-   * Unauthenticated users get null too — useAuth handles the redirect internally,
-   * the page just returns null on its side.
-   */
+  // useAuth handles the redirect internally — page just returns null
   it('renders nothing when user is not authenticated', () => {
     (useAuth as jest.Mock).mockReturnValue({ isLoading: false, isAuthenticated: false });
     (useSession as jest.Mock).mockReturnValue({ data: null, status: 'unauthenticated' });
@@ -114,11 +76,6 @@ describe('ProfilePage', () => {
     expect(container).toBeEmptyDOMElement();
   });
 
-  // ─── Rendering when authenticated ─────────────────────────────────────────
-
-  /**
-   * When authenticated the page title and all user fields should be visible
-   */
   it('renders the profile page when authenticated', async () => {
     (useAuth as jest.Mock).mockReturnValue({ isLoading: false, isAuthenticated: true });
     (useSession as jest.Mock).mockReturnValue({
@@ -134,9 +91,6 @@ describe('ProfilePage', () => {
     expect(screen.getByText('User Profile')).toBeInTheDocument();
   });
 
-  /**
-   * Each field reads from session?.user — name, email, staffId, mobileNo, departmentId
-   */
   it('displays all user fields from the session', async () => {
     (useAuth as jest.Mock).mockReturnValue({ isLoading: false, isAuthenticated: true });
     (useSession as jest.Mock).mockReturnValue({
@@ -156,9 +110,6 @@ describe('ProfilePage', () => {
     expect(screen.getByText('IT')).toBeInTheDocument();
   });
 
-  /**
-   * If optional fields are absent from the session, the page shows N/A for each one
-   */
   it('shows N/A for missing optional fields', async () => {
     (useAuth as jest.Mock).mockReturnValue({ isLoading: false, isAuthenticated: true });
     // staffId is missing so no asset fetch will happen either
@@ -177,10 +128,6 @@ describe('ProfilePage', () => {
     expect(naItems.length).toBeGreaterThanOrEqual(4);
   });
 
-  /**
-   * When NextAuth status is still 'loading', each field renders the text 'Loading...'
-   * instead of N/A or actual data
-   */
   it('shows Loading... in fields while NextAuth session status is loading', async () => {
     (useAuth as jest.Mock).mockReturnValue({ isLoading: false, isAuthenticated: true });
     (useSession as jest.Mock).mockReturnValue({ data: null, status: 'loading' });
@@ -190,16 +137,11 @@ describe('ProfilePage', () => {
 
     render(<ProfilePage />);
 
-    // There are 5 fields that each show 'Loading...' (name, email, staffId, mobileNo, departmentId)
+    // 5 fields total — name, email, staffId, mobileNo, departmentId
     const loadingItems = screen.getAllByText('Loading...');
     expect(loadingItems.length).toBe(5);
   });
 
-  // ─── Breadcrumb ────────────────────────────────────────────────────────────
-
-  /**
-   * Breadcrumb should have Home and Profile items
-   */
   it('renders breadcrumb with Home and Profile', async () => {
     (useAuth as jest.Mock).mockReturnValue({ isLoading: false, isAuthenticated: true });
     (useSession as jest.Mock).mockReturnValue({
@@ -217,12 +159,6 @@ describe('ProfilePage', () => {
     expect(breadcrumb).toHaveTextContent('Profile');
   });
 
-  // ─── Asset fetching ────────────────────────────────────────────────────────
-
-  /**
-   * The page POSTs to /api/staff/assets with the staffId from session.
-   * While waiting for the response it should show "Loading assets..."
-   */
   it('shows Loading assets... while the fetch is in progress', () => {
     (useAuth as jest.Mock).mockReturnValue({ isLoading: false, isAuthenticated: true });
     (useSession as jest.Mock).mockReturnValue({
@@ -237,9 +173,6 @@ describe('ProfilePage', () => {
     expect(screen.getByText('Loading assets...')).toBeInTheDocument();
   });
 
-  /**
-   * When the API returns an empty list the "no assets" message should appear
-   */
   it('shows no assets message when API returns empty list', async () => {
     (useAuth as jest.Mock).mockReturnValue({ isLoading: false, isAuthenticated: true });
     (useSession as jest.Mock).mockReturnValue({
@@ -257,9 +190,6 @@ describe('ProfilePage', () => {
     });
   });
 
-  /**
-   * When staffId is not in the session the page should not call fetch at all
-   */
   it('does not fetch assets when staffId is missing from session', async () => {
     (useAuth as jest.Mock).mockReturnValue({ isLoading: false, isAuthenticated: true });
     (useSession as jest.Mock).mockReturnValue({
@@ -272,9 +202,6 @@ describe('ProfilePage', () => {
     expect(global.fetch).not.toHaveBeenCalled();
   });
 
-  /**
-   * The fetch call should use POST and pass staffId in the body
-   */
   it('calls POST /api/staff/assets with the correct staffId', async () => {
     (useAuth as jest.Mock).mockReturnValue({ isLoading: false, isAuthenticated: true });
     (useSession as jest.Mock).mockReturnValue({
@@ -293,10 +220,6 @@ describe('ProfilePage', () => {
     }));
   });
 
-  /**
-   * When fetch throws a network error, console.error is called and loading stops
-   * (the page should not crash)
-   */
   it('handles fetch error gracefully and stops loading', async () => {
     const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
     (useAuth as jest.Mock).mockReturnValue({ isLoading: false, isAuthenticated: true });
@@ -317,11 +240,6 @@ describe('ProfilePage', () => {
     consoleSpy.mockRestore();
   });
 
-  // ─── Asset display ─────────────────────────────────────────────────────────
-
-  /**
-   * Asset name and category should render for each returned asset
-   */
   it('renders asset name and category for fetched assets', async () => {
     const mockAssets = [
       { id: 1, asset_id: 'A001', asset: { name: 'Dell Laptop', asset_id: 'A001', category: 'Computer' } },
@@ -347,9 +265,6 @@ describe('ProfilePage', () => {
     });
   });
 
-  /**
-   * When an assignment has asset: null the page falls back to "Unknown Asset" and "N/A"
-   */
   it('shows Unknown Asset and N/A when asset data is null', async () => {
     const mockAssets = [{ id: 1, asset_id: 'A001', asset: null }];
 
@@ -369,9 +284,6 @@ describe('ProfilePage', () => {
     });
   });
 
-  /**
-   * The page only shows the first 3 assets — the 4th and 5th should not appear
-   */
   it('shows only the first 3 assets when more than 3 are returned', async () => {
     const mockAssets = Array.from({ length: 5 }, (_, i) => ({
       id: i + 1,
@@ -399,9 +311,6 @@ describe('ProfilePage', () => {
     });
   });
 
-  /**
-   * "View All Assets (n)" button only appears when there are more than 3 assets
-   */
   it('shows View All button only when there are more than 3 assets', async () => {
     const mockAssets = Array.from({ length: 4 }, (_, i) => ({
       id: i + 1,
@@ -425,9 +334,6 @@ describe('ProfilePage', () => {
     });
   });
 
-  /**
-   * "View All Assets" button should NOT appear when there are exactly 3 or fewer assets
-   */
   it('does not show View All button when there are 3 or fewer assets', async () => {
     const mockAssets = Array.from({ length: 3 }, (_, i) => ({
       id: i + 1,
@@ -451,9 +357,6 @@ describe('ProfilePage', () => {
     });
   });
 
-  /**
-   * Clicking "View All Assets" fires the placeholder alert
-   */
   it('fires the placeholder alert when View All button is clicked', async () => {
     const mockAssets = Array.from({ length: 4 }, (_, i) => ({
       id: i + 1,

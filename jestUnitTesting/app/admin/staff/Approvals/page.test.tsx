@@ -101,7 +101,6 @@ describe('ApprovalsPage', () => {
     expect(screen.getByText('Loading...')).toBeInTheDocument();
   });
 
-  // once loaded, the page should show the 3 tabs (Pending, Approved, Rejected)
   it('renders approvals page with tabs', async () => {
     (useAdminAccess as jest.Mock).mockReturnValue({
       session: mockSession,
@@ -125,7 +124,6 @@ describe('ApprovalsPage', () => {
     });
   });
 
-  // pending tab should show the staff who are waiting for approval
   it('fetches and displays pending staff', async () => {
     (useAdminAccess as jest.Mock).mockReturnValue({
       session: mockSession,
@@ -148,7 +146,6 @@ describe('ApprovalsPage', () => {
     });
   });
 
-  // clicking the Approved tab should show approved staff
   it('switches to approved tab and displays approved staff', async () => {
     (useAdminAccess as jest.Mock).mockReturnValue({
       session: mockSession,
@@ -164,10 +161,8 @@ describe('ApprovalsPage', () => {
       render(<ApprovalsPage />);
     });
 
-    await waitFor(() => {
-      const approvedTab = screen.getByText(/Approved \(1\)/i);
-      fireEvent.click(approvedTab);
-    });
+    await waitFor(() => expect(screen.getByText(/Approved \(1\)/i)).toBeInTheDocument());
+    fireEvent.click(screen.getByText(/Approved \(1\)/i));
 
     await waitFor(() => {
       expect(screen.getByText('Approved User')).toBeInTheDocument();
@@ -175,7 +170,6 @@ describe('ApprovalsPage', () => {
     });
   });
 
-  // clicking the Rejected tab should show rejected staff
   it('switches to rejected tab and displays rejected staff', async () => {
     (useAdminAccess as jest.Mock).mockReturnValue({
       session: mockSession,
@@ -191,10 +185,8 @@ describe('ApprovalsPage', () => {
       render(<ApprovalsPage />);
     });
 
-    await waitFor(() => {
-      const rejectedTab = screen.getByText(/Rejected \(1\)/i);
-      fireEvent.click(rejectedTab);
-    });
+    await waitFor(() => expect(screen.getByText(/Rejected \(1\)/i)).toBeInTheDocument());
+    fireEvent.click(screen.getByText(/Rejected \(1\)/i));
 
     await waitFor(() => {
       expect(screen.getByText('Rejected User')).toBeInTheDocument();
@@ -202,7 +194,6 @@ describe('ApprovalsPage', () => {
     });
   });
 
-  // the pending tab should have Approve and Reject action buttons per row
   it('shows approve and reject buttons on pending tab', async () => {
     (useAdminAccess as jest.Mock).mockReturnValue({
       session: mockSession,
@@ -224,7 +215,6 @@ describe('ApprovalsPage', () => {
     });
   });
 
-  // clicking Approve should ask for confirmation and then show success alert
   it('handles approve button click with confirmation', async () => {
     (useAdminAccess as jest.Mock).mockReturnValue({
       session: mockSession,
@@ -257,7 +247,6 @@ describe('ApprovalsPage', () => {
     });
   });
 
-  // clicking Reject should ask for confirmation and then show success alert
   it('handles reject button click with confirmation', async () => {
     (useAdminAccess as jest.Mock).mockReturnValue({
       session: mockSession,
@@ -290,7 +279,6 @@ describe('ApprovalsPage', () => {
     });
   });
 
-  // if the user clicks Cancel on the confirm dialog, nothing should happen
   it('cancels approve when user clicks cancel on confirmation', async () => {
     (useAdminAccess as jest.Mock).mockReturnValue({
       session: mockSession,
@@ -317,7 +305,6 @@ describe('ApprovalsPage', () => {
     expect(global.alert).not.toHaveBeenCalled();
   });
 
-  // if the API returns an error, show the error message in an alert
   it('handles API error during approval', async () => {
     (useAdminAccess as jest.Mock).mockReturnValue({
       session: mockSession,
@@ -346,7 +333,34 @@ describe('ApprovalsPage', () => {
     });
   });
 
-  // if the network completely fails, show a generic failure message
+  it('handles API error during rejection', async () => {
+    (useAdminAccess as jest.Mock).mockReturnValue({
+      session: mockSession,
+      isLoading: false,
+    });
+
+    (global.fetch as jest.Mock)
+      .mockResolvedValueOnce({ json: () => Promise.resolve({ success: true, staff: mockPendingStaff }) })
+      .mockResolvedValueOnce({ json: () => Promise.resolve({ success: true, staff: [] }) })
+      .mockResolvedValueOnce({ json: () => Promise.resolve({ success: true, staff: [] }) })
+      .mockResolvedValueOnce({ json: () => Promise.resolve({ success: false, error: 'Database error' }) });
+
+    (global.confirm as jest.Mock).mockReturnValue(true);
+
+    await act(async () => {
+      render(<ApprovalsPage />);
+    });
+
+    await waitFor(() => {
+      const rejectButton = screen.getByText('Reject');
+      fireEvent.click(rejectButton);
+    });
+
+    await waitFor(() => {
+      expect(global.alert).toHaveBeenCalledWith('Error: Database error');
+    });
+  });
+
   it('handles network error during approval', async () => {
     const consoleError = jest.spyOn(console, 'error').mockImplementation();
 
@@ -380,7 +394,6 @@ describe('ApprovalsPage', () => {
     consoleError.mockRestore();
   });
 
-  // clicking the Refresh button should re-fetch all 3 lists
   it('refreshes all staff lists when refresh button is clicked', async () => {
     (useAdminAccess as jest.Mock).mockReturnValue({
       session: mockSession,
@@ -417,7 +430,6 @@ describe('ApprovalsPage', () => {
     }, { timeout: 15000 });
   }, 20000);
 
-  // each tab should show an empty message when there are no records
   it('shows empty state messages for each tab', async () => {
     (useAdminAccess as jest.Mock).mockReturnValue({
       session: mockSession,
@@ -459,8 +471,10 @@ describe('ApprovalsPage', () => {
     }, { timeout: 15000 });
   }, 20000);
 
-  // dates should be formatted nicely (e.g. "1 Jan 2024")
+  // dates should be formatted consistently regardless of the test runner's locale
   it('formats dates correctly', async () => {
+    const localeStub = jest.spyOn(Date.prototype, 'toLocaleDateString').mockReturnValue('1 Jan 2024');
+
     (useAdminAccess as jest.Mock).mockReturnValue({
       session: mockSession,
       isLoading: false,
@@ -476,13 +490,12 @@ describe('ApprovalsPage', () => {
     });
 
     await waitFor(() => {
-      // Check if date is displayed (format may vary by locale)
-      const dateCell = screen.getByText(/1 Jan 2024/i);
-      expect(dateCell).toBeInTheDocument();
+      expect(screen.getByText('1 Jan 2024')).toBeInTheDocument();
     }, { timeout: 15000 });
+
+    localeStub.mockRestore();
   }, 20000);
 
-  // breadcrumb should show the correct navigation path
   it('renders breadcrumb with correct items', async () => {
     (useAdminAccess as jest.Mock).mockReturnValue({
       session: mockSession,
@@ -505,18 +518,21 @@ describe('ApprovalsPage', () => {
     expect(breadcrumb).toHaveTextContent('Approvals');
   });
 
-  // while an approve/reject request is in progress, the action buttons should be disabled
   it('disables buttons while processing', async () => {
     (useAdminAccess as jest.Mock).mockReturnValue({
       session: mockSession,
       isLoading: false,
     });
 
+    // Keep a reference so we can settle the promise at the end and avoid memory leaks
+    let resolveRequest!: (value: any) => void;
+    const pendingRequest = new Promise<any>(resolve => { resolveRequest = resolve });
+
     (global.fetch as jest.Mock)
       .mockResolvedValueOnce({ json: () => Promise.resolve({ success: true, staff: mockPendingStaff }) })
       .mockResolvedValueOnce({ json: () => Promise.resolve({ success: true, staff: [] }) })
       .mockResolvedValueOnce({ json: () => Promise.resolve({ success: true, staff: [] }) })
-      .mockImplementation(() => new Promise(() => {})); // Never resolves
+      .mockReturnValueOnce(pendingRequest);
 
     (global.confirm as jest.Mock).mockReturnValue(true);
 
@@ -539,5 +555,8 @@ describe('ApprovalsPage', () => {
         expect(button).toBeDisabled();
       });
     }, { timeout: 15000 });
+
+    // Settle the pending request so React does not warn about unmounted state updates
+    resolveRequest({ json: () => Promise.resolve({ success: true }) });
   }, 20000);
 });
