@@ -9,20 +9,24 @@ export default function LoginClient() {
   const { data: session, status } = useSession()
   const router = useRouter()
   const { showToast } = useToast()
-  const hasInitialized = useRef(false)
+  const hasRedirected = useRef(false)
 
   // Redirect the user after login successfully
   useEffect(() => {
     // Prevents the user from redirected multiple times
-    if (hasInitialized.current) {
+    if (hasRedirected.current) {
+      return
+    }
+
+    if (status !== 'authenticated' || !session?.user) {
       return
     }
 
     // Redirect the user to their respective dashboard if authenticated
     if (status === 'authenticated' && session?.user) {
-      hasInitialized.current = true
+      hasRedirected.current = true
       // Get the user role from the session
-      const role = (session.user as any).role;
+      const role = (session.user as any).role
 
       // Handle different account statuses
       if (role === 'pending') {
@@ -37,20 +41,20 @@ export default function LoginClient() {
       }
 
       // Store login success in sessionStorage so that toast can display
-      sessionStorage.setItem('loginSuccess', 'true');
-      console.log("Set loginsuccess in sessionstorage");
+      sessionStorage.setItem('loginSuccess', 'true')
+      // console.log("Set loginsuccess in sessionstorage")
 
       // Redirect based on role after a short delay
       if (role == 'admin') {
-        router.replace("/admin/dashboard");
+        router.replace("/admin/dashboard")
       } else {
-        router.replace("/user/dashboard");
+        router.replace("/user/dashboard")
       }
     }
-  }, [status, session, router, showToast]);
+  }, [status, session, router, showToast])
 
   if (status === 'loading') {
-    return <LoadingState />;
+    return <LoadingState />
   }
 
   return (

@@ -2,6 +2,15 @@
  * proxy.ts
  * Previously known as 'middleware.ts'
  * 
+ * LATEST CHANGE:
+ * --------------
+ *  - Added '/logout' to PUBLIC_PATHS so the logout page can render and complete
+ *    its signOut() call without the middleware intercepting and looping
+ *  - Added =__Secure-next-auth.session-token' to the cookie-clear list in the logout
+ *    API route so the production HTTPS cookie is also cleared
+ * Without these two changes, the middleware will re-authorize the still alive JWT on 
+ * every render of the logout page, causing an infinite reload loop
+ * 
  * Auth strategy: next-auth JWT mode.
  *   next-auth manages its own encrypted 'next-auth.session-token' cookie.
  *   The middleware reads the decrypted token via request.nextauth.token.
@@ -20,15 +29,17 @@
  * Route layout:
  *   /login          — public, no auth required
  *   /register       — public, no auth required
+ *   /logout          - public, no auth required and handles the sign out then
+ *                      redirect the user to /login
  *   /unauthorized   — public, shown when a role check fails
  *   /dashboard      — authenticated, immediately redirects to role dashboard
  *   /admin/*        — authenticated + role === 'admin' only
  *   /user/*         — authenticated, any role
  */
 
-import { withAuth } from "next-auth/middleware";
-import { NextResponse } from "next/server";
-import type { NextRequestWithAuth } from "next-auth/middleware";
+import { withAuth } from "next-auth/middleware"
+import { NextResponse } from "next/server"
+import type { NextRequestWithAuth } from "next-auth/middleware"
 import { Ratelimit } from '@upstash/ratelimit'
 import { Redis } from '@upstash/redis'
 
@@ -107,14 +118,14 @@ function getClientIp(request: NextRequestWithAuth): string {
   }
 
   // Avoid shared bucket problem
-  return `anon-${request.headers.get("user-agent") ?? crypto.randomUUID()}`;
+  return `anon-${request.headers.get("user-agent") ?? crypto.randomUUID()}`
 }
 
 // ------------------ Safe rate limiting wrapper -----------------
 // We do not allow rate limiting to crash the app
 async function rateLimitCrashHandler (limiter: Ratelimit, key: string): Promise<{ success: boolean; reset:number }> {
   try {
-    return await limiter.limit(key);
+    return await limiter.limit(key)
   } catch (error) {
     // Log the error to console when rate limiting fails
     console.error("Rate limit failure:", error)
@@ -228,7 +239,7 @@ function rateLimitResponse(reset: number): NextResponse {
 
 // Public paths
 // Commented by Desmond @ 29-April-26: /scan/* is added to PUBLIC_PATHS
-const PUBLIC_PATHS = new Set(['/login', '/register', 'unauthorized', '/scan/*'])
+const PUBLIC_PATHS = new Set(['/login', '/register', '/unauthorized', '/scan/*', '/logout'])
 
 // Returns true if the path is always publicly accessible
 function isPublicPath(pathname: string): boolean {
@@ -249,27 +260,28 @@ export default withAuth(
    * user has a valid session token. Therefore we only need to check role
    */
   async function middleware(request: NextRequestWithAuth) {
-    const { pathname } = request.nextUrl;
-    const token = request.nextauth.token;
+    const { pathname } = request.nextUrl
+    const token = request.nextauth.token
 
     // Extract client IP
     const clientIp = getClientIp(request)
 
     // Skip rate limiting for Next.js prefetch requests
     if (request.headers.get("x-middleware-prefetch")) {
-      return NextResponse.next();
+      return NextResponse.next()
     }
 
     // ---------- Check the sensitive routes first for stricter rate limiting (stricter: 10/min) ----------
     if (isSensitivePath(pathname)) {
-      const { success, reset } = await rateLimitCrashHandler(SENSITIVE_LIMIT, clientIp);
+      const { success, reset } = await rateLimitCrashHandler(SENSITIVE_LIMIT, clientIp)
+
       if (!success) {
         return rateLimitResponse(reset)
       }
     }
 
     // -------------- Check global limit for all requests (broader: 200/min) ----------------
-    const { success, reset } = await rateLimitCrashHandler(GLOBAL_LIMIT, clientIp);
+    const { success, reset } = await rateLimitCrashHandler(GLOBAL_LIMIT, clientIp)
     if (!success) {
       return rateLimitResponse(reset)
     }
@@ -279,17 +291,25 @@ export default withAuth(
     // Pending/rejected users go to login instead
     // ------------------------------------------------------------------
     if (pathname === '/dashboard') {
-      let destination = '/login'
+      // Approved users will be redirected to the role dashboard
       
       if (token?.role === 'admin') {
-        destination = '/admin/dashboard'
+        return applySecurityHeaders(
+          NextResponse.redirect(new URL('/admin/dashboard', request.url))
+        )
       } else if (token?.role === 'staff') {
-        destination = '/user/dashboard'
+        return applySecurityHeaders(
+          NextResponse.redirect(new URL('/user/dashboard', request.url))
+        )
       }
 
-      return applySecurityHeaders(
-        NextResponse.redirect(new URL(destination, request.url))
-      )
+      // Token exists, but the role is pending/rejected/undefined
+      // User is not approved, therefore send back to /login
+      if (token) {
+        return applySecurityHeaders(
+          NextResponse.redirect(new URL('/login', request.url))
+        )
+      }
     }
 
     // ------------------------------------------------------------------
@@ -340,7 +360,7 @@ export default withAuth(
       signIn: '/login'
     }
   }
-);
+)
 
 // Matcher: Controls which URL paths this middleware runs on at all
 export const config = {

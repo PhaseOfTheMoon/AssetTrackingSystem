@@ -2,6 +2,26 @@
  * @file lib/idCode/idCodeImage.ts
  * @description Unified image generation for barcode (assets) and QR codes (locations & departments)
  * 
+ * Commented by Desmond @ 23-May-26: LATEST FIXES v2
+ *  Migrated completely from the legacy native 'canvas' package to modern '@napi-rs/canvas'
+ *  to fix Vercel runtime server font initialization failures (tofu block characters).
+ * 
+ * Commented by Desmond @ 16-May-26: LATEST FIXES
+ *  Issue A - Garbled text and tofu characters in the generated PNGs
+ *      This is because 'canvas' was marked as optional in package.json so that Vercel's
+ *      build did not fail trying to compile the native .node binary. When the optional
+ *      import resolved to 'undefined' at runtime, 'createCanvas' was undefined, the
+ *      code silently fell back to bwip-js's internal canvas shim, which does not support
+ *      fillText with system fonts, therefore causing the square-block characters.
+ * 
+ * To fix this:
+ *      'canvas' is now a regular dependency (not optional) AND is declared as a
+ *      serverExternalPackage in the next.config.js file so the Vercel bundler never
+ *      tries to bundle the native binary, because it is required at runtime from the 
+ *      installed node_modules instead. The dynamic import below is wrapped in a 
+ *      hard-fail guard. So, if 'createCanvas' is still undefined after the import,
+ *      immediately throw a clear message rather than silently producing broken QR codes.
+ * 
  *  1.  The image saved to Supabase is what the preview shows to the user
  *      Previously, the server only stored a bare QR PNG with no surrounding text.
  *      The client preview rendered the header/footer in HTML/CSS around the image for the Swinburne text.
@@ -56,21 +76,39 @@
  *      - `bwip-js` npm package for barcode generation (Node + browser builds exist)
  */
 
+/** Commented by Desmond @ 23-May-26
+ * Import Node.js's built-in Path utility module
+ * Explanation:
+ *  Different OS running the system write paths differently
+ *      - Mac/Linux (Vercel production server): Use forward slashes (public/fonts/font.ttf)
+ *      - Windows (public\fonts\font.ttf)
+ * If a hardcoded string is written to define the path to the font, the code may not 
+ * work correctly on different operating systems. Therefore, path.join() is used to detect
+ * host operating system dynamically and automatically insert the correct backslashes
+ * or forward slashes.
+ */    
+import path from 'path'
+
 // ------------------------------------------------------------------------------
 //                              Shared Constants
 // ------------------------------------------------------------------------------
 export const APP_BASE_URL = (typeof process !== 'undefined'
-    ? process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, '') ||
+    ? process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, '')
         // NEXTAUTH_URL is localhost in dev, do NOT use it for QR content
-        (process.env.NEXTAUTH_URL?.startsWith('https://')
-            ? process.env.NEXTAUTH_URL.replace(/\/&/, '')
-            : undefined)
+        // (process.env.NEXTAUTH_URL?.startsWith('https://')
+            // ? process.env.NEXTAUTH_URL.replace(/\/&/, '')
+            // : undefined)
     : undefined) ?? 'https://swinburne-assets.vercel.app'
 
 export const SWINBURNE_NAME = 'SWINBURNE UNIVERSITY OF TECHNOLOGY'
 
 // QR module printing colour - pure black for best visibility
 export const QR_DARK_COLOUR = '#000000'
+
+// Global font config (style tokens) - Fonts mapped to the Canvas dependency
+const FONT_SANS = '11px JetBrainsMono'
+const FONT_SANS_BOLD = 'bold 13px JetBrainsMonoBold'
+const FONT_MONO = '8px JetBrainsMono'
 
 
 // ------------------------------------------------------------------------------
@@ -146,13 +184,13 @@ export function drawQrCanvas(
 
     // Line 1: University name - bold, black
     ctx.fillStyle = '#000000'
-    ctx.font = 'bold 13px sans-serif'
+    ctx.font = typeof window === 'undefined' ? FONT_SANS_BOLD : 'bold 13px sans-serif'
     ctx.textAlign = 'center'
     ctx.fillText(SWINBURNE_NAME, W / 2, 16)
 
     // Line 2: Entity label (e.g Location: E404) - regular, dark grey
     ctx.fillStyle = '#161719'
-    ctx.font = '11px sans-serif'
+    ctx.font = typeof window === 'undefined' ? FONT_SANS : '11px sans-serif'
     ctx.fillText(entityLabel, W / 2, 33)
 
     // ----- QR code - centered below the two header lines --------------------------
@@ -162,7 +200,7 @@ export function drawQrCanvas(
 
     // ------ Scan URL below the QR code --------------------------------------------
     ctx.fillStyle = '#3a3d44'
-    ctx.font = '8px monospace'
+    ctx.font = typeof window === 'undefined' ? FONT_MONO : '8px monospace'
     ctx.textAlign = 'center'
     const urlY = qrY + QR_SIZE + 12 
     const displayUrl = scanUrl.length > 52 ? scanUrl.slice(0, 50) + '...' : scanUrl
@@ -172,7 +210,7 @@ export function drawQrCanvas(
     // If name exists
     if (options.name) {
         ctx.fillStyle = '#111827'
-        ctx.font = 'bold 11px sans-serif'
+        ctx.font = typeof window === 'undefined' ? FONT_SANS_BOLD : 'bold 11px sans-serif'
         ctx.fillText(options.name, W / 2, urlY + 15)
     }
 
@@ -278,7 +316,23 @@ export async function buildBarcodeDataUrl(options: barcodeImageOptions): Promise
     }
 
     // Dynamically import bwip-js
-    const bwipjs = (await import ('bwip-js')).default
+    if (!(window as any).bwipjs) {
+        try {
+            const cdnUrl = 'https://cdnjs.cloudflare.com/ajax/libs/bwip-js/3.4.4/bwip-js.min.js'
+            await new Promise<void>((resolve, reject) => {
+                const script = document.createElement('script')
+                script.src = cdnUrl
+                script.onload = () => resolve()
+                script.onerror = () => reject(new Error('Failed to download barcode script package.'))
+                document.head.appendChild(script)
+            })
+        } catch (scriptErr) {
+            console.error('[buildBarcodeDataUrl] Global window script injection failed: ', scriptErr)
+            throw new Error('Barcode drawing framework could not be loaded into the browser context.')
+        }
+    }
+
+    const bwipjs = (window as any).bwipjs
 
     /**
      * Header is plain text with no background fill
@@ -288,9 +342,9 @@ export async function buildBarcodeDataUrl(options: barcodeImageOptions): Promise
     const BAR_W = 320
     const BAR_H = 80
     const PADDING = 6
-    const NAME_H = options.name ? 16 : 0
+    // const NAME_H = options.name ? 16 : 0
     const W = 360
-    const H = HEADER_H + PADDING + BAR_H + NAME_H + PADDING + 12
+    const H = HEADER_H + PADDING + BAR_H + PADDING + 12
 
     const canvas = document.createElement('canvas')
     canvas.width = W
@@ -313,20 +367,36 @@ export async function buildBarcodeDataUrl(options: barcodeImageOptions): Promise
 
     // Render barcode to a temporary canvas via bwip-js
     const barcodeCanvas = document.createElement('canvas')
-    bwipjs.toCanvas(barcodeCanvas, {
-        bcid: 'code128',
-        text: options.id,
-        scale: 3,
-        height: 20,
-        includetext: true, // asset_id number below the bars (industry standard)
-        textxalign: 'center',
-        textsize: 11,
-        paddingwidth: 6,
-        paddingheight: 4,
-        backgroundcolor: '#ffffff',
-        barcolor: '#000000',
-        textcolor: '#000000'
-    })
+
+    try {
+        // Settle the canvas font allocation completely before we draw onto the canvas
+        await new Promise<void>((resolve, reject) => {
+            try {
+                bwipjs.toCanvas(barcodeCanvas, {
+                    bcid: 'code128',
+                    text: options.id,
+                    scale: 3,
+                    height: 20,
+                    includetext: true, // asset_id number below the bars (industry standard)
+                    textxalign: 'center',
+                    textsize: 11,
+                    paddingwidth: 6,
+                    paddingheight: 4,
+                    backgroundcolor: '#ffffff',
+                    barcolor: '#000000',
+                    textcolor: '#000000'
+                })
+                resolve()
+
+            } catch (renderError) {
+                reject(renderError)
+            }
+        })
+
+    } catch (err) {
+        console.error('[buildBarcodeDataUrl] Inner barcode drawing failed: ', err)
+        throw new Error('Failed to paint vector barcode.')
+    }
 
     // Draw the barcode centered on the main canvas
     const barX = (W - BAR_W) / 2
@@ -351,6 +421,147 @@ export async function buildBarcodeDataUrl(options: barcodeImageOptions): Promise
 
 
 // ------------------------------------------------------------------------------
+//      Safely import the Node.js 'canvas' package and validate the export
+// ------------------------------------------------------------------------------
+/** Commented by Desmond @ 16-May-26: Canvas package fix 
+ * When 'canvas' was marked optional in package.json, the runtime import could
+ * resolve to an empty object / undefined, causing createCanvas to be undefined and
+ * bwip-js to fall back to its internal shim, which does not support fillText, 
+ * producing square-block characters.
+ * 
+ * 'canvas' is now a regular (non-optional) dependency. It is also declared as a 
+ * serverExternalPackage in next.config.js so the Vercel bundler never tries to bundle
+ * the native .node binary.
+ * 
+ * This guard throws a clear error if the package is still missing rather than producing
+ * broken images.
+ * 
+ * @throws { Error } if the canvas package is not installed or createCanvas is missing
+ */
+// async function requireNodeCanvas() {
+//     let mod: {
+//         createCanvas: unknown
+//         loadImage: unknown
+//     }
+
+//     try {
+//         mod = await import('canvas')
+//     } catch {
+//         throw new Error(
+//             '[idCodeImage] The "canvas" package is not installed. ' +
+//             'Run `npm install canvas` and ensure it is listed as a regular ' +
+//             'dependency (not optional) in package.json.'
+//         )
+//     }
+
+//     if (typeof mod.createCanvas !== 'function') {
+//         throw new Error(
+//             '[idCodeImage] canvas.createCanvas is not a function. ' +
+//             'The package may have loaded an empty shim. ' + 
+//             'Check that "canvas" in dependencies (not devDependencies or optionalDependencies) ' +
+//             'and that next.config.js lists it in serverExternalPackages.'
+//         )
+//     }
+
+//     return mod as {
+//         createCanvas: (w: number, h: number) => {
+//             getContext: (t: '2d') => CanvasRenderingContext2D
+//             toBuffer: (mime: 'image/png') => Buffer
+//         }
+
+//         loadImage: (src: Buffer | string) => Promise<CanvasImageSource>
+//     }
+// }
+
+function extractDebugMessage(err: unknown): string {
+    if (err instanceof Error) {
+        return `${err.name}: ${err.message}\n${err.stack ?? ''}`
+    }
+
+    return String(err)
+}
+
+let serverFontsRegistered = false
+
+async function requireNodeCanvas() {
+    // Hide the native server module from the browser bundler
+    if (typeof window !== 'undefined') {
+        throw new Error('[idCodeImage] requireNodeCanvas cannot be invoked inside a client')
+    }
+
+    let canvasModule: any
+
+    try {
+        // Changes the import from a statically analyzable import to a runtime-only 
+        // dynamic operation the bundler cannot inspect
+        // Previously, the file was imported by qrPreview.tsx which is a client file,
+        // so turbopack thinks this file might run in the browser and scans all imports
+        // inside this file. It tries to include @napi-rs canvas, but fails because
+        // it is a Node-native package and internally uses 'require('fs') and require
+        // ('stream'), but browsers do not have these.
+        
+        // eval() makes it so that the import becomes a string while building and 
+        // bulders won't execute these strings.
+        // canvasModule = await (eval(`import('@napi-rs/canvas')`))
+
+        // Commented by Desmond @ 24-May-26
+        // Inline comment commands Turbopack to stop scanning this dependency branch
+        // for browser bundle paths
+        canvasModule = await import(/* webpackIgnore: true */ '@napi-rs/canvas')
+    } catch (err) {
+        throw new Error(
+            '[idCodeImage] Failed to resolve modern native dependencies setup. ' + 
+            'Ensure `npm install @napi-rs canvas` was executed: ' +
+
+            extractDebugMessage(err)
+        )
+    }
+
+    // Mounting the server font
+    if (!serverFontsRegistered) {
+        try {
+            const { GlobalFonts } = canvasModule
+
+            // Resolve conflicting paths for the fonts directory
+            // process.cwd() grabs the exact root folder of the web application running
+            // on Vercel
+            const fontPath = path.join(process.cwd(), 'public', 'fonts', 
+                             'JetBrainsMono-Regular.ttf')
+
+            // Defensive check here: Force an error if the deployment engine stripped the
+            // font path
+            const fs = await import(/* webpackIgnore: true */ 'fs')
+            if (!fs.existsSync(fontPath)) {
+                throw new Error(`Font binary missing from serverless deployment bundle path: 
+                                 ${fontPath}`)
+            }
+            
+            // Mount font binaries under the designated runtime tokens
+            GlobalFonts.registerFromPath(fontPath, 'JetBrainsMono')
+            GlobalFonts.registerFromPath(fontPath, 'JetBrainsMonoBold')
+
+            serverFontsRegistered = true
+        } catch (err) {
+            console.error('[idCodeImage] Core server font initialization error: ' + err)
+            // When err is thrown, it stops the execution of this function
+            throw new Error(
+                extractDebugMessage(err)
+            )
+        }
+    }
+
+    return canvasModule as {
+        createCanvas: (w: number, h: number) => {
+            getContext: (type: '2d') => CanvasRenderingContext2D
+            toBuffer: (mime: 'image/png') => Buffer
+        }
+
+        loadImage: (src: Buffer | string) => Promise<CanvasImageSource>
+    }
+}
+
+
+// ------------------------------------------------------------------------------
 //     Server-side component: Generate the full composite PNG as a buffer
 // ------------------------------------------------------------------------------
 // These functions should only run in API routes / server utility files
@@ -367,34 +578,42 @@ export async function buildBarcodeDataUrl(options: barcodeImageOptions): Promise
  * @returns - PNG buffer ready for Supabase storage upload
  */
 export async function buildQrBuffer(options: qrImageOptions): Promise<Buffer> {
-    // Dynamically import the modules and keep server-only modules out of the client bunndle
-    const qrCode = (await import('qrcode')).default
-    const { createCanvas, loadImage } = await import('canvas')
+    try {
+        // Dynamically import the modules and keep server-only modules out of the client bunndle
+        const qrCode = (await import('qrcode')).default
+        const { createCanvas, loadImage } = await requireNodeCanvas()
 
-    const scanUrl = buildScanUrl(options.folder, options.id)
+        const scanUrl = buildScanUrl(options.folder, options.id)
 
-    // Generate the bare QR as PNG buffer
-    const qrPngBuffer = await qrCode.toBuffer(scanUrl, {
-        errorCorrectionLevel: 'M',
-        margin: 2,
-        width: 240,
-        color: {
-            dark: QR_DARK_COLOUR,
-            light: '#ffffff'
-        }
-    })
+        // Generate the bare QR as PNG buffer
+        const qrPngBuffer = await qrCode.toBuffer(scanUrl, {
+            errorCorrectionLevel: 'M',
+            margin: 2,
+            width: 240,
+            color: {
+                dark: QR_DARK_COLOUR,
+                light: '#ffffff'
+            }
+        })
 
-    const { W, H } = qrCanvasDimensions()
-    const canvas = createCanvas(W, H)
-    const ctx = canvas.getContext('2d') as unknown as CanvasRenderingContext2D
+        const { W, H } = qrCanvasDimensions()
+        const canvas = createCanvas(W, H)
+        const ctx = canvas.getContext('2d') as unknown as CanvasRenderingContext2D
 
-    const entity = options.folder === 'locations' ? 'Location' : 'Department'
-    const entityLabel = `${entity}: ${options.id}`
+        const entity = options.folder === 'locations' ? 'Location' : 'Department'
+        const entityLabel = `${entity}: ${options.id}`
 
-    const qrImage = await loadImage(qrPngBuffer)
-    drawQrCanvas(ctx, W, H, qrImage as unknown as CanvasImageSource, options, scanUrl, entityLabel)
+        const qrImage = await loadImage(qrPngBuffer)
+        drawQrCanvas(ctx, W, H, qrImage as unknown as CanvasImageSource, options, scanUrl, entityLabel)
 
-    return canvas.toBuffer('image/png')
+        return canvas.toBuffer('image/png')
+
+    } catch (err) {
+        console.error('[buildQrBuffer] QR generation failed: ' + err)
+        throw new Error(
+            '[buildQrBuffer] QR generation failed.\n\n' + extractDebugMessage(err)
+        )
+    }
 }
 
 
@@ -405,67 +624,83 @@ export async function buildQrBuffer(options: qrImageOptions): Promise<Buffer> {
  * @param options - barcodeImageOptions (id, name)
  * @returns - PNG buffer ready for Supabase storage upload
  */
-export async function buildBarcodeBuffer(options: barcodeImageOptions): Promise<Buffer> {
-    const bwipjs = (await import ('bwip-js')).default
-    const { createCanvas } = await import('canvas')
+export async function buildBarcodeBuffer(
+    options: barcodeImageOptions,
+    // Inject the generator function here as a dependency
+    generatorFn: (options: { id: string }) => Promise<Buffer>
+): Promise<Buffer> {
+    try {
+        if (typeof window !== 'undefined') {
+            throw new Error('This function must only be called on the server.')
+        }
 
-    // Same layout as buildBarcodeDataUrl where the header is plain text with no background strip
-    const HEADER_H = 22
-    const BAR_H = 80
-    const PADDING = 6
-    const NAME_H = options.name ? 16 : 0
-    const W = 360
-    const H = HEADER_H + PADDING + BAR_H + NAME_H + PADDING
-    
-    const canvas = createCanvas(W, H)
-    const ctx = canvas.getContext('2d') as unknown as CanvasRenderingContext2D
+        const barcodePng = await generatorFn({ id: options.id })
 
-    // White background 
-    ctx.fillStyle = '#ffffff'
-    ctx.fillRect(0, 0, W, H)
+        const { createCanvas, loadImage } = await requireNodeCanvas()
 
-    // University name
-    ctx.fillStyle = '#000000'
-    ctx.font = 'bold 12px sans-serif'
-    ctx.textAlign = 'center'
-    ctx.fillText(SWINBURNE_NAME, W / 2, 15)
+        // Same layout as buildBarcodeDataUrl where the header is plain text with no background strip
+        const HEADER_H = 22
+        const BAR_H = 80
+        const PADDING = 6
+        // const NAME_H = options.name ? 16 : 0
+        const W = 360
+        const H = HEADER_H + PADDING + BAR_H + PADDING + 12
+        
+        const canvas = createCanvas(W, H)
+        const ctx = canvas.getContext('2d') as unknown as CanvasRenderingContext2D
 
-    // Generate barcode PNG via bwip-js (returns a Buffer in Node)
-    const barcodePng = await bwipjs.toBuffer({
-        bcid: 'code128',
-        text: options.id,
-        scale: 3,
-        height: 20,
-        includetext: true,
-        textxalign: 'center',
-        textsize: 11,
-        paddingwidth: 6,
-        paddingheight: 4,
-        backgroundcolor: '#ffffff',
-        barcolor: '#000000',
-        textcolor: '#000000'
-    })
+        // White background 
+        ctx.fillStyle = '#ffffff'
+        ctx.fillRect(0, 0, W, H)
 
-    const { loadImage } = await import('canvas')
-    const barImg = await loadImage(barcodePng)
-    const BAR_W = 320
-    const barX = (W - BAR_W) / 2
-    const barY = HEADER_H + PADDING
+        // University name
+        ctx.fillStyle = '#000000'
+        ctx.font = 'bold 12px sans-serif'
+        ctx.textAlign = 'center'
+        ctx.fillText(SWINBURNE_NAME, W / 2, 15)
 
-    ctx.drawImage(barImg as unknown as CanvasImageSource, barX, barY, BAR_W, BAR_H)
+        // Generate barcode PNG via bwip-js (returns a Buffer in Node)
+        // const barcodePng = await bwipjs.toBuffer({
+        //     bcid: 'code128',
+        //     text: options.id,
+        //     scale: 3,
+        //     height: 20,
+        //     includetext: true,
+        //     textxalign: 'center',
+        //     textsize: 11,
+        //     paddingwidth: 6,
+        //     paddingheight: 4,
+        //     backgroundcolor: '#ffffff',
+        //     barcolor: '#000000',
+        //     textcolor: '#000000'
+        // })
 
-    // Asset name below the barcode if provided
-    // if (options.name) {
-    //     ctx.fillStyle = '#111827'
-    //     ctx.font = '10px sans-serif'
-    //     ctx.textAlign = 'center'
-    //     ctx.fillText(options.name, W / 2, barY + BAR_H + 12)
-    // }
+        const barImg = await loadImage(barcodePng)
+        const BAR_W = 320
+        const barX = (W - BAR_W) / 2
+        const barY = HEADER_H + PADDING
 
-    // Thin light border - act as a paper cutout cutting guide
-    ctx.strokeStyle = '#d1d5db'
-    ctx.lineWidth = 0.5
-    ctx.strokeRect(0.5, 0.5, W - 1, H - 1)
+        ctx.drawImage(barImg as unknown as CanvasImageSource, barX, barY, BAR_W, BAR_H)
 
-    return canvas.toBuffer('image/png')
+        // Asset name below the barcode if provided
+        // if (options.name) {
+        //     ctx.fillStyle = '#111827'
+        //     ctx.font = '10px sans-serif'
+        //     ctx.textAlign = 'center'
+        //     ctx.fillText(options.name, W / 2, barY + BAR_H + 12)
+        // }
+
+        // Thin light border - act as a paper cutout cutting guide
+        ctx.strokeStyle = '#d1d5db'
+        ctx.lineWidth = 0.5
+        ctx.strokeRect(0.5, 0.5, W - 1, H - 1)
+
+        return canvas.toBuffer('image/png')
+
+    } catch (err) {
+        console.error('[buildBarcodeBuffer] Barcode generation failed: ' + err)
+        throw new Error(
+            '[buildBarcodeBuffer] Barcode generation failed.\n\n' + extractDebugMessage(err)
+        )
+    }
 }

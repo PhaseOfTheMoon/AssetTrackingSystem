@@ -31,7 +31,7 @@ import { generateAndUploadQr, deleteQr } from '@/lib/qrcode/qrcode'
 
 const getQuerySchema = z.object({
   page: z.coerce.number().min(1).default(1),
-  limit: z.coerce.number().min(1).max(100).default(10),
+  limit: z.coerce.number().min(1).max(500).default(100),
   search: z.string().optional().default(''),
   searchField: z.enum(['name', 'location_id']).default('name'),
   sortBy: z.enum(['location_id', 'name', 'description', 'block', 'level', 'created_dt']).default('created_dt'),
@@ -172,7 +172,27 @@ export async function POST(request: NextRequest) {
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: 'Validation failed', details: error.flatten() }, { status: 400 })
     }
-    return NextResponse.json({ error: 'Failed to create location' }, { status: 500 })
+
+    // Commented by Desmond @ 24-May-26: Test out why QR generation is failing
+    // on Vercel
+    const debug =
+    error instanceof Error
+      ? {
+          name: error.name,
+          message: error.message,
+          stack: error.stack,
+        }
+      : { raw: String(error) }
+
+    return NextResponse.json(
+      {
+        error: 'Failed to create location',
+        debug,
+      },
+      { status: 500 }
+    )
+
+    // return NextResponse.json({ error: 'Failed to create location' }, { status: 500 })
   }
 }
 

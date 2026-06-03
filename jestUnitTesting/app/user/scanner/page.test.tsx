@@ -1,7 +1,7 @@
-// Commented by Irene
-import { render, screen, fireEvent, waitFor, act } from '@testing-library/react'
-import ScannerPage from '@/app/(app)/user/scanner/page'
-import { useAuth } from '@/hooks/useAuth'
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
+import ScannerPage from '@/app/(app)/user/scanner/page';
+import { useAuth } from '@/hooks/useAuth';
+import '@testing-library/jest-dom';
 
 // ─── MOCKS ───────────────────────────────────────────────────────────────────
 
