@@ -3,7 +3,7 @@ import ScannerPage from '@/app/(app)/user/scanner/page';
 import { useAuth } from '@/hooks/useAuth';
 import '@testing-library/jest-dom';
 
-// ─── MOCKS ───────────────────────────────────────────────────────────────────
+// MOCKS
 
 // fake out the auth hook so we control login state in each test
 jest.mock('@/hooks/useAuth', () => ({
@@ -13,7 +13,7 @@ jest.mock('@/hooks/useAuth', () => ({
 const mockPush = jest.fn()
 const mockSearchParamsGet = jest.fn()
 
-// fake out Next.js navigation — useSearchParams lets us pretend to pass ?type=xxx
+// fake out Next.js navigation so useSearchParams lets us pretend to pass ?type=xxx
 jest.mock('next/navigation', () => ({
   useSearchParams: () => ({ get: mockSearchParamsGet }),
   useRouter: () => ({ push: mockPush }),
@@ -32,9 +32,10 @@ jest.mock('lucide-react', () => ({
   X: () => <svg data-testid="x-icon" />,
 }))
 
-// ScannerContent mock — lets tests trigger a scan by clicking a button
+// ScannerContent mock that lets tests trigger a scan by clicking a button
+// children are rendered so that cart UI inside ScannerContent is visible in tests
 jest.mock('@/components/scanner/scannerContext', () => {
-  return function MockScannerContent({ onItemScanned, title, onBack }: any) {
+  return function MockScannerContent({ onItemScanned, title, onBack, children }: any) {
     return (
       <div data-testid="scanner-content">
         <h1 data-testid="scanner-title">{title}</h1>
@@ -47,12 +48,13 @@ jest.mock('@/components/scanner/scannerContext', () => {
         <button data-testid="trigger-back" onClick={onBack}>
           Back
         </button>
+        {children}
       </div>
     )
   }
 })
 
-// SuccessContent mock — shows scanType so tests can check which flow completed
+// SuccessContent mock that shows scanType so tests can check which flow completed
 jest.mock('@/components/scanner/successContent', () => {
   return function MockSuccessContent({ scanType, item }: any) {
     return (
@@ -64,7 +66,7 @@ jest.mock('@/components/scanner/successContent', () => {
   }
 })
 
-// ConfirmationContent mock — exposes submit and create buttons so tests can click them
+// ConfirmationContent mock that exposes submit and create buttons so tests can click them
 jest.mock('@/components/scanner/confirmationContext', () => {
   return function MockConfirmationContent({ onSubmit, onCreate, onBack }: any) {
     return (
@@ -93,7 +95,7 @@ jest.mock('@/components/scanner/confirmationContext', () => {
 global.fetch = jest.fn()
 global.alert = jest.fn()
 
-// ─── HELPERS ─────────────────────────────────────────────────────────────────
+// HELPERS
 
 // shorthand auth states to reuse across tests
 const authReady = { isLoading: false, isAuthenticated: true }
@@ -101,20 +103,27 @@ const authLoading = { isLoading: true, isAuthenticated: false }
 const authGuest = { isLoading: false, isAuthenticated: false }
 
 // wrap fetch response so tests don't have to repeat the same boilerplate
+// ok: true is required because scannerFetch.post/lookup checks res.ok before parsing
 function mockFetch(data: any, success = true) {
-  return { json: () => Promise.resolve({ success, data }) }
+  return { ok: true, json: () => Promise.resolve({ success, data }) }
 }
 
-// ─── TESTS ───────────────────────────────────────────────────────────────────
+// TESTS
 
 describe('ScannerPage', () => {
+  // helper to mock only the 'type' param and return null for all other keys
+  // (prevents scanLocation / scanDepartment from accidentally triggering QR redirect flow)
+  function mockType(type: string | null) {
+    mockSearchParamsGet.mockImplementation((key: string) => key === 'type' ? type : null)
+  }
+
   beforeEach(() => {
     jest.clearAllMocks()
-    mockSearchParamsGet.mockReturnValue(null) // defaults to asset scan
+    mockType(null) // defaults to asset scan
     ;(global.fetch as jest.Mock).mockResolvedValue(mockFetch(null))
   })
 
-  // ── Auth guard ─────────────────────────────────────────────────────────────
+  // Auth guard
 
   // page should show nothing while still checking if user is logged in
   it('renders nothing while auth is loading', () => {
@@ -130,40 +139,40 @@ describe('ScannerPage', () => {
     expect(container.firstChild).toBeNull()
   })
 
-  // ── Scan type titles ───────────────────────────────────────────────────────
+  // Scan type titles
 
   // without any ?type= param, it defaults to the asset scanner
   it('shows Asset Scanner by default when no type param is set', () => {
     ;(useAuth as jest.Mock).mockReturnValue(authReady)
     render(<ScannerPage />)
-    expect(screen.getByTestId('scanner-title')).toHaveTextContent('Asset Scanner')
+    expect(screen.getByTestId('scanner-title')).toHaveTextContent('Scan asset barcode')
   })
 
   // ?type=location should show the location scanner
   it('shows Location Scanner when type=location', () => {
     ;(useAuth as jest.Mock).mockReturnValue(authReady)
-    mockSearchParamsGet.mockReturnValue('location')
+    mockType('location')
     render(<ScannerPage />)
-    expect(screen.getByTestId('scanner-title')).toHaveTextContent('Location Scanner')
+    expect(screen.getByTestId('scanner-title')).toHaveTextContent('Scan location QR code')
   })
 
   // ?type=staff should show the staff ID scanner
   it('shows Staff ID Scanner when type=staff', () => {
     ;(useAuth as jest.Mock).mockReturnValue(authReady)
-    mockSearchParamsGet.mockReturnValue('staff')
+    mockType('staff')
     render(<ScannerPage />)
-    expect(screen.getByTestId('scanner-title')).toHaveTextContent('Staff ID Scanner')
+    expect(screen.getByTestId('scanner-title')).toHaveTextContent('Scan staff ID')
   })
 
   // ?type=department should show the department scanner
   it('shows Department Scanner when type=department', () => {
     ;(useAuth as jest.Mock).mockReturnValue(authReady)
-    mockSearchParamsGet.mockReturnValue('department')
+    mockType('department')
     render(<ScannerPage />)
-    expect(screen.getByTestId('scanner-title')).toHaveTextContent('Department Scanner')
+    expect(screen.getByTestId('scanner-title')).toHaveTextContent('Scan department QR code')
   })
 
-  // ── Back navigation ────────────────────────────────────────────────────────
+  // Back navigation
 
   // pressing Back on the scanner should send the user to their dashboard
   it('navigates to dashboard when Back is clicked on the scanner', () => {
@@ -173,7 +182,7 @@ describe('ScannerPage', () => {
     expect(mockPush).toHaveBeenCalledWith('/user/dashboard')
   })
 
-  // ── Asset scan flow ────────────────────────────────────────────────────────
+  // Asset scan flow
 
   // scanning an asset code should bring up the confirmation screen
   it('moves to confirmation when an asset code is scanned', async () => {
@@ -231,12 +240,12 @@ describe('ScannerPage', () => {
     })
   })
 
-  // ── Location scan flow ─────────────────────────────────────────────────────
+  // Location scan flow
 
-  // first scan in location mode looks up the location — scanner should stay open for the asset scan
+  // first scan in location mode looks up the location, scanner should stay open for the asset scan
   it('stays on scanning after the first scan (location step) succeeds', async () => {
     ;(useAuth as jest.Mock).mockReturnValue(authReady)
-    mockSearchParamsGet.mockReturnValue('location')
+    mockType('location')
     ;(global.fetch as jest.Mock).mockResolvedValue(
       mockFetch({ name: 'Warehouse A' }, true)
     )
@@ -250,30 +259,34 @@ describe('ScannerPage', () => {
     })
   })
 
-  // if the scanned location code doesn't exist, show an alert
+  // if the scanned location code doesn't exist, show an error alert
   it('shows alert when the scanned location ID is not found', async () => {
     ;(useAuth as jest.Mock).mockReturnValue(authReady)
-    mockSearchParamsGet.mockReturnValue('location')
+    mockType('location')
     ;(global.fetch as jest.Mock).mockResolvedValue(mockFetch(null, false))
 
     render(<ScannerPage />)
 
     await act(async () => { fireEvent.click(screen.getByTestId('trigger-scan')) })
 
+    // new flow: shows error modal or calls alert when ID is not found
     await waitFor(() => {
-      expect(global.alert).toHaveBeenCalledWith(expect.stringContaining('not found'))
+      const alertCalled = (global.alert as jest.Mock).mock.calls.some(
+        call => String(call[0]).toLowerCase().includes('not found')
+      )
+      const errorModal = screen.queryByText('Error')
+      expect(alertCalled || errorModal !== null).toBe(true)
     })
   })
 
-  // second scan (asset) in location mode — should tag the asset and show success
-  it('tags asset to location and shows success on the second scan', async () => {
+  // second scan (asset) in location mode, new flow adds asset to cart and stays on scanning
+  it('adds asset to cart after scanning location then asset', async () => {
     ;(useAuth as jest.Mock).mockReturnValue(authReady)
-    mockSearchParamsGet.mockReturnValue('location')
+    mockType('location')
 
     ;(global.fetch as jest.Mock)
-      .mockResolvedValueOnce(mockFetch({ name: 'Warehouse A' }, true))           // location lookup
+      .mockResolvedValueOnce(mockFetch({ name: 'Warehouse A' }, true))                   // location lookup
       .mockResolvedValueOnce(mockFetch({ asset_id: 'TEST-001', name: 'Laptop' }, true)) // asset lookup
-      .mockResolvedValueOnce(mockFetch(null, true))                              // tag_asset post
 
     render(<ScannerPage />)
 
@@ -281,16 +294,16 @@ describe('ScannerPage', () => {
     await waitFor(() => expect(screen.getByTestId('scanner-content')).toBeInTheDocument())
     await act(async () => { fireEvent.click(screen.getByTestId('trigger-scan')) })
 
+    // new flow: stays on scanning screen and shows cart counter
     await waitFor(() => {
-      expect(screen.getByTestId('success-content')).toBeInTheDocument()
-      expect(screen.getByTestId('scan-type')).toHaveTextContent('Tagged to Warehouse A')
+      expect(screen.getByText('Cart (1)')).toBeInTheDocument()
     })
   })
 
-  // if the asset isn't found during location tagging, show the registration form instead
-  it('goes to confirmation when asset is not found during location tagging', async () => {
+  // if the asset isn't found during location tagging, show error modal (not confirmation)
+  it('shows error modal when asset is not found during location tagging', async () => {
     ;(useAuth as jest.Mock).mockReturnValue(authReady)
-    mockSearchParamsGet.mockReturnValue('location')
+    mockType('location')
 
     ;(global.fetch as jest.Mock)
       .mockResolvedValueOnce(mockFetch({ name: 'Warehouse A' }, true)) // location found
@@ -303,20 +316,20 @@ describe('ScannerPage', () => {
     await act(async () => { fireEvent.click(screen.getByTestId('trigger-scan')) })
 
     await waitFor(() => {
-      expect(screen.getByTestId('confirmation-content')).toBeInTheDocument()
+      expect(screen.getByText('Error')).toBeInTheDocument()
     })
   })
 
-  // ── Staff scan flow ────────────────────────────────────────────────────────
+  // Staff scan flow
 
   // scanning a valid staff ID should show a modal with the staff's name
   it('shows StaffConfirmedModal with staff name when a valid staff ID is scanned', async () => {
     ;(useAuth as jest.Mock).mockReturnValue(authReady)
-    mockSearchParamsGet.mockReturnValue('staff')
+    mockType('staff')
 
     ;(global.fetch as jest.Mock)
       .mockResolvedValueOnce(mockFetch({ staff_id: 'S001', name: 'John Doe' }, true)) // staff lookup
-      .mockResolvedValueOnce({ json: () => Promise.resolve({ success: true, count: 3 }) }) // asset count
+      .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ success: true, count: 3 }) }) // asset count
 
     render(<ScannerPage />)
 
@@ -331,11 +344,11 @@ describe('ScannerPage', () => {
   // the modal should also show how many assets that staff currently has
   it('shows asset count in StaffConfirmedModal', async () => {
     ;(useAuth as jest.Mock).mockReturnValue(authReady)
-    mockSearchParamsGet.mockReturnValue('staff')
+    mockType('staff')
 
     ;(global.fetch as jest.Mock)
       .mockResolvedValueOnce(mockFetch({ staff_id: 'S001', name: 'John Doe' }, true))
-      .mockResolvedValueOnce({ json: () => Promise.resolve({ success: true, count: 5 }) })
+      .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ success: true, count: 5 }) })
 
     render(<ScannerPage />)
 
@@ -349,7 +362,7 @@ describe('ScannerPage', () => {
   // scanning a staff ID that doesn't exist should open an error modal
   it('shows error modal when staff ID is not found', async () => {
     ;(useAuth as jest.Mock).mockReturnValue(authReady)
-    mockSearchParamsGet.mockReturnValue('staff')
+    mockType('staff')
 
     ;(global.fetch as jest.Mock).mockResolvedValueOnce(mockFetch(null, false))
 
@@ -366,7 +379,7 @@ describe('ScannerPage', () => {
   // pressing Close on the error modal should dismiss it
   it('closes error modal when Close is clicked', async () => {
     ;(useAuth as jest.Mock).mockReturnValue(authReady)
-    mockSearchParamsGet.mockReturnValue('staff')
+    mockType('staff')
 
     ;(global.fetch as jest.Mock).mockResolvedValueOnce(mockFetch(null, false))
 
@@ -385,11 +398,11 @@ describe('ScannerPage', () => {
   // after confirming staff and clicking Continue Scanning, scanning an asset should add it to the cart
   it('adds an asset to the cart after staff is confirmed and Continue Scanning is clicked', async () => {
     ;(useAuth as jest.Mock).mockReturnValue(authReady)
-    mockSearchParamsGet.mockReturnValue('staff')
+    mockType('staff')
 
     ;(global.fetch as jest.Mock)
       .mockResolvedValueOnce(mockFetch({ staff_id: 'S001', name: 'John' }, true))    // staff
-      .mockResolvedValueOnce({ json: () => Promise.resolve({ success: true, count: 0 }) }) // count
+      .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ success: true, count: 0 }) }) // count
       .mockResolvedValueOnce(mockFetch({ asset_id: 'TEST-001', name: 'Laptop' }, true)) // asset
       .mockResolvedValueOnce(mockFetch([], true))                                   // assignment check
 
@@ -408,11 +421,11 @@ describe('ScannerPage', () => {
   // scanning the same asset code twice should show a duplicate error
   it('shows error when the same asset is scanned twice (duplicate in cart)', async () => {
     ;(useAuth as jest.Mock).mockReturnValue(authReady)
-    mockSearchParamsGet.mockReturnValue('staff')
+    mockType('staff')
 
     ;(global.fetch as jest.Mock)
       .mockResolvedValueOnce(mockFetch({ staff_id: 'S001', name: 'John' }, true))
-      .mockResolvedValueOnce({ json: () => Promise.resolve({ success: true, count: 0 }) })
+      .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ success: true, count: 0 }) })
       .mockResolvedValueOnce(mockFetch({ asset_id: 'TEST-001', name: 'Laptop' }, true))
       .mockResolvedValueOnce(mockFetch([], true))
     // Second scan of same code triggers duplicate check before any fetch
@@ -423,11 +436,11 @@ describe('ScannerPage', () => {
     await waitFor(() => expect(screen.getByText('Staff Confirmed')).toBeInTheDocument())
     await act(async () => { fireEvent.click(screen.getByText('Continue Scanning')) })
 
-    // First asset scan — adds to cart
+    // First asset scan, adds to cart
     await act(async () => { fireEvent.click(screen.getByTestId('trigger-scan')) })
     await waitFor(() => expect(screen.getByText('Cart (1)')).toBeInTheDocument())
 
-    // Second scan of the same code — should show duplicate error
+    // Second scan of the same code, should show duplicate error
     await act(async () => { fireEvent.click(screen.getByTestId('trigger-scan')) })
 
     await waitFor(() => {
@@ -438,13 +451,13 @@ describe('ScannerPage', () => {
   // clicking Submit Changes should POST the cart and show the success screen
   it('submits the cart and shows success after staff assignment', async () => {
     ;(useAuth as jest.Mock).mockReturnValue(authReady)
-    mockSearchParamsGet.mockReturnValue('staff')
+    mockType('staff')
 
     ;(global.fetch as jest.Mock)
       .mockResolvedValueOnce(mockFetch({ staff_id: 'S001', name: 'John' }, true))
-      .mockResolvedValueOnce({ json: () => Promise.resolve({ success: true, count: 0 }) })
+      .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ success: true, count: 0 }) })
       .mockResolvedValueOnce(mockFetch({ asset_id: 'TEST-001', name: 'Laptop' }, true))
-      .mockResolvedValueOnce(mockFetch([], true))       // assignment check → action = ASSIGN
+      .mockResolvedValueOnce(mockFetch([], true))       // assignment check, action = ASSIGN
       .mockResolvedValueOnce(mockFetch(null, true))     // assign post
 
     render(<ScannerPage />)
@@ -465,11 +478,11 @@ describe('ScannerPage', () => {
   // clicking the X button should empty the entire cart
   it('clears the entire cart when the X button is clicked', async () => {
     ;(useAuth as jest.Mock).mockReturnValue(authReady)
-    mockSearchParamsGet.mockReturnValue('staff')
+    mockType('staff')
 
     ;(global.fetch as jest.Mock)
       .mockResolvedValueOnce(mockFetch({ staff_id: 'S001', name: 'John' }, true))
-      .mockResolvedValueOnce({ json: () => Promise.resolve({ success: true, count: 0 }) })
+      .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ success: true, count: 0 }) })
       .mockResolvedValueOnce(mockFetch({ asset_id: 'TEST-001', name: 'Laptop' }, true))
       .mockResolvedValueOnce(mockFetch([], true))
 

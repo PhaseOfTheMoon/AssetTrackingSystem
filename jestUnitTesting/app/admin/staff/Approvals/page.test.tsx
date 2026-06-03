@@ -1,543 +1,247 @@
 // Commented by Irene
-import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
-import { useRouter } from 'next/navigation';
-import ApprovalsPage from '@/app/(app)/admin/staff/approvals/page';
-import { useAdminAccess } from '@/hooks/useAdminAccess';
-
-// fake out dependencies so we control them in tests
-jest.mock('next/navigation', () => ({
-  useRouter: jest.fn(),
-}));
+import { render, screen, fireEvent, act } from '@testing-library/react'
+import ApprovalsPage from '@/app/(app)/admin/staff/approvals/page'
+import { useAdminAccess } from '@/hooks/useAdminAccess'
 
 jest.mock('@/hooks/useAdminAccess', () => ({
-  useAdminAccess: jest.fn(),
-}));
+  useAdminAccess: jest.fn()
+}))
 
-// simple breadcrumb mock — just renders the label text
-jest.mock('@/components/ui/breadcrumb', () => {
-  return function MockBreadcrumb({ customItems }: any) {
+jest.mock('next/navigation', () => ({
+  useRouter: jest.fn(),
+  useSearchParams: jest.fn(() => ({ get: jest.fn() })),
+  usePathname: jest.fn()
+}))
+
+jest.mock('@heroicons/react/24/outline', () => ({
+  ClockIcon: () => <svg />,
+  CheckIcon: () => <svg />,
+  XMarkIcon: () => <svg />
+}))
+
+global.fetch = jest.fn()
+global.confirm = jest.fn()
+global.alert = jest.fn()
+
+// updated mock: renders action buttons and column cells so the callbacks are exercised
+jest.mock('@/components/dynamicPage', () => {
+  return function MockDynamicPage({ config }: any) {
+    const sampleRow = { staff_id: 'S001', name: 'Test User' }
+    const mockRefresh = jest.fn()
     return (
-      <div data-testid="breadcrumb">
-        {customItems.map((item: any, index: number) => (
-          <span key={index}>{item.label}</span>
+      <div data-testid="dynamic-page">
+        <h1>{config.pageTitle}</h1>
+        <div data-testid="config">{JSON.stringify(config)}</div>
+
+        {/* render each custom action button so onClick and show callbacks are testable */}
+        {config.customActions?.map((action: any) => (
+          <div key={action.label}>
+            <span data-testid={`show-${action.label.toLowerCase()}-pending`}>
+              {String(action.show(sampleRow, 'pending'))}
+            </span>
+            <span data-testid={`show-${action.label.toLowerCase()}-approved`}>
+              {String(action.show(sampleRow, 'approved'))}
+            </span>
+            <button
+              data-testid={`action-${action.label.toLowerCase()}`}
+              onClick={() => action.onClick(sampleRow, mockRefresh)}
+            >
+              {action.label}
+            </button>
+          </div>
+        ))}
+
+        {/* render column cells with sample data so render callbacks are exercised */}
+        {config.columns?.filter((col: any) => col.render).map((col: any) => (
+          <div key={col.key} data-testid={`cell-${col.key}`}>
+            {col.render('2024-01-15T10:30:00.000Z', sampleRow)}
+          </div>
         ))}
       </div>
-    );
-  };
-});
+    )
+  }
+})
 
-// replace heroicons with plain SVGs so we don't need the real icon library
-jest.mock('@heroicons/react/24/outline', () => ({
-  CheckCircleIcon: () => <svg data-testid="check-icon">Check</svg>,
-  XCircleIcon: () => <svg data-testid="x-icon">X</svg>,
-  ClockIcon: () => <svg data-testid="clock-icon">Clock</svg>,
-  ArrowPathIcon: ({ className }: any) => <svg data-testid="refresh-icon" className={className}>Refresh</svg>,
-}));
-
-// mock fetch, alert, and confirm so tests can control and spy on them
-global.fetch = jest.fn();
-global.alert = jest.fn();
-global.confirm = jest.fn();
+const adminAccess = { isLoading: false, isAdmin: true }
 
 describe('ApprovalsPage', () => {
-  const mockPush = jest.fn();
-  const mockSession = {
-    name: 'Admin User',
-    email: 'admin@example.com',
-    role: 'admin',
-  };
-
-  // sample data for the 3 different staff statuses
-  const mockPendingStaff = [
-    {
-      staff_id: 'S001',
-      name: 'Pending User',
-      email: 'pending@example.com',
-      mobile_no: '0123456789',
-      department_id: 'IT',
-      status: 'pending',
-      created_dt: '2024-01-01T10:00:00.000Z',
-    },
-  ];
-
-  const mockApprovedStaff = [
-    {
-      staff_id: 'S002',
-      name: 'Approved User',
-      email: 'approved@example.com',
-      mobile_no: '0987654321',
-      department_id: 'HR',
-      status: 'approved',
-      created_dt: '2024-01-02T10:00:00.000Z',
-    },
-  ];
-
-  const mockRejectedStaff = [
-    {
-      staff_id: 'S003',
-      name: 'Rejected User',
-      email: 'rejected@example.com',
-      mobile_no: '0111111111',
-      department_id: 'Finance',
-      status: 'rejected',
-      created_dt: '2024-01-03T10:00:00.000Z',
-    },
-  ];
-
   beforeEach(() => {
-    jest.clearAllMocks();
-    (useRouter as jest.Mock).mockReturnValue({ push: mockPush });
-  });
+    jest.clearAllMocks()
+  })
 
-  // show "Loading..." while the session is still being fetched
-  it('shows loading state when session is loading', () => {
-    (useAdminAccess as jest.Mock).mockReturnValue({
-      session: null,
-      isLoading: true,
-    });
+  // Access control
 
-    render(<ApprovalsPage />);
+  it('renders nothing while admin access is loading', () => {
+    ;(useAdminAccess as jest.Mock).mockReturnValue({ isLoading: true, isAdmin: false })
+    const { container } = render(<ApprovalsPage />)
+    expect(container.firstChild).toBeNull()
+  })
 
-    expect(screen.getByText('Loading...')).toBeInTheDocument();
-  });
+  it('renders nothing when the user is not an admin', () => {
+    ;(useAdminAccess as jest.Mock).mockReturnValue({ isLoading: false, isAdmin: false })
+    const { container } = render(<ApprovalsPage />)
+    expect(container.firstChild).toBeNull()
+  })
 
-  // once loaded, the page should show the 3 tabs (Pending, Approved, Rejected)
-  it('renders approvals page with tabs', async () => {
-    (useAdminAccess as jest.Mock).mockReturnValue({
-      session: mockSession,
-      isLoading: false,
-    });
+  it('renders the DynamicPage when the user is an admin', () => {
+    ;(useAdminAccess as jest.Mock).mockReturnValue(adminAccess)
+    render(<ApprovalsPage />)
+    expect(screen.getByTestId('dynamic-page')).toBeInTheDocument()
+  })
 
-    (global.fetch as jest.Mock)
-      .mockResolvedValueOnce({ json: () => Promise.resolve({ success: true, staff: [] }) })
-      .mockResolvedValueOnce({ json: () => Promise.resolve({ success: true, staff: [] }) })
-      .mockResolvedValueOnce({ json: () => Promise.resolve({ success: true, staff: [] }) });
+  // Config
 
+  it('shows the correct page title', () => {
+    ;(useAdminAccess as jest.Mock).mockReturnValue(adminAccess)
+    render(<ApprovalsPage />)
+    expect(screen.getByText('Staff Registration Approvals')).toBeInTheDocument()
+  })
+
+  it('passes the correct API endpoint and primary key', () => {
+    ;(useAdminAccess as jest.Mock).mockReturnValue(adminAccess)
+    render(<ApprovalsPage />)
+    const config = JSON.parse(screen.getByTestId('config').textContent || '{}')
+    expect(config.apiEndpoint).toBe('/api/staff/approvals')
+    expect(config.primaryKey).toBe('staff_id')
+  })
+
+  it('includes Pending, Approved and Rejected tabs', () => {
+    ;(useAdminAccess as jest.Mock).mockReturnValue(adminAccess)
+    render(<ApprovalsPage />)
+    const config = JSON.parse(screen.getByTestId('config').textContent || '{}')
+    const labels = config.tabsConfig.map((t: any) => t.label)
+    expect(labels).toContain('Pending')
+    expect(labels).toContain('Approved')
+    expect(labels).toContain('Rejected')
+  })
+
+  it('has showAddButton set to false', () => {
+    ;(useAdminAccess as jest.Mock).mockReturnValue(adminAccess)
+    render(<ApprovalsPage />)
+    const config = JSON.parse(screen.getByTestId('config').textContent || '{}')
+    expect(config.showAddButton).toBe(false)
+  })
+
+  it('includes all required columns', () => {
+    ;(useAdminAccess as jest.Mock).mockReturnValue(adminAccess)
+    render(<ApprovalsPage />)
+    const config = JSON.parse(screen.getByTestId('config').textContent || '{}')
+    const keys = config.columns.map((c: any) => c.key)
+    expect(keys).toEqual(
+      expect.arrayContaining(['staff_id', 'name', 'email', 'mobile_no', 'department_id', 'created_dt'])
+    )
+  })
+
+  // formatDate (created_dt column render)
+
+  it('renders a formatted date in the created_dt column', () => {
+    ;(useAdminAccess as jest.Mock).mockReturnValue(adminAccess)
+    render(<ApprovalsPage />)
+    // the mock calls col.render('2024-01-15T10:30:00.000Z', row)
+    // formatDate should convert this to a human-readable string
+    const cell = screen.getByTestId('cell-created_dt')
+    expect(cell.textContent).not.toBe('')
+    expect(cell.textContent).toMatch(/2024/)
+  })
+
+  // handleApprove
+
+  // when user confirms and fetch succeeds, the API is called
+  it('calls POST /api/staff/approve when Approve is clicked and user confirms', async () => {
+    ;(useAdminAccess as jest.Mock).mockReturnValue(adminAccess)
+    ;(global.confirm as jest.Mock).mockReturnValue(true)
+    ;(global.fetch as jest.Mock).mockResolvedValue({ ok: true })
+
+    render(<ApprovalsPage />)
     await act(async () => {
-      render(<ApprovalsPage />);
-    });
+      fireEvent.click(screen.getByTestId('action-approve'))
+    })
 
-    await waitFor(() => {
-      expect(screen.getByText('Staff Registration Approvals')).toBeInTheDocument();
-      expect(screen.getByText(/Pending \(0\)/i)).toBeInTheDocument();
-      expect(screen.getByText(/Approved \(0\)/i)).toBeInTheDocument();
-      expect(screen.getByText(/Rejected \(0\)/i)).toBeInTheDocument();
-    });
-  });
+    expect(global.fetch).toHaveBeenCalledWith(
+      '/api/staff/approve',
+      expect.objectContaining({ method: 'POST' })
+    )
+  })
 
-  // pending tab should show the staff who are waiting for approval
-  it('fetches and displays pending staff', async () => {
-    (useAdminAccess as jest.Mock).mockReturnValue({
-      session: mockSession,
-      isLoading: false,
-    });
+  // when user cancels the confirm dialog, fetch must not be called
+  it('does not call fetch when user cancels the Approve confirmation', async () => {
+    ;(useAdminAccess as jest.Mock).mockReturnValue(adminAccess)
+    ;(global.confirm as jest.Mock).mockReturnValue(false)
 
-    (global.fetch as jest.Mock)
-      .mockResolvedValueOnce({ json: () => Promise.resolve({ success: true, staff: mockPendingStaff }) })
-      .mockResolvedValueOnce({ json: () => Promise.resolve({ success: true, staff: [] }) })
-      .mockResolvedValueOnce({ json: () => Promise.resolve({ success: true, staff: [] }) });
-
+    render(<ApprovalsPage />)
     await act(async () => {
-      render(<ApprovalsPage />);
-    });
+      fireEvent.click(screen.getByTestId('action-approve'))
+    })
 
-    await waitFor(() => {
-      expect(screen.getByText('Pending User')).toBeInTheDocument();
-      expect(screen.getByText('pending@example.com')).toBeInTheDocument();
-      expect(screen.getByText(/Pending \(1\)/i)).toBeInTheDocument();
-    });
-  });
+    expect(global.fetch).not.toHaveBeenCalled()
+  })
 
-  // clicking the Approved tab should show approved staff
-  it('switches to approved tab and displays approved staff', async () => {
-    (useAdminAccess as jest.Mock).mockReturnValue({
-      session: mockSession,
-      isLoading: false,
-    });
+  // when the API returns an error, alert is shown
+  it('shows an alert when the approve API call fails', async () => {
+    ;(useAdminAccess as jest.Mock).mockReturnValue(adminAccess)
+    ;(global.confirm as jest.Mock).mockReturnValue(true)
+    ;(global.fetch as jest.Mock).mockResolvedValue({ ok: false })
 
-    (global.fetch as jest.Mock)
-      .mockResolvedValueOnce({ json: () => Promise.resolve({ success: true, staff: [] }) })
-      .mockResolvedValueOnce({ json: () => Promise.resolve({ success: true, staff: mockApprovedStaff }) })
-      .mockResolvedValueOnce({ json: () => Promise.resolve({ success: true, staff: [] }) });
-
+    render(<ApprovalsPage />)
     await act(async () => {
-      render(<ApprovalsPage />);
-    });
+      fireEvent.click(screen.getByTestId('action-approve'))
+    })
 
-    await waitFor(() => {
-      const approvedTab = screen.getByText(/Approved \(1\)/i);
-      fireEvent.click(approvedTab);
-    });
+    expect(global.alert).toHaveBeenCalledWith('Failed to approve staff member')
+  })
 
-    await waitFor(() => {
-      expect(screen.getByText('Approved User')).toBeInTheDocument();
-      expect(screen.getByText('approved@example.com')).toBeInTheDocument();
-    });
-  });
+  // handleReject
 
-  // clicking the Rejected tab should show rejected staff
-  it('switches to rejected tab and displays rejected staff', async () => {
-    (useAdminAccess as jest.Mock).mockReturnValue({
-      session: mockSession,
-      isLoading: false,
-    });
+  it('calls POST /api/staff/reject when Reject is clicked and user confirms', async () => {
+    ;(useAdminAccess as jest.Mock).mockReturnValue(adminAccess)
+    ;(global.confirm as jest.Mock).mockReturnValue(true)
+    ;(global.fetch as jest.Mock).mockResolvedValue({ ok: true })
 
-    (global.fetch as jest.Mock)
-      .mockResolvedValueOnce({ json: () => Promise.resolve({ success: true, staff: [] }) })
-      .mockResolvedValueOnce({ json: () => Promise.resolve({ success: true, staff: [] }) })
-      .mockResolvedValueOnce({ json: () => Promise.resolve({ success: true, staff: mockRejectedStaff }) });
-
+    render(<ApprovalsPage />)
     await act(async () => {
-      render(<ApprovalsPage />);
-    });
+      fireEvent.click(screen.getByTestId('action-reject'))
+    })
 
-    await waitFor(() => {
-      const rejectedTab = screen.getByText(/Rejected \(1\)/i);
-      fireEvent.click(rejectedTab);
-    });
+    expect(global.fetch).toHaveBeenCalledWith(
+      '/api/staff/reject',
+      expect.objectContaining({ method: 'POST' })
+    )
+  })
 
-    await waitFor(() => {
-      expect(screen.getByText('Rejected User')).toBeInTheDocument();
-      expect(screen.getByText('rejected@example.com')).toBeInTheDocument();
-    });
-  });
+  it('does not call fetch when user cancels the Reject confirmation', async () => {
+    ;(useAdminAccess as jest.Mock).mockReturnValue(adminAccess)
+    ;(global.confirm as jest.Mock).mockReturnValue(false)
 
-  // the pending tab should have Approve and Reject action buttons per row
-  it('shows approve and reject buttons on pending tab', async () => {
-    (useAdminAccess as jest.Mock).mockReturnValue({
-      session: mockSession,
-      isLoading: false,
-    });
-
-    (global.fetch as jest.Mock)
-      .mockResolvedValueOnce({ json: () => Promise.resolve({ success: true, staff: mockPendingStaff }) })
-      .mockResolvedValueOnce({ json: () => Promise.resolve({ success: true, staff: [] }) })
-      .mockResolvedValueOnce({ json: () => Promise.resolve({ success: true, staff: [] }) });
-
+    render(<ApprovalsPage />)
     await act(async () => {
-      render(<ApprovalsPage />);
-    });
+      fireEvent.click(screen.getByTestId('action-reject'))
+    })
 
-    await waitFor(() => {
-      expect(screen.getByText('Approve')).toBeInTheDocument();
-      expect(screen.getByText('Reject')).toBeInTheDocument();
-    });
-  });
+    expect(global.fetch).not.toHaveBeenCalled()
+  })
 
-  // clicking Approve should ask for confirmation and then show success alert
-  it('handles approve button click with confirmation', async () => {
-    (useAdminAccess as jest.Mock).mockReturnValue({
-      session: mockSession,
-      isLoading: false,
-    });
+  // show callbacks
 
-    (global.fetch as jest.Mock)
-      .mockResolvedValueOnce({ json: () => Promise.resolve({ success: true, staff: mockPendingStaff }) })
-      .mockResolvedValueOnce({ json: () => Promise.resolve({ success: true, staff: [] }) })
-      .mockResolvedValueOnce({ json: () => Promise.resolve({ success: true, staff: [] }) })
-      .mockResolvedValueOnce({ json: () => Promise.resolve({ success: true }) })
-      .mockResolvedValueOnce({ json: () => Promise.resolve({ success: true, staff: [] }) })
-      .mockResolvedValueOnce({ json: () => Promise.resolve({ success: true, staff: [] }) })
-      .mockResolvedValueOnce({ json: () => Promise.resolve({ success: true, staff: [] }) });
+  // Approve and Reject actions should only be visible on the Pending tab
+  it('shows Approve and Reject actions only on the pending tab', () => {
+    ;(useAdminAccess as jest.Mock).mockReturnValue(adminAccess)
+    render(<ApprovalsPage />)
+    expect(screen.getByTestId('show-approve-pending').textContent).toBe('true')
+    expect(screen.getByTestId('show-approve-approved').textContent).toBe('false')
+    expect(screen.getByTestId('show-reject-pending').textContent).toBe('true')
+    expect(screen.getByTestId('show-reject-approved').textContent).toBe('false')
+  })
 
-    (global.confirm as jest.Mock).mockReturnValue(true);
+  it('shows an alert when the reject API call fails', async () => {
+    ;(useAdminAccess as jest.Mock).mockReturnValue(adminAccess)
+    ;(global.confirm as jest.Mock).mockReturnValue(true)
+    ;(global.fetch as jest.Mock).mockResolvedValue({ ok: false })
 
+    render(<ApprovalsPage />)
     await act(async () => {
-      render(<ApprovalsPage />);
-    });
+      fireEvent.click(screen.getByTestId('action-reject'))
+    })
 
-    await waitFor(() => {
-      const approveButton = screen.getByText('Approve');
-      fireEvent.click(approveButton);
-    });
-
-    await waitFor(() => {
-      expect(global.confirm).toHaveBeenCalledWith('Are you sure you want to approve this registration?');
-      expect(global.alert).toHaveBeenCalledWith('Staff member approved successfully!');
-    });
-  });
-
-  // clicking Reject should ask for confirmation and then show success alert
-  it('handles reject button click with confirmation', async () => {
-    (useAdminAccess as jest.Mock).mockReturnValue({
-      session: mockSession,
-      isLoading: false,
-    });
-
-    (global.fetch as jest.Mock)
-      .mockResolvedValueOnce({ json: () => Promise.resolve({ success: true, staff: mockPendingStaff }) })
-      .mockResolvedValueOnce({ json: () => Promise.resolve({ success: true, staff: [] }) })
-      .mockResolvedValueOnce({ json: () => Promise.resolve({ success: true, staff: [] }) })
-      .mockResolvedValueOnce({ json: () => Promise.resolve({ success: true }) })
-      .mockResolvedValueOnce({ json: () => Promise.resolve({ success: true, staff: [] }) })
-      .mockResolvedValueOnce({ json: () => Promise.resolve({ success: true, staff: [] }) })
-      .mockResolvedValueOnce({ json: () => Promise.resolve({ success: true, staff: [] }) });
-
-    (global.confirm as jest.Mock).mockReturnValue(true);
-
-    await act(async () => {
-      render(<ApprovalsPage />);
-    });
-
-    await waitFor(() => {
-      const rejectButton = screen.getByText('Reject');
-      fireEvent.click(rejectButton);
-    });
-
-    await waitFor(() => {
-      expect(global.confirm).toHaveBeenCalledWith('Are you sure you want to reject this registration?');
-      expect(global.alert).toHaveBeenCalledWith('Staff member rejected successfully!');
-    });
-  });
-
-  // if the user clicks Cancel on the confirm dialog, nothing should happen
-  it('cancels approve when user clicks cancel on confirmation', async () => {
-    (useAdminAccess as jest.Mock).mockReturnValue({
-      session: mockSession,
-      isLoading: false,
-    });
-
-    (global.fetch as jest.Mock)
-      .mockResolvedValueOnce({ json: () => Promise.resolve({ success: true, staff: mockPendingStaff }) })
-      .mockResolvedValueOnce({ json: () => Promise.resolve({ success: true, staff: [] }) })
-      .mockResolvedValueOnce({ json: () => Promise.resolve({ success: true, staff: [] }) });
-
-    (global.confirm as jest.Mock).mockReturnValue(false);
-
-    await act(async () => {
-      render(<ApprovalsPage />);
-    });
-
-    await waitFor(() => {
-      const approveButton = screen.getByText('Approve');
-      fireEvent.click(approveButton);
-    });
-
-    expect(global.confirm).toHaveBeenCalled();
-    expect(global.alert).not.toHaveBeenCalled();
-  });
-
-  // if the API returns an error, show the error message in an alert
-  it('handles API error during approval', async () => {
-    (useAdminAccess as jest.Mock).mockReturnValue({
-      session: mockSession,
-      isLoading: false,
-    });
-
-    (global.fetch as jest.Mock)
-      .mockResolvedValueOnce({ json: () => Promise.resolve({ success: true, staff: mockPendingStaff }) })
-      .mockResolvedValueOnce({ json: () => Promise.resolve({ success: true, staff: [] }) })
-      .mockResolvedValueOnce({ json: () => Promise.resolve({ success: true, staff: [] }) })
-      .mockResolvedValueOnce({ json: () => Promise.resolve({ success: false, error: 'Database error' }) });
-
-    (global.confirm as jest.Mock).mockReturnValue(true);
-
-    await act(async () => {
-      render(<ApprovalsPage />);
-    });
-
-    await waitFor(() => {
-      const approveButton = screen.getByText('Approve');
-      fireEvent.click(approveButton);
-    });
-
-    await waitFor(() => {
-      expect(global.alert).toHaveBeenCalledWith('Error: Database error');
-    });
-  });
-
-  // if the network completely fails, show a generic failure message
-  it('handles network error during approval', async () => {
-    const consoleError = jest.spyOn(console, 'error').mockImplementation();
-
-    (useAdminAccess as jest.Mock).mockReturnValue({
-      session: mockSession,
-      isLoading: false,
-    });
-
-    (global.fetch as jest.Mock)
-      .mockResolvedValueOnce({ json: () => Promise.resolve({ success: true, staff: mockPendingStaff }) })
-      .mockResolvedValueOnce({ json: () => Promise.resolve({ success: true, staff: [] }) })
-      .mockResolvedValueOnce({ json: () => Promise.resolve({ success: true, staff: [] }) })
-      .mockRejectedValueOnce(new Error('Network error'));
-
-    (global.confirm as jest.Mock).mockReturnValue(true);
-
-    await act(async () => {
-      render(<ApprovalsPage />);
-    });
-
-    await waitFor(() => {
-      const approveButton = screen.getByText('Approve');
-      fireEvent.click(approveButton);
-    });
-
-    await waitFor(() => {
-      expect(global.alert).toHaveBeenCalledWith('Failed to approve staff member');
-      expect(consoleError).toHaveBeenCalled();
-    });
-
-    consoleError.mockRestore();
-  });
-
-  // clicking the Refresh button should re-fetch all 3 lists
-  it('refreshes all staff lists when refresh button is clicked', async () => {
-    (useAdminAccess as jest.Mock).mockReturnValue({
-      session: mockSession,
-      isLoading: false,
-    });
-
-    (global.fetch as jest.Mock)
-      .mockResolvedValueOnce({ json: () => Promise.resolve({ success: true, staff: [] }) })
-      .mockResolvedValueOnce({ json: () => Promise.resolve({ success: true, staff: [] }) })
-      .mockResolvedValueOnce({ json: () => Promise.resolve({ success: true, staff: [] }) });
-
-    await act(async () => {
-      render(<ApprovalsPage />);
-    });
-
-    await waitFor(() => {
-      expect(global.fetch).toHaveBeenCalledTimes(3);
-    });
-
-    // Add new mock responses for refresh
-    (global.fetch as jest.Mock).mockResolvedValueOnce({ json: () => Promise.resolve({ success: true, staff: mockPendingStaff }) });
-    (global.fetch as jest.Mock).mockResolvedValueOnce({ json: () => Promise.resolve({ success: true, staff: [] }) });
-    (global.fetch as jest.Mock).mockResolvedValueOnce({ json: () => Promise.resolve({ success: true, staff: [] }) });
-
-    const refreshButton = screen.getByRole('button', { name: /Refresh/i });
-
-    await act(async () => {
-      fireEvent.click(refreshButton);
-    });
-
-    await waitFor(() => {
-      expect(global.fetch).toHaveBeenCalledTimes(6);
-      expect(screen.getByText(/Pending \(1\)/i)).toBeInTheDocument();
-    }, { timeout: 15000 });
-  }, 20000);
-
-  // each tab should show an empty message when there are no records
-  it('shows empty state messages for each tab', async () => {
-    (useAdminAccess as jest.Mock).mockReturnValue({
-      session: mockSession,
-      isLoading: false,
-    });
-
-    (global.fetch as jest.Mock)
-      .mockResolvedValueOnce({ json: () => Promise.resolve({ success: true, staff: [] }) })
-      .mockResolvedValueOnce({ json: () => Promise.resolve({ success: true, staff: [] }) })
-      .mockResolvedValueOnce({ json: () => Promise.resolve({ success: true, staff: [] }) });
-
-    await act(async () => {
-      render(<ApprovalsPage />);
-    });
-
-    // Pending tab empty state
-    await waitFor(() => {
-      expect(screen.getByText('No pending registrations')).toBeInTheDocument();
-    }, { timeout: 15000 });
-
-    // Approved tab empty state
-    const approvedTab = screen.getByText(/Approved \(0\)/i);
-    await act(async () => {
-      fireEvent.click(approvedTab);
-    });
-
-    await waitFor(() => {
-      expect(screen.getByText('No approved staff')).toBeInTheDocument();
-    }, { timeout: 15000 });
-
-    // Rejected tab empty state
-    const rejectedTab = screen.getByText(/Rejected \(0\)/i);
-    await act(async () => {
-      fireEvent.click(rejectedTab);
-    });
-
-    await waitFor(() => {
-      expect(screen.getByText('No rejected registrations')).toBeInTheDocument();
-    }, { timeout: 15000 });
-  }, 20000);
-
-  // dates should be formatted nicely (e.g. "1 Jan 2024")
-  it('formats dates correctly', async () => {
-    (useAdminAccess as jest.Mock).mockReturnValue({
-      session: mockSession,
-      isLoading: false,
-    });
-
-    (global.fetch as jest.Mock)
-      .mockResolvedValueOnce({ json: () => Promise.resolve({ success: true, staff: mockPendingStaff }) })
-      .mockResolvedValueOnce({ json: () => Promise.resolve({ success: true, staff: [] }) })
-      .mockResolvedValueOnce({ json: () => Promise.resolve({ success: true, staff: [] }) });
-
-    await act(async () => {
-      render(<ApprovalsPage />);
-    });
-
-    await waitFor(() => {
-      // Check if date is displayed (format may vary by locale)
-      const dateCell = screen.getByText(/1 Jan 2024/i);
-      expect(dateCell).toBeInTheDocument();
-    }, { timeout: 15000 });
-  }, 20000);
-
-  // breadcrumb should show the correct navigation path
-  it('renders breadcrumb with correct items', async () => {
-    (useAdminAccess as jest.Mock).mockReturnValue({
-      session: mockSession,
-      isLoading: false,
-    });
-
-    (global.fetch as jest.Mock)
-      .mockResolvedValueOnce({ json: () => Promise.resolve({ success: true, staff: [] }) })
-      .mockResolvedValueOnce({ json: () => Promise.resolve({ success: true, staff: [] }) })
-      .mockResolvedValueOnce({ json: () => Promise.resolve({ success: true, staff: [] }) });
-
-    await act(async () => {
-      render(<ApprovalsPage />);
-    });
-
-    const breadcrumb = screen.getByTestId('breadcrumb');
-    expect(breadcrumb).toBeInTheDocument();
-    expect(breadcrumb).toHaveTextContent('Home');
-    expect(breadcrumb).toHaveTextContent('Staff');
-    expect(breadcrumb).toHaveTextContent('Approvals');
-  });
-
-  // while an approve/reject request is in progress, the action buttons should be disabled
-  it('disables buttons while processing', async () => {
-    (useAdminAccess as jest.Mock).mockReturnValue({
-      session: mockSession,
-      isLoading: false,
-    });
-
-    (global.fetch as jest.Mock)
-      .mockResolvedValueOnce({ json: () => Promise.resolve({ success: true, staff: mockPendingStaff }) })
-      .mockResolvedValueOnce({ json: () => Promise.resolve({ success: true, staff: [] }) })
-      .mockResolvedValueOnce({ json: () => Promise.resolve({ success: true, staff: [] }) })
-      .mockImplementation(() => new Promise(() => {})); // Never resolves
-
-    (global.confirm as jest.Mock).mockReturnValue(true);
-
-    await act(async () => {
-      render(<ApprovalsPage />);
-    });
-
-    await waitFor(() => {
-      const approveButton = screen.getByText('Approve');
-      fireEvent.click(approveButton);
-    });
-
-    // Buttons should be disabled during processing
-    await waitFor(() => {
-      const buttons = screen.getAllByRole('button');
-      const actionButtons = buttons.filter(btn =>
-        btn.textContent === 'Approve' || btn.textContent === 'Reject'
-      );
-      actionButtons.forEach(button => {
-        expect(button).toBeDisabled();
-      });
-    }, { timeout: 15000 });
-  }, 20000);
-});
+    expect(global.alert).toHaveBeenCalledWith('Failed to reject staff member')
+  })
+})

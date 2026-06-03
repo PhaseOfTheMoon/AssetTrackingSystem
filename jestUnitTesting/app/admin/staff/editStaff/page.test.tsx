@@ -33,7 +33,7 @@ describe('EditStaffPage', () => {
 
   beforeEach(() => {
     jest.clearAllMocks()
-    // default URL param — pretend we're editing staff S001
+    // default URL param, pretend we're editing staff S001
     mockUseParams.mockReturnValue({ id: 'S001' })
   })
 
@@ -72,7 +72,7 @@ describe('EditStaffPage', () => {
     expect(screen.getByTestId('record-id')).toHaveTextContent('S001')
   })
 
-  // Next.js can return params as an array — we should pick the first value
+  // Next.js can return params as an array, we should pick the first value
   it('uses the first item when URL params returns an array', () => {
     mockUseParams.mockReturnValue({ id: ['S002', 'S003'] })
     ;(useAdminAccess as jest.Mock).mockReturnValue({ isLoading: false, isAdmin: true })
@@ -98,7 +98,7 @@ describe('EditStaffPage', () => {
     expect(config.backUrl).toBe('/admin/staff/list')
   })
 
-  // staff_id shouldn't be editable — it was set when the staff was created
+  // staff_id shouldn't be editable, it was set when the staff was created
   it('disables the staff_id field so it cannot be changed after creation', () => {
     ;(useAdminAccess as jest.Mock).mockReturnValue({ isLoading: false, isAdmin: true })
     render(<EditStaffPage />)
