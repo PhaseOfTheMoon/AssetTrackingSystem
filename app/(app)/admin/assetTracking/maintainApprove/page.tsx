@@ -38,8 +38,7 @@ const parseAiPoints = (text: string): string[] => {
     .slice(0, 3)
 }
 
-// ── Action handlers — passed to customActions, receive (row, refresh) ─────────
-
+// Action handlers — passed to customActions, receive (row, refresh) 
 const handleApprove = async (row: Record<string, unknown>, refresh: () => void) => {
   if (!confirm('Are you sure you want to approve this maintenance request?')) return
   const res = await fetch('/api/approveAssessments', {
@@ -86,7 +85,7 @@ const maintenanceConfig: dynamicPageConfig = {
   showAddButton: false,
   showConditionFilter: true,
   searchFields: [
-    { key: 'asset_id',    label: 'Search by Asset ID' },
+    { key: 'asset_id', label: 'Search by Asset ID' },
     { key: 'location_id', label: 'Search by Location'  },
   ],
 
