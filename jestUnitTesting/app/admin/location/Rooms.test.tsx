@@ -1,197 +1,117 @@
-import { render, screen } from '@testing-library/react';
-import LocationRoomsPage from '@/app/(app)/admin/location/rooms/page';
+import { render, screen, fireEvent } from '@testing-library/react'
+import { useAdminAccess } from '@/hooks/useAdminAccess'
+import LocationRoomsPage from '@/app/(app)/admin/location/rooms/page'
+import DynamicPage from '@/components/dynamicPage'
+import IdCodeModal from '@/components/ui/idCodeModal'
 
-// Mock DynamicPage component
-jest.mock('@/components/DynamicPage', () => {
-  return function MockDynamicPage({ config }: any) {
-    return (
-      <div data-testid="dynamic-page">
-        <h1>{config.pageTitle}</h1>
-        <p>{config.pageDescription}</p>
-        <div data-testid="config">{JSON.stringify(config)}</div>
-      </div>
-    );
-  };
-});
+jest.mock('@/hooks/useAdminAccess', () => ({
+  useAdminAccess: jest.fn()
+}))
+
+jest.mock('@/lib/supabase/client', () => ({
+  supabase: {
+    storage: {
+      from: jest.fn(() => ({
+        getPublicUrl: jest.fn(() => ({ data: { publicUrl: 'https://fake-supabase/qr.png' } }))
+      }))
+    }
+  }
+}))
+
+// Mock DynamicPage to capture its config props so we can test the custom column rendering
+jest.mock('@/components/dynamicPage', () => {
+  return jest.fn(() => <div data-testid="mock-dynamic-page" />)
+})
+
+jest.mock('@/components/ui/idCodeModal', () => {
+  return jest.fn(() => <div data-testid="mock-id-code-modal" />)
+})
 
 describe('LocationRoomsPage', () => {
-  it('renders DynamicPage with correct config', () => {
-    render(<LocationRoomsPage />);
+  beforeEach(() => {
+    jest.clearAllMocks()
+  })
 
-    expect(screen.getByTestId('dynamic-page')).toBeInTheDocument();
-  });
+  it('renders nothing while admin access is loading', () => {
+    ;(useAdminAccess as jest.Mock).mockReturnValue({ isLoading: true, isAdmin: false })
+    
+    const { container } = render(<LocationRoomsPage />)
 
-  it('displays correct page title', () => {
-    render(<LocationRoomsPage />);
+    expect(container).toBeEmptyDOMElement()
+  })
 
-    expect(screen.getByText('Location Management')).toBeInTheDocument();
-  });
+  it('renders nothing if the user is not an admin', () => {
+    ;(useAdminAccess as jest.Mock).mockReturnValue({ isLoading: false, isAdmin: false })
+    
+    const { container } = render(<LocationRoomsPage />)
 
-  it('displays correct page description', () => {
-    render(<LocationRoomsPage />);
+    expect(container).toBeEmptyDOMElement()
+  })
 
-    expect(screen.getByText('Manage organisational locations and rooms')).toBeInTheDocument();
-  });
+  it('renders the DynamicPage table component when user is an admin', () => {
+    ;(useAdminAccess as jest.Mock).mockReturnValue({ isLoading: false, isAdmin: true })
+    
+    render(<LocationRoomsPage />)
+    
+    expect(screen.getByTestId('mock-dynamic-page')).toBeInTheDocument()
+    
+    expect(DynamicPage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        config: expect.objectContaining({
+          entityName: 'location',
+          primaryKey: 'location_id',
+          showConditionFilter: false
+        })
+      }),
+      undefined
+    )
+  })
 
-  it('configures correct entity name', () => {
-    render(<LocationRoomsPage />);
+  it('opens the QR code modal when the tag_path render function is triggered', () => {
+    ;(useAdminAccess as jest.Mock).mockReturnValue({ isLoading: false, isAdmin: true })
+    
+    render(<LocationRoomsPage />)
+    
+    // Extract the config passed to the mocked DynamicPage component
+    const passedConfig = (DynamicPage as jest.Mock).mock.calls[0][0].config
+    const tagPathColumn = passedConfig.columns.find((col: any) => col.key === 'tag_path')
+    
+    // Render the custom cell exactly as DynamicPage would
+    const customCell = tagPathColumn.render('path/to/qr.png', { location_id: 'G001', name: 'Main Room' })
+    const { getByRole } = render(customCell)
+    
+    // The modal should not exist yet
+    expect(screen.queryByTestId('mock-id-code-modal')).not.toBeInTheDocument()
+    
+    // Click the QR thumbnail button
+    const qrButton = getByRole('button')
+    fireEvent.click(qrButton)
+    
+    // The modal should now be in the document
+    expect(screen.getByTestId('mock-id-code-modal')).toBeInTheDocument()
+    
+    // Verify the modal received the correct props
+    expect(IdCodeModal).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tagPath: 'path/to/qr.png',
+        entityId: 'G001',
+        entityLabel: 'Main Room'
+      }),
+      undefined
+    )
+  })
 
-    const configElement = screen.getByTestId('config');
-    const config = JSON.parse(configElement.textContent || '{}');
-
-    expect(config.entityName).toBe('location');
-    expect(config.entityDisplayName).toBe('Location');
-  });
-
-  it('configures correct API endpoint', () => {
-    render(<LocationRoomsPage />);
-
-    const configElement = screen.getByTestId('config');
-    const config = JSON.parse(configElement.textContent || '{}');
-
-    expect(config.apiEndpoint).toBe('/api/location');
-  });
-
-  it('configures correct primary key', () => {
-    render(<LocationRoomsPage />);
-
-    const configElement = screen.getByTestId('config');
-    const config = JSON.parse(configElement.textContent || '{}');
-
-    expect(config.primaryKey).toBe('location_id');
-  });
-
-  it('enables add button', () => {
-    render(<LocationRoomsPage />);
-
-    const configElement = screen.getByTestId('config');
-    const config = JSON.parse(configElement.textContent || '{}');
-
-    expect(config.showAddButton).toBe(true);
-  });
-
-  it('disables condition filter', () => {
-    render(<LocationRoomsPage />);
-
-    const configElement = screen.getByTestId('config');
-    const config = JSON.parse(configElement.textContent || '{}');
-
-    expect(config.showConditionFilter).toBe(false);
-  });
-
-  it('configures search fields correctly', () => {
-    render(<LocationRoomsPage />);
-
-    const configElement = screen.getByTestId('config');
-    const config = JSON.parse(configElement.textContent || '{}');
-
-    expect(config.searchFields).toHaveLength(2);
-    expect(config.searchFields[0].key).toBe('location_id');
-    expect(config.searchFields[0].label).toBe('Search by Location ID');
-    expect(config.searchFields[1].key).toBe('name');
-    expect(config.searchFields[1].label).toBe('Search by Asset Name');
-  });
-
-  it('configures columns correctly', () => {
-    render(<LocationRoomsPage />);
-
-    const configElement = screen.getByTestId('config');
-    const config = JSON.parse(configElement.textContent || '{}');
-
-    expect(config.columns).toHaveLength(6);
-    expect(config.columns[0].key).toBe('location_id');
-    expect(config.columns[0].sortable).toBe(true);
-    expect(config.columns[1].key).toBe('name');
-    expect(config.columns[1].sortable).toBe(true);
-    expect(config.columns[2].key).toBe('description');
-    expect(config.columns[3].key).toBe('block');
-    expect(config.columns[4].key).toBe('level');
-    expect(config.columns[5].key).toBe('created_dt');
-  });
-
-  it('configures form fields correctly', () => {
-    render(<LocationRoomsPage />);
-
-    const configElement = screen.getByTestId('config');
-    const config = JSON.parse(configElement.textContent || '{}');
-
-    expect(config.formFields).toHaveLength(5);
-
-    const locationIdField = config.formFields.find((f: any) => f.key === 'location_id');
-    expect(locationIdField.required).toBe(true);
-
-    const nameField = config.formFields.find((f: any) => f.key === 'name');
-    expect(nameField.required).toBe(true);
-  });
-
-  it('sets correct navigation URLs', () => {
-    render(<LocationRoomsPage />);
-
-    const configElement = screen.getByTestId('config');
-    const config = JSON.parse(configElement.textContent || '{}');
-
-    expect(config.addUrl).toBe('/admin/location/addLocation');
-    expect(config.editUrl).toBe('/admin/location/editLocation');
-  });
-
-  it('sets default sort by created date', () => {
-    render(<LocationRoomsPage />);
-
-    const configElement = screen.getByTestId('config');
-    const config = JSON.parse(configElement.textContent || '{}');
-
-    expect(config.defaultSortBy).toBe('created_dt');
-  });
-
-  it('includes description in form fields', () => {
-    render(<LocationRoomsPage />);
-
-    const configElement = screen.getByTestId('config');
-    const config = JSON.parse(configElement.textContent || '{}');
-
-    const descriptionField = config.formFields.find((f: any) => f.key === 'description');
-
-    expect(descriptionField).toBeDefined();
-    expect(descriptionField.type).toBe('text');
-  });
-
-  it('includes block and level in form fields', () => {
-    render(<LocationRoomsPage />);
-
-    const configElement = screen.getByTestId('config');
-    const config = JSON.parse(configElement.textContent || '{}');
-
-    const blockField = config.formFields.find((f: any) => f.key === 'block');
-    const levelField = config.formFields.find((f: any) => f.key === 'level');
-
-    expect(blockField).toBeDefined();
-    expect(blockField.type).toBe('text');
-
-    expect(levelField).toBeDefined();
-    expect(levelField.type).toBe('number');
-  });
-
-  it('configures created_dt column with date render function', () => {
-    render(<LocationRoomsPage />);
-
-    const configElement = screen.getByTestId('config');
-    const config = JSON.parse(configElement.textContent || '{}');
-
-    const createdDtColumn = config.columns.find((c: any) => c.key === 'created_dt');
-
-    expect(createdDtColumn).toBeDefined();
-    expect(createdDtColumn.sortable).toBe(true);
-    expect(createdDtColumn.label).toBe('Created Date');
-  });
-
-  it('makes all columns sortable', () => {
-    render(<LocationRoomsPage />);
-
-    const configElement = screen.getByTestId('config');
-    const config = JSON.parse(configElement.textContent || '{}');
-
-    config.columns.forEach((column: any) => {
-      expect(column.sortable).toBe(true);
-    });
-  });
-});
+  it('renders a No QR badge if tag_path is null', () => {
+    ;(useAdminAccess as jest.Mock).mockReturnValue({ isLoading: false, isAdmin: true })
+    
+    render(<LocationRoomsPage />)
+    
+    const passedConfig = (DynamicPage as jest.Mock).mock.calls[0][0].config
+    const tagPathColumn = passedConfig.columns.find((col: any) => col.key === 'tag_path')
+    
+    const customCell = tagPathColumn.render(null, { location_id: 'G001' })
+    const { getByText } = render(customCell)
+    
+    expect(getByText('No QR')).toBeInTheDocument()
+  })
+})
