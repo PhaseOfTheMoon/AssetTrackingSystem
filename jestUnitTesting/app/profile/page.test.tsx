@@ -451,10 +451,8 @@ describe('ProfilePage', () => {
     });
   });
 
-  /**
-   * Clicking "View All Assets" fires the placeholder alert
-   */
-  it('fires the placeholder alert when View All button is clicked', async () => {
+  /** clicking View All Assets should expand to show all assets */
+  it('shows all assets when View All button is clicked', async () => {
     const mockAssets = Array.from({ length: 4 }, (_, i) => ({
       id: i + 1,
       asset_id: `A00${i + 1}`,
@@ -474,7 +472,10 @@ describe('ProfilePage', () => {
 
     await waitFor(() => {
       fireEvent.click(screen.getByText(/View All Assets/i));
-      expect(global.alert).toHaveBeenCalledWith('Assigned Assets page - to be implemented');
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText('Asset 4')).toBeInTheDocument();
     });
   });
 });

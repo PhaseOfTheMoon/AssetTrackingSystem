@@ -523,6 +523,132 @@ describe('RegisterPage', () => {
       expect(consoleSpy).toHaveBeenCalledWith('Registration error:', expect.any(Error));
     });
 
-    consoleSpy.mockRestore();
-  });
-});
+    consoleSpy.mockRestore()
+  })
+
+  /** when department fetch fails, dropdown should just be empty without crashing */
+  it('handles department fetch failure gracefully', async () => {
+    (global.fetch as jest.Mock).mockImplementation((url: string) => {
+      if (url.includes('/api/department/public')) {
+        return Promise.reject(new Error('Network error'))
+      }
+      return Promise.resolve({ json: () => Promise.resolve({ exists: false, message: null }) })
+    })
+
+    await act(async () => { render(<RegisterPage />) })
+
+    expect(screen.getByText('Select a department')).toBeInTheDocument()
+    expect(screen.queryByText('Information Technology')).not.toBeInTheDocument()
+  })
+
+  /** email longer than 60 chars should show a length error */
+  it('shows error when email exceeds 60 characters', async () => {
+    await act(async () => { render(<RegisterPage />) })
+
+    const emailInput = screen.getByPlaceholderText('e.g., john@swin.edu.my')
+    const longEmail = 'a'.repeat(55) + '@swin.edu.my'
+    fireEvent.change(emailInput, { target: { value: longEmail } })
+
+    expect(screen.getByText('Email cannot exceed 60 characters.')).toBeInTheDocument()
+  })
+
+  /** empty staff id on blur should not call the duplicate check API */
+  it('does not call check-staff-id API when staff id is empty on blur', async () => {
+    await act(async () => { render(<RegisterPage />) })
+
+    const staffIdInput = screen.getByPlaceholderText('e.g., 12345')
+    fireEvent.change(staffIdInput, { target: { value: '' } })
+    await act(async () => { fireEvent.blur(staffIdInput) })
+
+    const checkStaffIdCalls = (global.fetch as jest.Mock).mock.calls.filter(
+      (call: string[]) => call[0].includes('check-staff-id')
+    )
+    expect(checkStaffIdCalls.length).toBe(0)
+  })
+
+  /** invalid email format on blur should show error without calling the API */
+  it('shows sync error on email blur and does not call check-email API', async () => {
+    await act(async () => { render(<RegisterPage />) })
+
+    const emailInput = screen.getByPlaceholderText('e.g., john@swin.edu.my')
+    fireEvent.change(emailInput, { target: { value: 'notanemail' } })
+    await act(async () => { fireEvent.blur(emailInput) })
+
+    expect(screen.getByText('Invalid email format.')).toBeInTheDocument()
+
+    const checkEmailCalls = (global.fetch as jest.Mock).mock.calls.filter(
+      (call: string[]) => call[0].includes('check-email')
+    )
+    expect(checkEmailCalls.length).toBe(0)
+  })
+
+  /** when check-staff-id fetch throws, should not crash and not show duplicate error */
+  it('handles check-staff-id fetch error gracefully', async () => {
+    (global.fetch as jest.Mock).mockImplementation((url: string) => {
+      if (url.includes('/api/department/public')) {
+        return Promise.resolve({ json: () => Promise.resolve({ data: mockDepartments }) })
+      }
+      if (url.includes('/api/auth/check-staff-id')) {
+        return Promise.reject(new Error('Network error'))
+      }
+      return Promise.resolve({ json: () => Promise.resolve({ message: null }) })
+    })
+
+    await act(async () => { render(<RegisterPage />) })
+
+    const staffIdInput = screen.getByPlaceholderText('e.g., 12345')
+    fireEvent.change(staffIdInput, { target: { value: '12345' } })
+    await act(async () => { fireEvent.blur(staffIdInput) })
+
+    expect(screen.queryByText('This Staff ID is already registered.')).not.toBeInTheDocument()
+  })
+
+  /** typing in name and mobile fields should update their values normally */
+  it('updates name and mobile fields on change', async () => {
+    await act(async () => { render(<RegisterPage />) })
+
+    const nameInput = screen.getByPlaceholderText('e.g., John Doe')
+    const mobileInput = screen.getByPlaceholderText('e.g., 0123456789')
+
+    fireEvent.change(nameInput, { target: { value: 'Jun Zhen', name: 'name' } })
+    fireEvent.change(mobileInput, { target: { value: '0123456789', name: 'mobile_no' } })
+
+    expect(nameInput).toHaveValue('Jun Zhen')
+    expect(mobileInput).toHaveValue('0123456789')
+  })
+
+  /** selecting a department from the dropdown should update the form state */
+  it('updates department when a department is selected', async () => {
+    await act(async () => { render(<RegisterPage />) })
+
+    await waitFor(() => {
+      expect(screen.getByText('Information Technology')).toBeInTheDocument()
+    })
+
+    const select = screen.getByRole('combobox')
+    fireEvent.change(select, { target: { value: 'IT' } })
+
+    expect(select).toHaveValue('IT')
+  })
+
+  /** when check-email fetch throws, should not crash and not show duplicate error */
+  it('handles check-email fetch error gracefully', async () => {
+    (global.fetch as jest.Mock).mockImplementation((url: string) => {
+      if (url.includes('/api/department/public')) {
+        return Promise.resolve({ json: () => Promise.resolve({ data: mockDepartments }) })
+      }
+      if (url.includes('/api/auth/check-email')) {
+        return Promise.reject(new Error('Network error'))
+      }
+      return Promise.resolve({ json: () => Promise.resolve({ exists: false }) })
+    })
+
+    await act(async () => { render(<RegisterPage />) })
+
+    const emailInput = screen.getByPlaceholderText('e.g., john@swin.edu.my')
+    fireEvent.change(emailInput, { target: { value: 'valid@swin.edu.my' } })
+    await act(async () => { fireEvent.blur(emailInput) })
+
+    expect(screen.queryByText('This email is already registered.')).not.toBeInTheDocument()
+  })
+})
