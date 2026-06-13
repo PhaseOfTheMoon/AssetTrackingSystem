@@ -10,47 +10,49 @@
  *   - Ensuring the correct config object is passed to DynamicAdd
  */
 
-import { render, screen } from '@testing-library/react';
-import { useAdminAccess } from '@/hooks/useAdminAccess';
-import AddDepartmentPage from '@/app/(app)/admin/department/addDepartment/page';
-import DynamicAdd from '@/components/dynamicAdd';
+import { render, screen } from '@testing-library/react'
+import { useAdminAccess } from '@/hooks/useAdminAccess'
+import AddDepartmentPage from '@/app/(app)/admin/department/addDepartment/page'
+import DynamicAdd from '@/components/dynamicAdd'
 
 // Mock the admin access hook
 jest.mock('@/hooks/useAdminAccess', () => ({
-  useAdminAccess: jest.fn(),
-}));
+  useAdminAccess: jest.fn()
+}))
 
 // Mock the DynamicAdd component to just render a dummy div so we can check its props
 jest.mock('@/components/dynamicAdd', () => {
-  return jest.fn(() => <div data-testid="mock-dynamic-add" />);
-});
+  return jest.fn(() => <div data-testid="mock-dynamic-add" />)
+})
 
 describe('AddDepartmentPage', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
-  });
+    jest.clearAllMocks()
+  })
 
   it('renders nothing while admin access is loading', () => {
-    (useAdminAccess as jest.Mock).mockReturnValue({ isLoading: true, isAdmin: false });
+    ;(useAdminAccess as jest.Mock).mockReturnValue({ isLoading: true, isAdmin: false })
     
-    const { container } = render(<AddDepartmentPage />);
-    expect(container).toBeEmptyDOMElement();
-  });
+    const { container } = render(<AddDepartmentPage />)
+
+    expect(container).toBeEmptyDOMElement()
+  })
 
   it('renders nothing if the user is not an admin', () => {
-    (useAdminAccess as jest.Mock).mockReturnValue({ isLoading: false, isAdmin: false });
+    ;(useAdminAccess as jest.Mock).mockReturnValue({ isLoading: false, isAdmin: false })
     
-    const { container } = render(<AddDepartmentPage />);
-    expect(container).toBeEmptyDOMElement();
-  });
+    const { container } = render(<AddDepartmentPage />)
+
+    expect(container).toBeEmptyDOMElement()
+  })
 
   it('renders DynamicAdd with the department config when user is an admin', () => {
-    (useAdminAccess as jest.Mock).mockReturnValue({ isLoading: false, isAdmin: true });
+    ;(useAdminAccess as jest.Mock).mockReturnValue({ isLoading: false, isAdmin: true })
     
-    render(<AddDepartmentPage />);
+    render(<AddDepartmentPage />)
     
     // Check that the mock component was rendered
-    expect(screen.getByTestId('mock-dynamic-add')).toBeInTheDocument();
+    expect(screen.getByTestId('mock-dynamic-add')).toBeInTheDocument()
 
     // Verify that DynamicAdd was called with the correct configuration
     expect(DynamicAdd).toHaveBeenCalledWith(
@@ -61,7 +63,7 @@ describe('AddDepartmentPage', () => {
           apiEndpoint: '/api/department',
         }),
       }),
-      undefined // <-- FIX: Changed from {} to undefined
-    );
-  });
-});
+      undefined
+    )
+  })
+})

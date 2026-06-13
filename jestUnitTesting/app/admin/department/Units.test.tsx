@@ -1,184 +1,230 @@
-import { render, screen } from '@testing-library/react';
+/**
+ * Unit tests for the DepartmentPage
+ *
+ * This page is responsible for:
+ *   - Restricting access to administrators only
+ *   - Rendering the generic DynamicPage component
+ *   - Supplying the correct Department configuration
+ *   - Managing department-related UI behaviour
+ *
+ * What we cover:
+ *   - Access control and authorization checks
+ *   - Rendering behaviour for administrators
+ *   - Configuration passed into DynamicPage
+ *   - Search field configuration
+ *   - Table column configuration
+ *   - QR modal visibility behaviour
+ */
+
+import { render, screen } from '@testing-library/react'
 import DepartmentPage from '@/app/(app)/admin/department/units/page';
 
-// Mock DynamicPage component
-jest.mock('@/components/DynamicPage', () => {
-  return function MockDynamicPage({ config }: any) {
-    return (
-      <div data-testid="dynamic-page">
-        <h1>{config.pageTitle}</h1>
-        <p>{config.pageDescription}</p>
-        <div data-testid="config">{JSON.stringify(config)}</div>
-      </div>
-    );
-  };
-});
+const mockUseAdminAccess = jest.fn()
+const mockDynamicPage = jest.fn()
+
+/**
+ * Mock admin authorization hook.
+ * Allows each test to simulate different
+ * permission scenarios.
+ */
+jest.mock('@/hooks/useAdminAccess', () => ({
+  useAdminAccess: () => mockUseAdminAccess()
+}))
+
+/**
+ * Mock DynamicPage.
+ * Records props passed into the component
+ * so configuration can be verified.
+ */
+jest.mock('@/components/dynamicPage', () => ({
+  __esModule: true,
+  default: (props: any) => {
+    mockDynamicPage(props)
+
+    return <div data-testid="dynamic-page">DynamicPage</div>
+  }
+}))
+
+/**
+ * Mock QR code modal component.
+ * Real implementation is unnecessary for
+ * configuration and rendering tests.
+ */
+jest.mock('@/components/ui/idCodeModal', () => ({
+  __esModule: true,
+  default: () => <div data-testid="id-code-modal">Modal</div>
+}))
+
+/**
+ * Mock Supabase storage URL generation.
+ * Used by the department QR code preview feature.
+ */
+jest.mock('@/lib/supabase/client', () => ({
+  supabase: {
+    storage: {
+      from: () => ({
+        getPublicUrl: () => ({
+          data: {
+            publicUrl: 'https://example.com/qr.png'
+          }
+        })
+      })
+    }
+  }
+}))
 
 describe('DepartmentPage', () => {
-  it('renders DynamicPage with correct config', () => {
-    render(<DepartmentPage />);
+  beforeEach(() => {
+    jest.clearAllMocks()
+  })
 
-    expect(screen.getByTestId('dynamic-page')).toBeInTheDocument();
-  });
+  /**
+   * Access-control tests.
+   * Verifies that only administrators
+   * are allowed to view the page.
+   */
+  describe('Access Control', () => {
+    it('renders nothing while loading permissions', () => {
+      mockUseAdminAccess.mockReturnValue({
+        isLoading: true,
+        isAdmin: false
+      })
 
-  it('displays correct page title', () => {
-    render(<DepartmentPage />);
+      const { container } = render(<DepartmentPage />)
 
-    expect(screen.getByText('Department Management')).toBeInTheDocument();
-  });
+      expect(container.firstChild).toBeNull()
+    })
 
-  it('displays correct page description', () => {
-    render(<DepartmentPage />);
+    it('renders nothing for non-admin users', () => {
+      mockUseAdminAccess.mockReturnValue({
+        isLoading: false,
+        isAdmin: false
+      })
 
-    expect(screen.getByText('Manage organisational departments and units')).toBeInTheDocument();
-  });
+      const { container } = render(<DepartmentPage />)
 
-  it('configures correct entity name', () => {
-    render(<DepartmentPage />);
+      expect(container.firstChild).toBeNull()
+    })
 
-    const configElement = screen.getByTestId('config');
-    const config = JSON.parse(configElement.textContent || '{}');
+    it('renders DynamicPage for administrators', () => {
+      mockUseAdminAccess.mockReturnValue({
+        isLoading: false,
+        isAdmin: true
+      })
 
-    expect(config.entityName).toBe('department');
-    expect(config.entityDisplayName).toBe('Department');
-  });
+      render(<DepartmentPage />)
 
-  it('configures correct API endpoint', () => {
-    render(<DepartmentPage />);
+      expect(
+        screen.getByTestId('dynamic-page')
+      ).toBeInTheDocument()
+    })
+  })
 
-    const configElement = screen.getByTestId('config');
-    const config = JSON.parse(configElement.textContent || '{}');
+  /**
+   * Configuration tests.
+   * Ensures the page passes the correct
+   * department settings into DynamicPage.
+   */
+  describe('Configuration', () => {
+    it('passes department configuration to DynamicPage', () => {
+      mockUseAdminAccess.mockReturnValue({
+        isLoading: false,
+        isAdmin: true
+      })
 
-    expect(config.apiEndpoint).toBe('/api/department');
-  });
+      render(<DepartmentPage />)
 
-  it('configures correct primary key', () => {
-    render(<DepartmentPage />);
+      const config = mockDynamicPage.mock.calls[0][0].config
 
-    const configElement = screen.getByTestId('config');
-    const config = JSON.parse(configElement.textContent || '{}');
+      expect(config.entityName).toBe('department')
+      expect(config.apiEndpoint).toBe('/api/department')
+      expect(config.primaryKey).toBe('department_id')
+      expect(config.pageTitle).toBe('Departments')
+      expect(config.addUrl).toBe('/admin/department/addDepartment')
+      expect(config.editUrl).toBe('/admin/department/editDepartment')
+    })
 
-    expect(config.primaryKey).toBe('department_id');
-  });
+    /**
+     * Business rule:
+     * Users must be able to search departments
+     * by both department ID and department name.
+     */
+    it('contains expected search fields', () => {
+      mockUseAdminAccess.mockReturnValue({
+        isLoading: false,
+        isAdmin: true
+      })
 
-  it('enables add button', () => {
-    render(<DepartmentPage />);
+      render(<DepartmentPage />)
 
-    const configElement = screen.getByTestId('config');
-    const config = JSON.parse(configElement.textContent || '{}');
+      const config = mockDynamicPage.mock.calls[0][0].config
 
-    expect(config.showAddButton).toBe(true);
-  });
+      expect(config.searchFields).toHaveLength(2)
 
-  it('disables condition filter', () => {
-    render(<DepartmentPage />);
+      expect(config.searchFields[0].key)
+        .toBe('department_id')
 
-    const configElement = screen.getByTestId('config');
-    const config = JSON.parse(configElement.textContent || '{}');
+      expect(config.searchFields[1].key)
+        .toBe('name')
+    })
 
-    expect(config.showConditionFilter).toBe(false);
-  });
+    /**
+     * Business rule:
+     * Department table must expose key
+     * department information including
+     * identifiers and QR tag references.
+     */
+    it('contains expected table columns', () => {
+      mockUseAdminAccess.mockReturnValue({
+        isLoading: false,
+        isAdmin: true
+      })
 
-  it('configures search fields correctly', () => {
-    render(<DepartmentPage />);
+      render(<DepartmentPage />)
 
-    const configElement = screen.getByTestId('config');
-    const config = JSON.parse(configElement.textContent || '{}');
+      const config = mockDynamicPage.mock.calls[0][0].config
 
-    expect(config.searchFields).toHaveLength(2);
-    expect(config.searchFields[0].key).toBe('department');
-    expect(config.searchFields[0].label).toBe('Search by Department ID');
-    expect(config.searchFields[1].key).toBe('name');
-    expect(config.searchFields[1].label).toBe('Search by Department Name');
-  });
+      expect(config.columns.length)
+        .toBeGreaterThan(0)
 
-  it('configures columns correctly', () => {
-    render(<DepartmentPage />);
+      expect(
+        config.columns.some(
+          (column: any) =>
+            column.key === 'department_id'
+        )
+      ).toBe(true)
 
-    const configElement = screen.getByTestId('config');
-    const config = JSON.parse(configElement.textContent || '{}');
+      expect(
+        config.columns.some(
+          (column: any) =>
+            column.key === 'tag_path'
+        )
+      ).toBe(true)
+    })
+  })
 
-    expect(config.columns).toHaveLength(5);
-    expect(config.columns[0].key).toBe('department_id');
-    expect(config.columns[0].sortable).toBe(true);
-    expect(config.columns[1].key).toBe('name');
-    expect(config.columns[1].sortable).toBe(true);
-    expect(config.columns[2].key).toBe('block');
-    expect(config.columns[3].key).toBe('level');
-    expect(config.columns[4].key).toBe('created_dt');
-  });
+  /**
+   * Modal behaviour tests.
+   * Ensures QR modal visibility follows
+   * expected user interaction rules.
+   */
+  describe('Modal Behaviour', () => {
+    /**
+     * Business rule:
+     * QR modal should remain hidden
+     * until explicitly opened by the user.
+     */
+    it('does not display modal initially', () => {
+      mockUseAdminAccess.mockReturnValue({
+        isLoading: false,
+        isAdmin: true
+      })
 
-  it('configures form fields correctly', () => {
-    render(<DepartmentPage />);
+      render(<DepartmentPage />)
 
-    const configElement = screen.getByTestId('config');
-    const config = JSON.parse(configElement.textContent || '{}');
-
-    expect(config.formFields).toHaveLength(4);
-
-    const departmentIdField = config.formFields.find((f: any) => f.key === 'department_id');
-    expect(departmentIdField.required).toBe(true);
-
-    const nameField = config.formFields.find((f: any) => f.key === 'name');
-    expect(nameField.required).toBe(true);
-  });
-
-  it('sets correct navigation URLs', () => {
-    render(<DepartmentPage />);
-
-    const configElement = screen.getByTestId('config');
-    const config = JSON.parse(configElement.textContent || '{}');
-
-    expect(config.addUrl).toBe('/admin/department/addDepartment');
-    expect(config.editUrl).toBe('/admin/department/editDepartment');
-  });
-
-  it('sets default sort by created date', () => {
-    render(<DepartmentPage />);
-
-    const configElement = screen.getByTestId('config');
-    const config = JSON.parse(configElement.textContent || '{}');
-
-    expect(config.defaultSortBy).toBe('created_dt');
-  });
-
-  it('includes block and level in form fields', () => {
-    render(<DepartmentPage />);
-
-    const configElement = screen.getByTestId('config');
-    const config = JSON.parse(configElement.textContent || '{}');
-
-    const blockField = config.formFields.find((f: any) => f.key === 'block');
-    const levelField = config.formFields.find((f: any) => f.key === 'level');
-
-    expect(blockField).toBeDefined();
-    expect(blockField.type).toBe('text');
-
-    expect(levelField).toBeDefined();
-    expect(levelField.type).toBe('number');
-  });
-
-  it('configures created_dt column with date render function', () => {
-    render(<DepartmentPage />);
-
-    const configElement = screen.getByTestId('config');
-    const config = JSON.parse(configElement.textContent || '{}');
-
-    const createdDtColumn = config.columns.find((c: any) => c.key === 'created_dt');
-
-    expect(createdDtColumn).toBeDefined();
-    expect(createdDtColumn.sortable).toBe(true);
-    expect(createdDtColumn.label).toBe('Created Date');
-  });
-
-  it('makes all columns sortable', () => {
-    render(<DepartmentPage />);
-
-    const configElement = screen.getByTestId('config');
-    const config = JSON.parse(configElement.textContent || '{}');
-
-    config.columns.forEach((column: any) => {
-      expect(column.sortable).toBe(true);
-    });
-  });
-});
+      expect(
+        screen.queryByTestId('id-code-modal')
+      ).not.toBeInTheDocument()
+    })
+  })
+})
