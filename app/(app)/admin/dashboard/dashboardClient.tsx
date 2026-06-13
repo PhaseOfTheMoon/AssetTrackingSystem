@@ -1,18 +1,17 @@
-'use client'
-
 /** Commented by Desmond @ 20-May-2026
  * Client-side shell for the dashboard page.
  * Handles all interactive state: session check, stats fetching,
  * entity view selector, and refresh button.
- *
- * The chart is passed in as a ReactNode from page.tsx (Server Component),
- * so AssetChartLoader is never imported here — which is what caused the
- * "Missing SUPABASE_SERVICE_ROLE_KEY" error when this file had 'use client'.
- *
- * Changing entityView updates the URL search param (?entityView=department),
- * which triggers a server re-render of page.tsx with the new value.
- */
+*
+* The chart is passed in as a ReactNode from page.tsx (Server Component),
+* so AssetChartLoader is never imported here — which is what caused the
+* "Missing SUPABASE_SERVICE_ROLE_KEY" error when this file had 'use client'.
+*
+* Changing entityView updates the URL search param (?entityView=department),
+* which triggers a server re-render of page.tsx with the new value.
+*/
 
+'use client'
 import { useState, useEffect } from 'react'
 import { useAdminAccess } from '@/hooks/useAdminAccess'
 import { useRouter, usePathname } from 'next/navigation'

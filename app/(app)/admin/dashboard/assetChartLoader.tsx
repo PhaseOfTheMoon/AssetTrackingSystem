@@ -1,4 +1,4 @@
-// app/dashboard/AssetChartLoader.tsx
+// 
 /** Commented by Desmond @ 20-May-2026
  * This is a React Server Component — it runs only on the server.
  * It fetches asset, department, and location data using supabaseAdmin
@@ -44,14 +44,16 @@ async function fetchAllAssets(): Promise<any[]> {
         location:location_id(name, description),
         department:department_id(name)
       `)
-      .is('deleted_dt', null)                          // Exclude soft-deleted records
+      .is('deleted_dt', null) // Exclude soft-deleted records
       .order('created_dt', { ascending: true })
       .range(from, from + PAGE_LIMIT - 1)
 
     if (error) throw new Error(`Asset fetch error: ${error.message}`)
-    if (!data || data.length === 0) break
+    if (!data || data.length === 0) 
+      break
     results.push(...data)
-    if (data.length < PAGE_LIMIT) break               // Last page reached
+    if (data.length < PAGE_LIMIT) 
+      break // Last page reached
     from += PAGE_LIMIT
   }
 
