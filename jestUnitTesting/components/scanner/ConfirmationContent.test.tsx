@@ -18,8 +18,8 @@
  *   - userEvent for realistic interactions
  */
 
-import { render, screen, waitFor, fireEvent, within } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
+// import userEvent from '@testing-library/user-event';
 import ConfirmationContent from '@/components/scanner/confirmationContext';
 
 // ─── Mock lucide-react icons (they are just SVGs, not needed for logic tests) ──

@@ -5,20 +5,32 @@ import { validateSession } from '@/lib/apiAuth'
 // Schema validation library — ensures the request body only contains expected fields and formats
 import { z } from 'zod'
 
+// Custom sanitisation patterns to enforce plain identifiers and clear text strings
+const cleanIdentifierSchema = z.string()
+  .regex(/^[a-zA-Z0-9_\-]+$/, {
+    message: 'Must be a plain identifier containing only alphanumeric characters, dashes, or underscores'
+  })
+
+const cleanTextSchema = z.string()
+  .regex(/^[^<>]*$/, { message: 'HTML or script tags are not allowed' })
+  .refine(val => !val.includes('../'), { message: 'Path traversal sequences are not allowed' })
+
 // Defines the exact shape of a valid request body
 // .strict() rejects any extra fields not listed here, preventing unexpected data from reaching the database
 const addStaffSchema = z.object({
-  staff_id: z.string().max(20),
-  name: z.string().max(100),
+  staff_id: cleanIdentifierSchema.max(20),
+  name: cleanTextSchema.max(100),
   email: z.string().email().max(100), // .email() ensures the value is a valid email format
   mobile_no: z.string().max(20),
-  department_id: z.string().max(50),
+  department_id: cleanIdentifierSchema.max(50),
 }).strict()
 
 export async function POST(request: NextRequest) {
   // Checks the user is logged in and has 'admin' role — returns 401/403 and exits if not
   const authResult = await validateSession('admin')
-  if (!authResult.authorized) return authResult.response
+  if (!authResult.authorized) {
+    return authResult.response
+  }
 
   try {
     // Read the raw request body

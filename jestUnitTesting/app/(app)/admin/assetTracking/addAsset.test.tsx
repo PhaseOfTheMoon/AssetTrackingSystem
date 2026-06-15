@@ -160,14 +160,13 @@ describe('AddAssetPage — Form Fields', () => {
     expect(field.required).toBeFalsy(); 
   });
 
-  it('should configure condition as select with 3 options', () => {
+  it('should configure condition as select with 2 options', () => {
     const field = getConfig().formFields.find((f: any) => f.key === 'condition');
     expect(field.type).toBe('select');
-    expect(field.options).toHaveLength(3);
+    expect(field.options).toHaveLength(2);
     expect(field.options).toEqual([
       { value: 'In-use', label: 'In-use' },
-      { value: 'In-store', label: 'In-store' },
-      { value: 'Spoiled', label: 'Spoiled' },
+      { value: 'In-store', label: 'In-store' }
     ]);
   });
 

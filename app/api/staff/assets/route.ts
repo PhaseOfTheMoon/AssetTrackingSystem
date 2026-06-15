@@ -51,7 +51,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      assets: assignments
+      assets: assignments || [] // Ensure an empty array is returned, instead of null
     })
 
   } catch (error: any) {

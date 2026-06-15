@@ -1,4 +1,4 @@
-import React from 'react';
+// import React from 'react';
 import { render, screen, fireEvent, act } from '@testing-library/react';
 import ScannerContext from '@/components/scanner/scannerContext';
 import '@testing-library/jest-dom';
@@ -16,7 +16,7 @@ jest.mock('html5-qrcode', () => {
     Html5Qrcode: jest.fn().mockImplementation(() => {
       return {
         // When start is called, we capture the 'successCallback' (the 3rd argument)
-        start: mockStart.mockImplementation((deviceId, config, successCb) => {
+        start: mockStart.mockImplementation((successCb) => {
           triggerScanSuccess = successCb; // Save it for later
           return Promise.resolve();
         }),
