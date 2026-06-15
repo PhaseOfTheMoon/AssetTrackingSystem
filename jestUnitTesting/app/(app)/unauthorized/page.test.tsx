@@ -47,10 +47,16 @@ describe('UnauthorisedPage', () => {
   const mockBack = jest.fn()
 
   beforeEach(() => {
-    jest.clearAllMocks();
-    (useRouter as jest.Mock).mockReturnValue({ push: mockPush, back: mockBack })
-    (signOut as jest.Mock).mockResolvedValue(undefined)
-  });
+    jest.clearAllMocks()
+    
+    jest.mocked(useRouter).mockReturnValue({ 
+      push: mockPush, 
+      back: mockBack 
+    } as any)
+
+    // Fix: Using jest.mocked removes the leading parenthesis completely, breaking the chain safely!
+    jest.mocked(signOut).mockResolvedValue(undefined as any)
+  })
 
   // ─── Rendering ─────────────────────────────────────────────────────────────
 

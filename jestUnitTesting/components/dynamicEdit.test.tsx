@@ -75,36 +75,32 @@ describe('dynamicEdit Component', () => {
     (useRouter as jest.Mock).mockReturnValue({ push: mockPush });
     
     // Default fetch mock
-    (global.fetch as jest.Mock).mockImplementation((url: string) => {
-      // 1. Mock Related Data: Locations
+    jest.mocked(global.fetch).mockImplementation((url: any) => {
       if (url.includes('/api/location')) {
-        return Promise.resolve({ ok: true, json: () => Promise.resolve({ data: [{ location_id: 'L1', name: 'Server Room' }] }) });
+        return Promise.resolve({ ok: true, json: async () => ({ data: [{ location_id: 'L1', name: 'Server Room' }] }) } as any)
       }
-      // 2. Mock Related Data: Departments
       if (url.includes('/api/department')) {
-        return Promise.resolve({ ok: true, json: () => Promise.resolve({ data: [{ department_id: 'D1', name: 'IT Dept' }] }) });
+        return Promise.resolve({ ok: true, json: async () => ({ data: [{ department_id: 'D1', name: 'IT Dept' }] }) } as any)
       }
-      // 3. Mock the Existing Record Fetch (GET)
       if (url.includes(`/api/assets/${mockRecordId}`)) {
         return Promise.resolve({ 
           ok: true, 
-          json: () => Promise.resolve({ 
+          json: async () => ({ 
             success: true, 
             data: { 
               asset_id: 'A100', 
               name: 'Old Laptop',
               category: 'Hardware',
-              condition: '', // Leave empty to test the 'In-use' fallback
+              condition: '', 
               location_id: 'L1',
-              // Include a nested object to ensure handleSubmit cleans it up before PUT
               location: { name: 'Server Room' }, 
               department: { name: 'IT Dept' }
             } 
           }) 
-        });
+        } as any)
       }
-      return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
-    });
+      return Promise.resolve({ ok: true, json: async () => ({}) } as any)
+    })
   });
 
   // ─── Auth & Loading States ──────────────────────────────────────────────────
@@ -152,7 +148,7 @@ describe('dynamicEdit Component', () => {
     expect(screen.getByDisplayValue('In-use')).toBeInTheDocument();
     
     // Check if related data populated the dropdown
-    expect(screen.getByText('Server Room')).toBeInTheDocument();
+    expect(screen.getByText('L1 - Server Room')).toBeInTheDocument();
   });
 
   it('alerts and redirects if the record fails to load', async () => {

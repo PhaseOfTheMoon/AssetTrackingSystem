@@ -1,11 +1,11 @@
 // app/api/saveMaintenance/route.ts
-import { NextRequest, NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase/server';
+import { NextRequest, NextResponse } from 'next/server'
+import { supabaseAdmin } from '@/lib/supabase/server'
 
 export async function POST(req: NextRequest) {
   // This route handles saving maintenance assessments (WC)
   try {
-    const body = await req.json();
+    const body = await req.json()
     const {
       asset_id,
       location_id,
@@ -18,20 +18,20 @@ export async function POST(req: NextRequest) {
       image_base64,   
       image_mime,     
       assessed_by,
-    } = body;
+    } = body
 
     // Validate the existing location_id (WC)
     const { data: locationExists, error: locationError } = await supabaseAdmin
       .from('Location')
       .select('location_id')
       .eq('location_id', location_id)
-      .single();
+      .single()
 
     if (locationError || !locationExists) {
       return NextResponse.json({
         success: false,
         error: `Invalid location_id: ${location_id} does not exist`,
-      });
+      })
     }
 
     //  Insert DB record without image (WC)
@@ -51,27 +51,27 @@ export async function POST(req: NextRequest) {
         approval_status: 'pending',
       })
       .select()
-      .single();
+      .single()
 
     if (assessmentError) {
-      console.error('DB insert error:', assessmentError.message);
+      console.error('DB insert error:', assessmentError.message)
       return NextResponse.json({
         success: false,
         error: `Failed to save assessment: ${assessmentError.message}`,
-      });
+      })
     }
 
-    console.log('Assessment saved:', assessment.id);
+    console.log('Assessment saved:', assessment.id)
 
     // Upload image AFTER DB insert succeeds (WC)
-    let imageUrl: string | null = null;
+    let imageUrl: string | null = null
 
     if (maintenance_needed && image_base64) {
       try {
-        console.log('Uploading image (maintenance needed)...');
-        const buffer = Buffer.from(image_base64, 'base64');
-        const ext = image_mime === 'image/png' ? 'png' : image_mime === 'image/webp' ? 'webp' : 'jpg';
-        const fileName = `${asset_id}_${Date.now()}.${ext}`;
+        console.log('Uploading image (maintenance needed)...')
+        const buffer = Buffer.from(image_base64, 'base64')
+        const ext = image_mime === 'image/png' ? 'png' : image_mime === 'image/webp' ? 'webp' : 'jpg'
+        const fileName = `${asset_id}_${Date.now()}.${ext}`
 
         const { error: uploadError } = await supabaseAdmin
           .storage
@@ -79,27 +79,27 @@ export async function POST(req: NextRequest) {
           .upload(fileName, buffer, {
             contentType: image_mime ?? 'image/jpeg',
             upsert: false,
-          });
+          })
 
         if (uploadError) {
-          console.error('Image upload error:', uploadError);
+          console.error('Image upload error:', uploadError)
         } else {
           const { data: urlData } = supabaseAdmin
             .storage
             .from('AssetImage')
-            .getPublicUrl(fileName);
+            .getPublicUrl(fileName)
 
-          imageUrl = urlData.publicUrl;
-          console.log('Image uploaded:', imageUrl);
+          imageUrl = urlData.publicUrl
+          console.log('Image uploaded:', imageUrl)
 
           //Update the record with the image URL (WC)
           await supabaseAdmin
             .from('Maintenance')
             .update({ image_url: imageUrl })
-            .eq('id', assessment.id);
+            .eq('id', assessment.id)
         }
       } catch (err) {
-        console.error('Error uploading image:', err);
+        console.error('Error uploading image:', err)
         // DB record is safe, image upload failure is non-critical, 
         // so we just log the error and continue without the image URL (WC)
       }
@@ -114,10 +114,10 @@ export async function POST(req: NextRequest) {
         department_id: department_id ?? null,
         updated_dt: new Date().toISOString(),
       })
-      .eq('asset_id', asset_id);
+      .eq('asset_id', asset_id)
 
     if (updateError) {
-      console.error('Error updating asset condition:', updateError.message);
+      console.error('Error updating asset condition:', updateError.message)
     }
     // Even if asset update fails, we still return success for the assessment save, since the main purpose of this route is to save the maintenance assessment.
     //  The asset update is a secondary action that we attempt but don't want to cause the whole operation to fail if it doesn't work (WC)
@@ -139,11 +139,13 @@ export async function POST(req: NextRequest) {
         assessed_by: assessment.assessed_by,
         created_dt: assessment.created_dt,
         updated_dt: assessment.updated_dt,
-      },
-    });
+      }
+    })
 
   } catch (err: any) {
-    console.error('saveMaintenance error:', err);
-    return NextResponse.json({ success: false, error: err.message });
+    console.error('saveMaintenance error:', err)
+    return NextResponse.json(
+      { success: false, error: err.message }
+    )
   }
 }

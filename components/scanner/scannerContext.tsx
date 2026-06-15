@@ -9,7 +9,7 @@ import {
   XCircle 
 } from 'lucide-react'
 
-export default function ScannerContent({
+export default function ScannerContext({
   title,
   description,
   icon: Icon,
